@@ -39,5 +39,21 @@ class Settings(BaseSettings):
     def frontend_origins(self) -> list[str]:
         return [o.strip() for o in self.frontend_url.split(",") if o.strip()]
 
+    @property
+    def primary_frontend_url(self) -> str:
+        """The one frontend origin used to build outbound links (invite
+        emails, RSVP links) — first entry of frontend_url, since that can
+        be a comma-separated CORS list in local dev (multiple ports)."""
+        origins = self.frontend_origins
+        return origins[0] if origins else "http://localhost:5174"
+
+    # Mail — Resend. Same dry-run-without-a-key convention as klaser-identity's
+    # app/services/mail.py: unset locally, invitation emails just get logged
+    # instead of sent, so the invite/RSVP flow is fully testable without a
+    # real Resend account.
+    resend_api_key: str = ""
+    mail_from_email: str = "noreply@klaser.co.il"
+    mail_from_name: str = "Klaser"
+
 
 settings = Settings()

@@ -10,7 +10,38 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "N"]
-ignore = ["E501"]  # line length handled by formatter
+ignore = [
+    "E501",  # line length handled by formatter
+    # datetime.UTC (3.11+) vs datetime.timezone.utc (3.2+): we pin 3.11 here
+    # (see requires-python / .python-version), but local dev venvs on
+    # contributors' machines aren't guaranteed to resolve `python3` to
+    # 3.11+ just because this repo says so. timezone.utc is identical at
+    # runtime and doesn't carry that risk, so we use it deliberately.
+    "UP017",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's Depends()/Query()/etc. in argument defaults is the idiomatic
+# pattern (it's how DI works), not the mutable-default footgun B008 exists
+# to catch — tell bugbear these calls are safe instead of routing every
+# handler through a module-level singleton workaround.
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.File",
+    "fastapi.Form",
+    # Dependency *factories* — each call returns a fresh closure meant to
+    # be evaluated once at route-decoration time, same contract as
+    # fastapi.Depends itself. Established pattern already in routes/
+    # (see the original ping route in routes/meetings.py).
+    "app.services.identity.require_entitlement",
+    "app.services.permissions.require_editor",
+    "app.services.permissions.require_admin",
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

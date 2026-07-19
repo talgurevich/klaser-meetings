@@ -41,7 +41,15 @@ async function _fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     const body = await r.text().catch(() => "");
     throw new ApiError(r.status, body || r.statusText);
   }
-  return r.json();
+  // DELETE endpoints (and any other 204) return an empty body — calling
+  // .json() on that throws "Unexpected end of JSON input" even though
+  // the request succeeded. Treat "nothing to parse" as success with an
+  // empty result rather than an error.
+  if (r.status === 204) {
+    return undefined as T;
+  }
+  const text = await r.text();
+  return text ? (JSON.parse(text) as T) : (undefined as T);
 }
 
 /** Hits this product's own backend. */
@@ -86,6 +94,262 @@ export type RegistrationInfo = {
 
 export type ResetPasswordInfo = {
   email: string;
+};
+
+export type TenantUserItem = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: string;
+  is_super_admin: boolean;
+  has_password: boolean;
+  created_at: string | null;
+};
+
+// ─── Meetings domain types (mirror backend/app/schemas.py) ───────────────
+
+export type MeetingKind = "meeting" | "assembly";
+export type MeetingStatus =
+  | "draft"
+  | "invited_internal"
+  | "invited_public"
+  | "active"
+  | "pending_approval"
+  | "approved"
+  | "published"
+  | "archived";
+export type TopicStatus = "pending" | "in_progress" | "done" | "deferred" | "skipped" | "cancelled";
+export type TopicPoolStatus = "pending_review" | "approved" | "in_meeting" | "used" | "rejected";
+
+export type Topic = {
+  id: string;
+  meeting_id: string;
+  order: number;
+  title: string;
+  description: string | null;
+  duration_minutes: number | null;
+  is_private: boolean;
+  status: TopicStatus;
+  deferred_to_meeting_id: string | null;
+  deferred_from_topic_id: string | null;
+  decision_text: string | null;
+  action_item: string | null;
+  timer_elapsed: number | null;
+  source_pool_id: string | null;
+  suggested_by: string | null;
+  is_default_first: boolean;
+  is_default_last: boolean;
+  approval_status: string | null;
+  topic_notes: string | null;
+  invited_guests: string[] | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TopicCreateInput = {
+  title: string;
+  description?: string | null;
+  duration_minutes?: number | null;
+  is_private?: boolean;
+  order?: number | null;
+  source_pool_id?: string | null;
+  invited_guests?: string[] | null;
+};
+
+export type Approval = { member_id: string; approved_at: string };
+
+// One invited person + their RSVP for a specific meeting. See
+// backend/app/models.py's MeetingInvite docstring — invitee_id is either
+// an identity user id ("member") or a local Participant id
+// ("participant"), two different id-spaces.
+export type MeetingInvite = {
+  id: string;
+  invitee_kind: "member" | "participant";
+  invitee_id: string;
+  email: string;
+  display_name: string | null;
+  status: "pending" | "confirmed_attend" | "confirmed_absent";
+  responded_at: string | null;
+  created_at: string;
+};
+
+export type MeetingListItem = {
+  id: string;
+  kind: MeetingKind;
+  number: string | null;
+  title: string | null;
+  date: string;
+  time_start: string | null;
+  location: string | null;
+  status: MeetingStatus;
+  created_at: string;
+};
+
+export type Meeting = MeetingListItem & {
+  tenant_id: string;
+  created_by_user_id: string;
+  time_end: string | null;
+  online_meeting_url: string | null;
+  attendees_invited: string[] | null;
+  attendees_present: string[] | null;
+  participant_ids: string[] | null;
+  attendees_responses: { user_id: string; status: string; responded_at: string | null }[] | null;
+  // Matches backend/app/routes/meetings.py's add_internal_approval /
+  // add_protocol_approval — key is member_id, not user_id.
+  internal_approvals: Approval[] | null;
+  protocol_approvals: Approval[] | null;
+  protocol_to_approve_id: string | null;
+  quorum_required: number | null;
+  quorum_reached: boolean | null;
+  notes: string | null;
+  invite_sent_internal_at: string | null;
+  invite_sent_public_at: string | null;
+  protocol_generated_at: string | null;
+  published_at: string | null;
+  updated_at: string;
+  topics: Topic[];
+  invites: MeetingInvite[];
+};
+
+export type MeetingCreateInput = {
+  kind: MeetingKind;
+  title?: string | null;
+  date: string;
+  time_start?: string | null;
+  time_end?: string | null;
+  location?: string | null;
+  online_meeting_url?: string | null;
+  attendees_invited?: string[] | null;
+  quorum_required?: number | null;
+  notes?: string | null;
+  topics?: TopicCreateInput[];
+};
+
+export type MeetingUpdateInput = Partial<
+  Omit<MeetingCreateInput, "kind" | "topics"> & {
+    number: string | null;
+    status: MeetingStatus;
+    attendees_present: string[] | null;
+    participant_ids: string[] | null;
+    quorum_reached: boolean | null;
+  }
+>;
+
+export type TopicPoolItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  duration_minutes: number | null;
+  invited_guests: string[] | null;
+  source: "manual" | "public_suggestion";
+  suggested_by: string | null;
+  priority: number | null;
+  status: TopicPoolStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Member = {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: string | null;
+};
+
+// Non-login contact tracked purely for meeting attendance — NOT an
+// identity User, never authenticates. See backend/app/models.py's
+// Participant docstring.
+export type Participant = {
+  id: string;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  created_by_user_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+// A placeholder future meeting date, not yet a real Meeting — see
+// backend/app/models.py's SavedDate docstring.
+export type SavedDate = {
+  id: string;
+  kind: MeetingKind;
+  date: string;
+  note: string | null;
+  created_by_user_id: string;
+  created_at: string;
+};
+
+export type DashboardMeetingItem = {
+  id: string;
+  kind: MeetingKind;
+  number: string | null;
+  display_number: string;
+  title: string | null;
+  date: string;
+  time_start: string | null;
+  location: string | null;
+  status: MeetingStatus;
+  created_at: string;
+};
+
+export type DashboardData = {
+  continuing_meeting: DashboardMeetingItem | null;
+  upcoming_meeting: MeetingListItem | null;
+  saved_dates: SavedDate[];
+  protocols_count: number;
+  open_action_items_count: number;
+  recent_protocols: MeetingListItem[];
+};
+
+export type DecisionSearchResult = {
+  meeting_id: string;
+  meeting_kind: MeetingKind;
+  meeting_number: string | null;
+  meeting_date: string;
+  topic_id: string;
+  topic_title: string;
+  decision_text: string;
+};
+
+export type ActionItem = {
+  topic_id: string;
+  meeting_id: string;
+  meeting_kind: MeetingKind;
+  meeting_number: string | null;
+  meeting_date: string;
+  topic_title: string;
+  action_item: string;
+  action_item_done: boolean;
+};
+
+export type InvitePreviewTopic = { title: string; duration_minutes: number | null };
+
+export type InvitePreview = {
+  recipient_name: string;
+  recipient_email: string;
+  tenant_name: string;
+  meeting_kind: MeetingKind;
+  meeting_number: string | null;
+  meeting_date: string;
+  time_start: string | null;
+  time_end: string | null;
+  location: string | null;
+  topics: InvitePreviewTopic[];
+};
+
+// What the public, no-login /rsvp/:token page sees.
+export type RsvpMeeting = {
+  recipient_name: string;
+  status: "pending" | "confirmed_attend" | "confirmed_absent";
+  tenant_name: string;
+  meeting_kind: MeetingKind;
+  meeting_number: string | null;
+  meeting_date: string;
+  time_start: string | null;
+  time_end: string | null;
+  location: string | null;
+  topics: InvitePreviewTopic[];
 };
 
 // ─── Endpoints ─────────────────────────────────────────────────────────
@@ -142,9 +406,178 @@ export const api = {
   exitSwitch: () =>
     authRequest<CurrentUser>("/api/auth/exit-switch", { method: "POST" }),
 
+  // Tenant admin — the "Users" section. Session-authed (not the
+  // service-token /api/service/users*), gated server-side on
+  // role=="admin" || is_super_admin, hard-scoped to the caller's own
+  // tenant. See klaser-identity/app/routes/tenant_admin.py.
+  listTenantUsers: () => authRequest<TenantUserItem[]>("/api/auth/tenant-users"),
+  inviteTenantUser: (body: { email: string; role: string; display_name?: string | null }) =>
+    authRequest<TenantUserItem>("/api/auth/tenant-users/invite", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateTenantUser: (userId: string, body: { role?: string; display_name?: string | null }) =>
+    authRequest<TenantUserItem>(`/api/auth/tenant-users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteTenantUser: (userId: string) =>
+    authRequest<{ status: string; already_absent: boolean }>(`/api/auth/tenant-users/${userId}`, {
+      method: "DELETE",
+    }),
+  resendTenantUserInvite: (userId: string) =>
+    authRequest<TenantUserItem>(`/api/auth/tenant-users/${userId}/resend-invite`, {
+      method: "POST",
+    }),
+
   // This product's own backend — smoke-test route, proves the identity
-  // wiring end-to-end. Replace/extend with real meetings endpoints.
+  // wiring end-to-end.
   ping: () => request<{ status: string; user_id: string; entitlements: string[] }>(
     "/api/meetings/ping"
   ),
+
+  // ─── Meetings ────────────────────────────────────────────────────────
+  listMeetings: (params?: { kind?: MeetingKind; status?: MeetingStatus }) => {
+    const qs = new URLSearchParams();
+    if (params?.kind) qs.set("kind", params.kind);
+    if (params?.status) qs.set("status", params.status);
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return request<MeetingListItem[]>(`/api/meetings${suffix}`);
+  },
+  getMeeting: (id: string) => request<Meeting>(`/api/meetings/${id}`),
+  createMeeting: (body: MeetingCreateInput) =>
+    request<Meeting>("/api/meetings", { method: "POST", body: JSON.stringify(body) }),
+  updateMeeting: (id: string, body: MeetingUpdateInput) =>
+    request<Meeting>(`/api/meetings/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteMeeting: (id: string) => request<void>(`/api/meetings/${id}`, { method: "DELETE" }),
+
+  addTopic: (meetingId: string, body: TopicCreateInput) =>
+    request<Topic>(`/api/meetings/${meetingId}/topics`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateTopic: (meetingId: string, topicId: string, body: Partial<Topic>) =>
+    request<Topic>(`/api/meetings/${meetingId}/topics/${topicId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteTopic: (meetingId: string, topicId: string) =>
+    request<void>(`/api/meetings/${meetingId}/topics/${topicId}`, { method: "DELETE" }),
+  reorderTopics: (meetingId: string, items: { id: string; order: number }[]) =>
+    request<Topic[]>(`/api/meetings/${meetingId}/topics/reorder`, {
+      method: "POST",
+      body: JSON.stringify(items),
+    }),
+
+  // ─── Topic pool ──────────────────────────────────────────────────────
+  listTopicPool: (status?: TopicPoolStatus) =>
+    request<TopicPoolItem[]>(`/api/topic-pool${status ? `?status=${status}` : ""}`),
+  suggestTopic: (body: {
+    title: string;
+    description?: string | null;
+    duration_minutes?: number | null;
+    invited_guests?: string[] | null;
+    priority?: number | null;
+  }) => request<TopicPoolItem>("/api/topic-pool", { method: "POST", body: JSON.stringify(body) }),
+  updateTopicPoolItem: (id: string, body: Partial<Pick<TopicPoolItem, "title" | "description" | "duration_minutes" | "priority" | "status">>) =>
+    request<TopicPoolItem>(`/api/topic-pool/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteTopicPoolItem: (id: string) =>
+    request<void>(`/api/topic-pool/${id}`, { method: "DELETE" }),
+
+  // ─── Members (tenant roster, proxied from identity) ─────────────────
+  listMembers: () => request<Member[]>("/api/members"),
+
+  // ─── Attendance ──────────────────────────────────────────────────────
+  markAttendeePresent: (meetingId: string, memberId: string) =>
+    request<string[]>(`/api/meetings/${meetingId}/attendees/${memberId}/present`, {
+      method: "POST",
+    }),
+  markAttendeeAbsent: (meetingId: string, memberId: string) =>
+    request<string[]>(`/api/meetings/${meetingId}/attendees/${memberId}/present`, {
+      method: "DELETE",
+    }),
+
+  // ─── Defer ───────────────────────────────────────────────────────────
+  deferTopic: (meetingId: string, topicId: string) =>
+    request<Topic>(`/api/meetings/${meetingId}/topics/${topicId}/defer`, { method: "POST" }),
+  undoDeferTopic: (meetingId: string, topicId: string) =>
+    request<Topic>(`/api/meetings/${meetingId}/topics/${topicId}/undo-defer`, { method: "POST" }),
+
+  // ─── Approvals ───────────────────────────────────────────────────────
+  addInternalApproval: (meetingId: string) =>
+    request<Meeting>(`/api/meetings/${meetingId}/internal-approval`, { method: "POST" }),
+  addProtocolApproval: (meetingId: string) =>
+    request<Meeting>(`/api/meetings/${meetingId}/protocol-approval`, { method: "POST" }),
+
+  // ─── Participants (non-login contacts, see api.ts's Participant type) ─
+  listParticipants: () => request<Participant[]>("/api/participants"),
+  createParticipant: (body: { full_name: string; phone?: string | null; email?: string | null }) =>
+    request<Participant>("/api/participants", { method: "POST", body: JSON.stringify(body) }),
+  updateParticipant: (
+    id: string,
+    body: Partial<Pick<Participant, "full_name" | "phone" | "email">>
+  ) => request<Participant>(`/api/participants/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  deleteParticipant: (id: string) => request<void>(`/api/participants/${id}`, { method: "DELETE" }),
+
+  // Attach/detach a directory participant to a specific meeting's
+  // attendance. Open to any entitled user server-side (not editor-only —
+  // see backend/app/routes/meetings.py).
+  addParticipantToMeeting: (meetingId: string, participantId: string) =>
+    request<string[]>(`/api/meetings/${meetingId}/participants/${participantId}`, { method: "POST" }),
+  removeParticipantFromMeeting: (meetingId: string, participantId: string) =>
+    request<string[]>(`/api/meetings/${meetingId}/participants/${participantId}`, { method: "DELETE" }),
+
+  // ─── Saved dates ────────────────────────────────────────────────────
+  listSavedDates: () => request<SavedDate[]>("/api/saved-dates"),
+  createSavedDate: (body: { kind: MeetingKind; date: string; note?: string | null }) =>
+    request<SavedDate>("/api/saved-dates", { method: "POST", body: JSON.stringify(body) }),
+  deleteSavedDate: (id: string) => request<void>(`/api/saved-dates/${id}`, { method: "DELETE" }),
+  convertSavedDate: (id: string) => request<Meeting>(`/api/saved-dates/${id}/convert`, { method: "POST" }),
+
+  // ─── Decisions search ───────────────────────────────────────────────
+  searchDecisions: (q: string) =>
+    request<DecisionSearchResult[]>(`/api/decisions/search?q=${encodeURIComponent(q)}`),
+
+  // ─── Dashboard ──────────────────────────────────────────────────────
+  getDashboard: () => request<DashboardData>("/api/dashboard"),
+
+  // ─── Action items (משימות לביצוע) — tenant-wide, across all meetings.
+  // `notify` is opt-in per call — checking "עדכן במייל את המוזמנים" in the
+  // UI before marking done/deleting is what emails the meeting's
+  // invitees (see backend/app/routes/action_items.py); omitted/false
+  // sends nothing. ───────────────────────────────────────────────────
+  listActionItems: () => request<ActionItem[]>("/api/action-items"),
+  setActionItemDone: (topicId: string, done: boolean, notify = false) =>
+    request<ActionItem>(`/api/action-items/${topicId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ done, notify }),
+    }),
+  deleteActionItem: (topicId: string, notify = false) =>
+    request<void>(`/api/action-items/${topicId}?notify=${notify}`, { method: "DELETE" }),
+
+  // ─── Meeting invites (editor-only) ─────────────────────────────────
+  addInvites: (meetingId: string, invitees: { kind: "member" | "participant"; id: string }[]) =>
+    request<MeetingInvite[]>(`/api/meetings/${meetingId}/invites`, {
+      method: "POST",
+      body: JSON.stringify(invitees),
+    }),
+  removeInvite: (meetingId: string, inviteId: string) =>
+    request<void>(`/api/meetings/${meetingId}/invites/${inviteId}`, { method: "DELETE" }),
+  sendInternalInvites: (meetingId: string) =>
+    request<Meeting>(`/api/meetings/${meetingId}/invites/send-internal`, { method: "POST" }),
+  sendPublicInvites: (meetingId: string) =>
+    request<Meeting>(`/api/meetings/${meetingId}/invites/send-public`, { method: "POST" }),
+  previewInvite: (meetingId: string, inviteeId?: string) =>
+    request<InvitePreview>(
+      `/api/meetings/${meetingId}/invites/preview${inviteeId ? `?invitee_id=${inviteeId}` : ""}`
+    ),
+
+  // ─── Public RSVP — no session, no credentials needed. Token possession
+  // is the entire auth model (see backend/app/routes/rsvp.py). ─────────
+  getRsvp: (token: string) => request<RsvpMeeting>(`/api/public/rsvp/${encodeURIComponent(token)}`),
+  submitRsvp: (token: string, response: "confirmed_attend" | "confirmed_absent") =>
+    request<RsvpMeeting>(`/api/public/rsvp/${encodeURIComponent(token)}`, {
+      method: "POST",
+      body: JSON.stringify({ response }),
+    }),
 };

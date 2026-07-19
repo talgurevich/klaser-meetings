@@ -11,7 +11,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routes import health, meetings
+from app.routes import (
+    action_items,
+    dashboard,
+    decisions,
+    health,
+    meetings,
+    members,
+    participants,
+    rsvp,
+    saved_dates,
+    topic_pool,
+)
 
 log = structlog.get_logger()
 
@@ -33,6 +44,14 @@ app.add_middleware(
 
 app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(meetings.router, prefix="/api/meetings", tags=["meetings"])
+app.include_router(topic_pool.router, prefix="/api/topic-pool", tags=["topic-pool"])
+app.include_router(members.router, prefix="/api/members", tags=["members"])
+app.include_router(participants.router, prefix="/api/participants", tags=["participants"])
+app.include_router(saved_dates.router, prefix="/api/saved-dates", tags=["saved-dates"])
+app.include_router(decisions.router, prefix="/api/decisions", tags=["decisions"])
+app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
+app.include_router(action_items.router, prefix="/api/action-items", tags=["action-items"])
+app.include_router(rsvp.router, prefix="/api/public/rsvp", tags=["rsvp"])
 
 
 @app.on_event("startup")

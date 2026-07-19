@@ -1,6 +1,15 @@
-import { useEffect, useState } from "react";
+import { Navigate, Route, BrowserRouter, Routes } from "react-router-dom";
 import { useAuth } from "./lib/auth";
-import { api, apiErrorMessage } from "./lib/api";
+import Layout from "./components/Layout";
+import Home from "./pages/Home";
+import Meetings from "./pages/Meetings";
+import MeetingDetail from "./pages/MeetingDetail";
+import TopicPool from "./pages/TopicPool";
+import Register from "./pages/Register";
+import Users from "./pages/Users";
+import Participants from "./pages/Participants";
+import ActionItems from "./pages/ActionItems";
+import Rsvp from "./pages/Rsvp";
 
 const IDENTITY_BASE =
   import.meta.env.VITE_IDENTITY_BASE_URL || "http://localhost:8001";
@@ -12,18 +21,10 @@ function redirectToLogin() {
   window.location.href = `${IDENTITY_BASE}/login?redirect=${redirect}`;
 }
 
-export default function App() {
-  const { state, signOut } = useAuth();
-  const [pingResult, setPingResult] = useState<string | null>(null);
-  const [pingError, setPingError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (state.kind !== "signed_in") return;
-    api
-      .ping()
-      .then((r) => setPingResult(JSON.stringify(r, null, 2)))
-      .catch((err) => setPingError(apiErrorMessage(err)));
-  }, [state.kind]);
+/** Everything except /register lives behind this — loading state, then
+ * redirect-to-identity-login if anonymous, then the real app in Layout. */
+function AuthGate() {
+  const { state } = useAuth();
 
   if (state.kind === "loading") {
     return <div className="p-8 text-ink-soft">טוען…</div>;
@@ -35,31 +36,39 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-surface p-8 text-ink">
-      <h1 className="text-2xl font-display font-bold">Klaser Meetings</h1>
-      <p className="mt-2 text-ink-soft">
-        מחובר כ־{state.user.display_name || state.user.email} · ארגון{" "}
-        {state.user.tenant_name || state.user.tenant_id}
-      </p>
-      <button
-        onClick={() => signOut()}
-        className="mt-4 rounded border border-line-strong px-3 py-1.5 text-sm hover:bg-line"
-      >
-        התנתק
-      </button>
+    <Layout>
+      <Routes>
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/home" element={<Home />} />
+        <Route path="/meetings" element={<Meetings />} />
+        {/* No separate creation form — "+ ישיבה חדשה" instant-creates a
+         * draft and redirects straight here (see Home.tsx / Meetings.tsx),
+         * since this setup screen already covers everything a wizard
+         * would (and more: invitees, send actions). */}
+        <Route path="/meetings/:id" element={<MeetingDetail />} />
+        <Route path="/topic-pool" element={<TopicPool />} />
+        <Route path="/participants" element={<Participants />} />
+        <Route path="/action-items" element={<ActionItems />} />
+        <Route path="/users" element={<Users />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
+      </Routes>
+    </Layout>
+  );
+}
 
-      <div className="mt-8 rounded border border-line bg-white p-4">
-        <h2 className="font-semibold">Identity wiring smoke test</h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Calls this backend's <code>/api/meetings/ping</code>, which is
-          gated by <code>require_entitlement("meetings")</code> and
-          resolves the user via identity's <code>/api/introspect</code>.
-        </p>
-        {pingError && <p className="mt-2 text-sm text-accent-dark">{pingError}</p>}
-        {pingResult && (
-          <pre className="mt-2 whitespace-pre-wrap text-xs">{pingResult}</pre>
-        )}
-      </div>
-    </div>
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        {/* Reachable while anonymous — an invited user completing
+         * registration isn't logged in yet, so this must not go through
+         * AuthGate's redirect-to-login. */}
+        <Route path="/register" element={<Register />} />
+        {/* Also anonymous-reachable — an invitation recipient clicking an
+         * RSVP link from their email was never asked to log in at all. */}
+        <Route path="/rsvp/:token" element={<Rsvp />} />
+        <Route path="/*" element={<AuthGate />} />
+      </Routes>
+    </BrowserRouter>
   );
 }

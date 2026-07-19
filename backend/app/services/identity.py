@@ -242,6 +242,19 @@ class IdentityServiceClient:
         r.raise_for_status()
         return r.json()
 
+    def list_users(self, tenant_id: str) -> list[dict]:
+        """Tenant roster — backs Meetings' /api/members, which is how
+        attendee pickers / attendance lists get human names instead of
+        raw UUIDs. See identity's app/routes/service.py `list_users`."""
+        r = httpx.get(
+            f"{self.base_url}/api/service/users",
+            headers=self._headers(),
+            params={"tenant_id": tenant_id},
+            timeout=5.0,
+        )
+        r.raise_for_status()
+        return r.json()
+
     def list_subscriptions(self, tenant_id: str) -> list[dict]:
         r = httpx.get(
             f"{self.base_url}/api/service/tenants/{tenant_id}/subscriptions",
