@@ -396,3 +396,80 @@ class RsvpMeetingOut(BaseModel):
 
 class RsvpSubmitRequest(BaseModel):
     response: str  # confirmed_attend | confirmed_absent
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Tenant settings — org branding, protocol signatories, meeting/assembly
+# defaults, recurring topic templates. See app/models.py's TenantSettings/
+# Signatory/UserSignature docstrings and app/routes/settings.py.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class SignatoryCreate(BaseModel):
+    member_user_id: UUID | None = None
+    position_title: str | None = None
+    signature_text: str | None = None
+
+
+class SignatoryUpdate(BaseModel):
+    member_user_id: UUID | None = None
+    position_title: str | None = None
+    signature_text: str | None = None
+
+
+class SignatoryOut(BaseModel):
+    id: UUID
+    order: int
+    member_user_id: UUID | None
+    member_display_name: str | None
+    member_role: str | None
+    position_title: str | None
+    signature_text: str | None
+    signature_image_url: str | None  # data: URL, built server-side from stored base64
+
+
+class TenantSettingsUpdate(BaseModel):
+    org_name: str | None = None
+    email_signature: str | None = None
+    meeting_location: str | None = None
+    meeting_weekday: int | None = None  # 0=Sunday .. 6=Saturday
+    meeting_start_time: dt.time | None = None
+    meeting_end_time: dt.time | None = None
+    assembly_location: str | None = None
+    assembly_weekday: int | None = None
+    assembly_start_time: dt.time | None = None
+    assembly_end_time: dt.time | None = None
+    recurring_topic_first_title: str | None = None
+    recurring_topic_first_duration: int | None = None
+    recurring_topic_last_title: str | None = None
+    recurring_topic_last_duration: int | None = None
+
+
+class TenantSettingsOut(BaseModel):
+    org_name: str | None
+    logo_url: str | None
+    email_signature: str | None
+    stamp_url: str | None
+    meeting_location: str | None
+    meeting_weekday: int | None
+    meeting_start_time: dt.time | None
+    meeting_end_time: dt.time | None
+    assembly_location: str | None
+    assembly_weekday: int | None
+    assembly_start_time: dt.time | None
+    assembly_end_time: dt.time | None
+    recurring_topic_first_title: str | None
+    recurring_topic_first_duration: int | None
+    recurring_topic_last_title: str | None
+    recurring_topic_last_duration: int | None
+    signatories: list[SignatoryOut] = Field(default_factory=list)
+
+
+class UserSignatureOut(BaseModel):
+    signature_image_url: str | None
+
+
+class UserSignatureUpdate(BaseModel):
+    # A full data: URL as produced by canvas.toDataURL('image/png') on the
+    # frontend — parsed and re-validated server-side, not trusted blindly.
+    data_url: str

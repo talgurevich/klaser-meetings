@@ -63,6 +63,23 @@ async function authRequest<T>(path: string, init?: RequestInit): Promise<T> {
   return _fetchJson<T>(`${IDENTITY_BASE}${path}`, init);
 }
 
+/** File uploads (logo/stamp/signatory image) — deliberately NOT routed
+ * through `request`/`_fetchJson`: those always set Content-Type:
+ * application/json, which would corrupt a multipart body. The browser
+ * sets the correct `multipart/form-data; boundary=...` header itself as
+ * long as we don't touch Content-Type at all here. */
+async function uploadFile<T>(path: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append("file", file);
+  const r = await fetch(`${BASE}${path}`, { method: "POST", credentials: "include", body: form });
+  if (!r.ok) {
+    const body = await r.text().catch(() => "");
+    throw new ApiError(r.status, body || r.statusText);
+  }
+  const text = await r.text();
+  return text ? (JSON.parse(text) as T) : (undefined as T);
+}
+
 // ─── Types ─────────────────────────────────────────────────────────────
 
 export type CurrentUser = {
@@ -338,6 +355,44 @@ export type InvitePreview = {
   topics: InvitePreviewTopic[];
 };
 
+// Tenant settings — org branding, protocol signatories, meeting/assembly
+// defaults, recurring topic templates. See backend/app/models.py's
+// TenantSettings/Signatory docstrings and backend/app/routes/settings.py.
+export type Signatory = {
+  id: string;
+  order: number;
+  member_user_id: string | null;
+  member_display_name: string | null;
+  member_role: string | null;
+  position_title: string | null;
+  signature_text: string | null;
+  signature_image_url: string | null; // data: URL
+};
+
+export type TenantSettings = {
+  org_name: string | null;
+  logo_url: string | null; // data: URL
+  email_signature: string | null;
+  stamp_url: string | null; // data: URL
+  meeting_location: string | null;
+  meeting_weekday: number | null; // 0=Sunday .. 6=Saturday
+  meeting_start_time: string | null;
+  meeting_end_time: string | null;
+  assembly_location: string | null;
+  assembly_weekday: number | null;
+  assembly_start_time: string | null;
+  assembly_end_time: string | null;
+  recurring_topic_first_title: string | null;
+  recurring_topic_first_duration: number | null;
+  recurring_topic_last_title: string | null;
+  recurring_topic_last_duration: number | null;
+  signatories: Signatory[];
+};
+
+export type TenantSettingsUpdateInput = Partial<
+  Omit<TenantSettings, "logo_url" | "stamp_url" | "signatories">
+>;
+
 // What the public, no-login /rsvp/:token page sees.
 export type RsvpMeeting = {
   recipient_name: string;
@@ -580,4 +635,40 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ response }),
     }),
+
+  // ─── Tenant settings — reads open to any entitled user, writes
+  // (PUT/logo/stamp/signatories) admin-only server-side (require_admin);
+  // my-signature is self-service for any entitled user. See
+  // backend/app/routes/settings.py. ───────────────────────────────────
+  getTenantSettings: () => request<TenantSettings>("/api/tenant-settings"),
+  updateTenantSettings: (body: TenantSettingsUpdateInput) =>
+    request<TenantSettings>("/api/tenant-settings", { method: "PUT", body: JSON.stringify(body) }),
+  uploadLogo: (file: File) => uploadFile<TenantSettings>("/api/tenant-settings/logo", file),
+  deleteLogo: () => request<TenantSettings>("/api/tenant-settings/logo", { method: "DELETE" }),
+  uploadStamp: (file: File) => uploadFile<TenantSettings>("/api/tenant-settings/stamp", file),
+  deleteStamp: () => request<TenantSettings>("/api/tenant-settings/stamp", { method: "DELETE" }),
+
+  addSignatory: (body: { member_user_id?: string | null; position_title?: string | null; signature_text?: string | null }) =>
+    request<Signatory>("/api/tenant-settings/signatories", { method: "POST", body: JSON.stringify(body) }),
+  updateSignatory: (
+    id: string,
+    body: { member_user_id?: string | null; position_title?: string | null; signature_text?: string | null }
+  ) =>
+    request<Signatory>(`/api/tenant-settings/signatories/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteSignatory: (id: string) => request<void>(`/api/tenant-settings/signatories/${id}`, { method: "DELETE" }),
+  uploadSignatoryImage: (id: string, file: File) =>
+    uploadFile<Signatory>(`/api/tenant-settings/signatories/${id}/image`, file),
+  deleteSignatoryImage: (id: string) =>
+    request<Signatory>(`/api/tenant-settings/signatories/${id}/image`, { method: "DELETE" }),
+
+  getMySignature: () => request<{ signature_image_url: string | null }>("/api/tenant-settings/my-signature"),
+  setMySignature: (dataUrl: string) =>
+    request<{ signature_image_url: string | null }>("/api/tenant-settings/my-signature", {
+      method: "PUT",
+      body: JSON.stringify({ data_url: dataUrl }),
+    }),
+  deleteMySignature: () => request<void>("/api/tenant-settings/my-signature", { method: "DELETE" }),
 };

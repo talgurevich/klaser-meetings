@@ -9,6 +9,7 @@ import Register from "./pages/Register";
 import Users from "./pages/Users";
 import Participants from "./pages/Participants";
 import ActionItems from "./pages/ActionItems";
+import Settings from "./pages/Settings";
 import Rsvp from "./pages/Rsvp";
 
 const IDENTITY_BASE =
@@ -49,6 +50,7 @@ function AuthGate() {
         <Route path="/topic-pool" element={<TopicPool />} />
         <Route path="/participants" element={<Participants />} />
         <Route path="/action-items" element={<ActionItems />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/users" element={<Users />} />
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>

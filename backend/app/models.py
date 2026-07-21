@@ -339,3 +339,128 @@ class TopicPool(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# TenantSettings — one row per tenant. Org-wide branding + defaults for
+# meetings/assemblies/protocols. Deliberately NOT a mirror of anything in
+# identity: `org_name` here is a display override for printed documents
+# (letterhead), independent of whatever tenant.name identity holds — see
+# module docstring, no cross-DB joins.
+#
+# Images (logo/stamp) are stored as base64 directly in Postgres rather than
+# wiring up object storage — this backend has no S3/blob integration today,
+# and at the 2MB cap enforced in app/routes/settings.py that's a fine
+# trade-off for a low-traffic settings page. Revisit if that ever changes.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class TenantSettings(Base):
+    __tablename__ = "tenant_settings"
+
+    id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), unique=True, index=True, nullable=False)
+
+    org_name: Mapped[str | None] = mapped_column(String)
+
+    logo_data: Mapped[str | None] = mapped_column(Text)  # base64
+    logo_mime: Mapped[str | None] = mapped_column(String)
+
+    email_signature: Mapped[str | None] = mapped_column(Text)
+
+    stamp_data: Mapped[str | None] = mapped_column(Text)  # base64
+    stamp_mime: Mapped[str | None] = mapped_column(String)
+
+    # Defaults auto-filled into every new meeting/assembly of that kind —
+    # see app/routes/meetings.py's create_meeting.
+    meeting_location: Mapped[str | None] = mapped_column(String)
+    meeting_weekday: Mapped[int | None] = mapped_column(Integer)  # 0=Sunday .. 6=Saturday
+    meeting_start_time: Mapped[time | None] = mapped_column(Time)
+    meeting_end_time: Mapped[time | None] = mapped_column(Time)
+
+    assembly_location: Mapped[str | None] = mapped_column(String)
+    assembly_weekday: Mapped[int | None] = mapped_column(Integer)
+    assembly_start_time: Mapped[time | None] = mapped_column(Time)
+    assembly_end_time: Mapped[time | None] = mapped_column(Time)
+
+    # The two pinned topics auto-added to every new meeting (Topic.
+    # is_default_first / is_default_last) — see create_meeting. Either can
+    # be left unset (title=None) to skip seeding that one.
+    recurring_topic_first_title: Mapped[str | None] = mapped_column(String)
+    recurring_topic_first_duration: Mapped[int | None] = mapped_column(Integer)
+    recurring_topic_last_title: Mapped[str | None] = mapped_column(String)
+    recurring_topic_last_duration: Mapped[int | None] = mapped_column(Integer)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    signatories: Mapped[list["Signatory"]] = relationship(
+        back_populates="tenant_settings",
+        cascade="all, delete-orphan",
+        order_by="Signatory.order",
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Signatory — up to 3 per tenant, officials whose name/title/signature
+# appear on protocols and outbound emails. `member_user_id` points at an
+# identity user (no FK, see module docstring) — resolved to a display name
+# via app.services.identity, same pattern as everywhere else in this file.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class Signatory(Base):
+    __tablename__ = "signatories"
+
+    id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), index=True, nullable=False)
+    tenant_settings_id: Mapped[UUID] = mapped_column(
+        SQLUUID(as_uuid=True), ForeignKey("tenant_settings.id", ondelete="CASCADE"), nullable=False
+    )
+
+    order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    member_user_id: Mapped[UUID | None] = mapped_column(SQLUUID(as_uuid=True))  # identity user id, no FK
+    # Snapshotted at selection time — same reasoning as MeetingInvite's
+    # email/display_name (see that docstring): avoids an identity round-
+    # trip on every settings read, and survives the member later being
+    # removed from the roster.
+    member_display_name: Mapped[str | None] = mapped_column(String)
+    member_role: Mapped[str | None] = mapped_column(String)
+    position_title: Mapped[str | None] = mapped_column(String)  # שם התפקיד
+    signature_text: Mapped[str | None] = mapped_column(Text)
+
+    signature_image_data: Mapped[str | None] = mapped_column(Text)  # base64
+    signature_image_mime: Mapped[str | None] = mapped_column(String)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+    tenant_settings: Mapped[TenantSettings] = relationship(back_populates="signatories")
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# UserSignature — a personal drawn signature, one per (tenant, user). Kept
+# separate from Signatory: this is self-service (any entitled user captures
+# their own), whereas Signatory is admin-curated tenant-wide config. See
+# app/routes/settings.py's my-signature endpoints.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class UserSignature(Base):
+    __tablename__ = "user_signatures"
+    __table_args__ = (UniqueConstraint("tenant_id", "user_id", name="uq_user_signatures_tenant_user"),)
+
+    id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), index=True, nullable=False)
+    user_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), index=True, nullable=False)  # no FK
+
+    signature_image_data: Mapped[str | None] = mapped_column(Text)  # base64 PNG from canvas
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

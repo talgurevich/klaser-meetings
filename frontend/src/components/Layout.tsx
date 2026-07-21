@@ -48,6 +48,7 @@ export default function Layout({ children }: { children: ReactNode }) {
               <NavItem to="/topic-pool">מאגר נושאים</NavItem>
               <NavItem to="/participants">משתתפים</NavItem>
               <NavItem to="/action-items">משימות לביצוע</NavItem>
+              <NavItem to="/settings">הגדרות</NavItem>
               {admin && <NavItem to="/users">משתמשים</NavItem>}
             </nav>
           </div>

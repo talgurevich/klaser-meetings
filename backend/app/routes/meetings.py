@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
 from app.db import get_db
-from app.models import Meeting, MeetingInvite, Participant, Topic, TopicPool
+from app.models import Meeting, MeetingInvite, Participant, TenantSettings, Topic, TopicPool
 from app.schemas import (
     InviteeRef,
     InvitePreviewOut,
@@ -41,6 +41,52 @@ from app.services.meeting_utils import generate_meeting_number
 from app.services.permissions import is_editor, require_admin, require_editor
 
 router = APIRouter()
+
+# Sentinel order for the pinned "last" recurring topic (see
+# _seed_recurring_topics) — high enough that any number of ordinarily
+# added topics (which get order=len(meeting.topics), see add_topic) will
+# always sort before it, without needing to renumber anything on insert.
+_DEFAULT_LAST_TOPIC_ORDER = 1_000_000
+
+
+def _seed_recurring_topics(db: Session, meeting: Meeting, tenant_id: UUID) -> bool:
+    """Auto-adds the tenant's two pinned recurring topics (see
+    TenantSettings.recurring_topic_first_*/last_* and app/routes/
+    settings.py) to a brand-new meeting — is_default_first at order=0,
+    is_default_last at the sentinel order above. Either half is skipped
+    if that template's title was left unset. No-op if the tenant has no
+    settings row yet. Returns whether a first-topic was seeded, so the
+    caller can offset any topics passed in the same create request past
+    order=0 (see create_meeting)."""
+    tenant_settings = db.execute(
+        select(TenantSettings).where(TenantSettings.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    if tenant_settings is None:
+        return False
+    first_added = bool(tenant_settings.recurring_topic_first_title)
+    if first_added:
+        db.add(
+            Topic(
+                tenant_id=tenant_id,
+                meeting_id=meeting.id,
+                order=0,
+                title=tenant_settings.recurring_topic_first_title,
+                duration_minutes=tenant_settings.recurring_topic_first_duration,
+                is_default_first=True,
+            )
+        )
+    if tenant_settings.recurring_topic_last_title:
+        db.add(
+            Topic(
+                tenant_id=tenant_id,
+                meeting_id=meeting.id,
+                order=_DEFAULT_LAST_TOPIC_ORDER,
+                title=tenant_settings.recurring_topic_last_title,
+                duration_minutes=tenant_settings.recurring_topic_last_duration,
+                is_default_last=True,
+            )
+        )
+    return first_added
 
 
 def _get_meeting_or_404(db: Session, meeting_id: UUID, tenant_id: UUID) -> Meeting:
@@ -125,13 +171,16 @@ def create_meeting(
     db.add(meeting)
     db.flush()  # assign meeting.id before attaching topics
 
+    first_seeded = _seed_recurring_topics(db, meeting, tenant_id)
+    order_offset = 1 if first_seeded else 0
+
     for i, t in enumerate(body.topics):
         _claim_pool_topic(db, tenant_id, t.source_pool_id)
         db.add(
             Topic(
                 tenant_id=meeting.tenant_id,
                 meeting_id=meeting.id,
-                order=t.order if t.order is not None else i,
+                order=t.order if t.order is not None else i + order_offset,
                 title=t.title,
                 description=t.description,
                 duration_minutes=t.duration_minutes,

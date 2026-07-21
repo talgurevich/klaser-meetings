@@ -23,6 +23,7 @@ from app.routes import (
     saved_dates,
     topic_pool,
 )
+from app.routes import settings as settings_routes
 
 log = structlog.get_logger()
 
@@ -52,6 +53,7 @@ app.include_router(decisions.router, prefix="/api/decisions", tags=["decisions"]
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 app.include_router(action_items.router, prefix="/api/action-items", tags=["action-items"])
 app.include_router(rsvp.router, prefix="/api/public/rsvp", tags=["rsvp"])
+app.include_router(settings_routes.router, prefix="/api/tenant-settings", tags=["tenant-settings"])
 
 
 @app.on_event("startup")

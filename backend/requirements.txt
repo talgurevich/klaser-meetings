@@ -1,6 +1,9 @@
 # Web framework
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
+# Required by FastAPI's UploadFile/Form handling — used by
+# app/routes/settings.py's logo/stamp/signature image uploads.
+python-multipart==0.0.20
 
 # Database
 sqlalchemy==2.0.36
