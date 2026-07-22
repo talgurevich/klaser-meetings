@@ -194,6 +194,17 @@ function SignaturePad({ onSave, saving }: { onSave: (dataUrl: string) => void; s
   );
 }
 
+// A drawn signature comes off the <canvas> as a data: URL, but the
+// signatory image endpoint takes a multipart file upload — convert here.
+function dataUrlToFile(dataUrl: string, filename: string): File {
+  const [meta, b64] = dataUrl.split(",");
+  const mime = meta.match(/:(.*?);/)?.[1] || "image/png";
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], filename, { type: mime });
+}
+
 // ─── One "חתימה N" card in the officials-signatures section ───────────
 
 function SignatoryCard({
@@ -212,19 +223,17 @@ function SignatoryCard({
   onDelete: () => void;
 }) {
   const [positionTitle, setPositionTitle] = useState(signatory.position_title || "");
-  const [signatureText, setSignatureText] = useState(signatory.signature_text || "");
   const [busy, setBusy] = useState(false);
   const initialized = useRef(false);
   useEffect(() => {
     if (!initialized.current) {
       setPositionTitle(signatory.position_title || "");
-      setSignatureText(signatory.signature_text || "");
       initialized.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function save(patch: { member_user_id?: string | null; position_title?: string; signature_text?: string }) {
+  async function save(patch: { member_user_id?: string | null; position_title?: string }) {
     setBusy(true);
     try {
       const updated = await api.updateSignatory(signatory.id, patch);
@@ -277,18 +286,7 @@ function SignatoryCard({
         </div>
       </div>
       <div className="mt-3">
-        <label className="mb-1 block text-xs font-medium text-ink-soft">טקסט חתימה</label>
-        <textarea
-          value={signatureText}
-          disabled={disabled || busy}
-          onChange={(e) => setSignatureText(e.target.value)}
-          onBlur={() => save({ signature_text: signatureText })}
-          rows={3}
-          className={INPUT_CLS}
-        />
-      </div>
-      <div className="mt-3">
-        <label className="mb-1 block text-xs font-medium text-ink-soft">תמונת חתימה (לפרוטוקולים)</label>
+        <label className="mb-1 block text-xs font-medium text-ink-soft">חתימה (לפרוטוקולים)</label>
         <ImageField
           imageUrl={signatory.signature_image_url}
           disabled={disabled || busy}
@@ -310,6 +308,23 @@ function SignatoryCard({
             }
           }}
         />
+        {!signatory.signature_image_url && (
+          <div className="mt-3">
+            <div className="mb-1 text-xs text-ink-soft">או ציירו חתימה:</div>
+            <SignaturePad
+              saving={busy}
+              onSave={async (dataUrl) => {
+                setBusy(true);
+                try {
+                  const file = dataUrlToFile(dataUrl, `signature-${signatory.id}.png`);
+                  onSaved(await api.uploadSignatoryImage(signatory.id, file));
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -495,7 +510,7 @@ export default function Settings() {
           )}
         </div>
         <p className="mb-4 -mt-2 text-xs text-ink-soft">
-          עד 3 חתימות — יופיעו בתחתית פרוטוקולים ומיילים. ניתן להעלות גם תמונת חתימה לפרוטוקולים רשמיים.
+          עד 3 חתימות — העלו קובץ חתימה או ציירו אותה. החתימות יופיעו בתחתית פרוטוקולים ומיילים.
         </p>
         {settings.signatories.length === 0 ? (
           <p className="text-sm text-ink-soft">אין עדיין חתימות מוגדרות.</p>
