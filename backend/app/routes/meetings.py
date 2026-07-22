@@ -48,33 +48,52 @@ router = APIRouter()
 # always sort before it, without needing to renumber anything on insert.
 _DEFAULT_LAST_TOPIC_ORDER = 1_000_000
 
+# Every meeting opens with a fixed topic ratifying the previous meeting's
+# protocol — always present, ahead of any tenant-configured recurring
+# topic. Not driven by TenantSettings; it's a built-in first item.
+_PROTOCOL_APPROVAL_TITLE = "אישור פרוטוקול ישיבה קודמת"
 
-def _seed_recurring_topics(db: Session, meeting: Meeting, tenant_id: UUID) -> bool:
-    """Auto-adds the tenant's two pinned recurring topics (see
-    TenantSettings.recurring_topic_first_*/last_* and app/routes/
-    settings.py) to a brand-new meeting — is_default_first at order=0,
-    is_default_last at the sentinel order above. Either half is skipped
-    if that template's title was left unset. No-op if the tenant has no
-    settings row yet. Returns whether a first-topic was seeded, so the
-    caller can offset any topics passed in the same create request past
-    order=0 (see create_meeting)."""
+
+def _seed_recurring_topics(db: Session, meeting: Meeting, tenant_id: UUID) -> int:
+    """Seeds a new meeting's pinned topics and returns how many *leading*
+    topics (order 0, 1, …) were added, so create_meeting can offset any
+    user-supplied topics past them.
+
+    Order 0 is always the fixed protocol-approval topic
+    (`_PROTOCOL_APPROVAL_TITLE`) — every meeting starts by ratifying the
+    prior meeting's protocol. If the tenant configured a 'נושא ראשון'
+    template it follows at order 1; a configured 'נושא אחרון' is pinned
+    last at the sentinel order (see TenantSettings.recurring_topic_*)."""
+    leading = 0
+    db.add(
+        Topic(
+            tenant_id=tenant_id,
+            meeting_id=meeting.id,
+            order=leading,
+            title=_PROTOCOL_APPROVAL_TITLE,
+            is_default_first=True,
+        )
+    )
+    leading += 1
+
     tenant_settings = db.execute(
         select(TenantSettings).where(TenantSettings.tenant_id == tenant_id)
     ).scalar_one_or_none()
     if tenant_settings is None:
-        return False
-    first_added = bool(tenant_settings.recurring_topic_first_title)
-    if first_added:
+        return leading
+
+    if tenant_settings.recurring_topic_first_title:
         db.add(
             Topic(
                 tenant_id=tenant_id,
                 meeting_id=meeting.id,
-                order=0,
+                order=leading,
                 title=tenant_settings.recurring_topic_first_title,
                 duration_minutes=tenant_settings.recurring_topic_first_duration,
                 is_default_first=True,
             )
         )
+        leading += 1
     if tenant_settings.recurring_topic_last_title:
         db.add(
             Topic(
@@ -86,7 +105,7 @@ def _seed_recurring_topics(db: Session, meeting: Meeting, tenant_id: UUID) -> bo
                 is_default_last=True,
             )
         )
-    return first_added
+    return leading
 
 
 def _get_meeting_or_404(db: Session, meeting_id: UUID, tenant_id: UUID) -> Meeting:
@@ -228,8 +247,7 @@ def create_meeting(
     db.add(meeting)
     db.flush()  # assign meeting.id before attaching topics
 
-    first_seeded = _seed_recurring_topics(db, meeting, tenant_id)
-    order_offset = 1 if first_seeded else 0
+    leading_topics = _seed_recurring_topics(db, meeting, tenant_id)
 
     for i, t in enumerate(body.topics):
         _claim_pool_topic(db, tenant_id, t.source_pool_id)
@@ -237,7 +255,7 @@ def create_meeting(
             Topic(
                 tenant_id=meeting.tenant_id,
                 meeting_id=meeting.id,
-                order=t.order if t.order is not None else i + order_offset,
+                order=t.order if t.order is not None else i + leading_topics,
                 title=t.title,
                 description=t.description,
                 duration_minutes=t.duration_minutes,
