@@ -7,7 +7,7 @@ import {
   type DecisionSearchResult,
   type MeetingKind,
 } from "../lib/api";
-import { KIND_LABELS, STATUS_COLORS, STATUS_LABELS, todayIso } from "../lib/meetingLabels";
+import { KIND_LABELS, STATUS_COLORS, STATUS_LABELS } from "../lib/meetingLabels";
 import { useIsEditor } from "../components/Layout";
 import { useAuth } from "../lib/auth";
 
@@ -41,15 +41,16 @@ export default function Home() {
   useEffect(load, []);
 
   // Instant-create: rather than a separate mini-wizard, "+ ישיבה חדשה" /
-  // "אסיפה חדשה" create a bare draft immediately (today's date as a
-  // starting point — freely editable right away) and drop straight onto
+  // "אסיפה חדשה" create a bare draft immediately and drop straight onto
   // the meeting's own setup screen, which already covers everything a
-  // separate creation form would (and more: invitees, send actions).
+  // separate creation form would (and more: invitees, send actions). No
+  // date is sent — the backend seeds date/time/location from the tenant's
+  // per-kind defaults (settings page), all freely editable afterwards.
   async function createAndGo(kind: MeetingKind) {
     setBusy(true);
     setError(null);
     try {
-      const meeting = await api.createMeeting({ kind, date: todayIso() });
+      const meeting = await api.createMeeting({ kind });
       navigate(`/meetings/${meeting.id}`);
     } catch (err) {
       setError(apiErrorMessage(err));

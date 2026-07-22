@@ -1,33 +1,14 @@
 """Small server-side helpers for meeting lifecycle bookkeeping."""
 from datetime import date
-from uuid import UUID
-
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
-from app.models import Meeting
-
-# Numbering only advances past these statuses — drafts and anything still
-# in flight don't consume a sequence slot, matching the original
-# generateMeetingNumber() convention (counts only published/archived).
-_COUNTED_STATUSES = ("published", "archived")
 
 
-def generate_meeting_number(db: Session, *, tenant_id: UUID, kind: str, on: date | None = None) -> str:
-    """Return the next display number for a meeting/assembly, format
-    "N-YY" (e.g. "2-26"), scoped per tenant + kind + calendar year."""
-    year = (on or date.today()).year
-    yy = year % 100
+def generate_meeting_number(on: date | None = None) -> str:
+    """Default meeting number — the meeting date in Israeli DD/MM/YY format,
+    concatenated (e.g. 26 Jul 2026 -> "260726").
 
-    count = db.execute(
-        select(func.count())
-        .select_from(Meeting)
-        .where(
-            Meeting.tenant_id == tenant_id,
-            Meeting.kind == kind,
-            Meeting.status.in_(_COUNTED_STATUSES),
-            func.extract("year", Meeting.date) == year,
-        )
-    ).scalar_one()
-
-    return f"{count + 1}-{yy:02d}"
+    Assigned automatically from the meeting's date at creation, and kept in
+    sync with the date afterwards until the user customizes it (see
+    routes/meetings.py's create_meeting / update_meeting). The user can
+    override it with any string at any time.
+    """
+    return (on or date.today()).strftime("%d%m%y")

@@ -146,6 +146,53 @@ def _release_pool_topic(db: Session, tenant_id: UUID, source_pool_id: UUID | Non
         pool_item.status = "approved"
 
 
+def _next_default_weekday(target_sunday_based: int) -> dt.date:
+    """Nearest upcoming date (incl. today) whose weekday matches
+    ``target_sunday_based`` — 0=Sunday .. 6=Saturday, matching
+    TenantSettings.meeting_weekday's convention (Python's weekday() is
+    Monday=0, so shift by one)."""
+    today = dt.date.today()
+    current = (today.weekday() + 1) % 7  # Python Mon=0 → Sunday-based Sun=0
+    return today + dt.timedelta(days=(target_sunday_based - current) % 7)
+
+
+def _apply_tenant_meeting_defaults(
+    db: Session,
+    tenant_id: UUID,
+    kind: str,
+    *,
+    date: dt.date | None,
+    time_start: dt.time | None,
+    time_end: dt.time | None,
+    location: str | None,
+) -> tuple[dt.date, dt.time | None, dt.time | None, str | None]:
+    """Fill a new meeting's date/time/location from the tenant's per-kind
+    defaults (TenantSettings, set on the settings page) for any field the
+    caller left blank. Date falls back to the next occurrence of the
+    default weekday, or today if no weekday default is configured."""
+    ts = db.execute(
+        select(TenantSettings).where(TenantSettings.tenant_id == tenant_id)
+    ).scalar_one_or_none()
+    is_assembly = kind == "assembly"
+    if ts is not None:
+        weekday = ts.assembly_weekday if is_assembly else ts.meeting_weekday
+        def_start = ts.assembly_start_time if is_assembly else ts.meeting_start_time
+        def_end = ts.assembly_end_time if is_assembly else ts.meeting_end_time
+        def_location = ts.assembly_location if is_assembly else ts.meeting_location
+    else:
+        weekday = def_start = def_end = def_location = None
+
+    if date is None:
+        date = _next_default_weekday(weekday) if weekday is not None else dt.date.today()
+    if time_start is None:
+        time_start = def_start
+    if time_end is None:
+        time_end = def_end
+    if location is None:
+        location = def_location
+    return date, time_start, time_end, location
+
+
 @router.post("", response_model=MeetingOut, status_code=201)
 def create_meeting(
     body: MeetingCreate,
@@ -153,15 +200,25 @@ def create_meeting(
     user: IdentityUser = Depends(require_editor()),
 ) -> Meeting:
     tenant_id = UUID(user.tenant_id)
+    m_date, m_start, m_end, m_location = _apply_tenant_meeting_defaults(
+        db,
+        tenant_id,
+        body.kind,
+        date=body.date,
+        time_start=body.time_start,
+        time_end=body.time_end,
+        location=body.location,
+    )
     meeting = Meeting(
         tenant_id=tenant_id,
         created_by_user_id=UUID(user.user_id),
         kind=body.kind,
         title=body.title,
-        date=body.date,
-        time_start=body.time_start,
-        time_end=body.time_end,
-        location=body.location,
+        number=generate_meeting_number(m_date),
+        date=m_date,
+        time_start=m_start,
+        time_end=m_end,
+        location=m_location,
         online_meeting_url=body.online_meeting_url,
         attendees_invited=body.attendees_invited,
         quorum_required=body.quorum_required,
@@ -270,6 +327,19 @@ def update_meeting(
     new_status = updates.get("status")
     is_transition = bool(new_status) and new_status != meeting.status
 
+    # The number defaults to the date (DDMMYY). Keep it tracking the date
+    # when the date changes — but only while the user hasn't customized it
+    # (current number still equals the old date's DDMMYY) and isn't setting
+    # an explicit number in this same request.
+    new_date = updates.get("date")
+    if (
+        new_date is not None
+        and new_date != meeting.date
+        and "number" not in updates
+        and (meeting.number or "") == generate_meeting_number(meeting.date)
+    ):
+        updates["number"] = generate_meeting_number(new_date)
+
     if is_transition:
         _check_status_transition(meeting, new_status)
 
@@ -289,9 +359,7 @@ def update_meeting(
             meeting.protocol_generated_at = now
         if new_status == "published":
             if meeting.number is None:
-                meeting.number = generate_meeting_number(
-                    db, tenant_id=meeting.tenant_id, kind=meeting.kind, on=meeting.date
-                )
+                meeting.number = generate_meeting_number(meeting.date)
             if meeting.published_at is None:
                 meeting.published_at = now
 

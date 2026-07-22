@@ -85,7 +85,9 @@ class TopicOut(BaseModel):
 class MeetingCreate(BaseModel):
     kind: str = "meeting"  # meeting | assembly
     title: str | None = None
-    date: dt.date
+    # Optional — when omitted the server fills it from the tenant's default
+    # meeting weekday (see _apply_tenant_meeting_defaults in routes/meetings.py).
+    date: dt.date | None = None
     time_start: dt.time | None = None
     time_end: dt.time | None = None
     location: str | None = None

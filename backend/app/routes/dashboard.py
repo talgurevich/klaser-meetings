@@ -73,9 +73,7 @@ def get_dashboard(
     continuing = _pick(_PAST_DRAFT_STATUSES) or _pick(("draft",))
     continuing_out = None
     if continuing is not None:
-        display_number = continuing.number or generate_meeting_number(
-            db, tenant_id=tenant_id, kind=continuing.kind, on=continuing.date
-        )
+        display_number = continuing.number or generate_meeting_number(continuing.date)
         continuing_out = DashboardMeetingItem(
             id=continuing.id,
             kind=continuing.kind,

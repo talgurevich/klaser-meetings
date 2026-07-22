@@ -228,10 +228,19 @@ export type Meeting = MeetingListItem & {
   invites: MeetingInvite[];
 };
 
+export type PublishPreview = {
+  subject: string;
+  html: string;
+  recipients: { name: string; email: string }[];
+  recipients_without_email: string[];
+};
+
 export type MeetingCreateInput = {
   kind: MeetingKind;
   title?: string | null;
-  date: string;
+  // Optional — omit to let the backend fill from the tenant's default
+  // meeting weekday (falls back to today if no default is set).
+  date?: string | null;
   time_start?: string | null;
   time_end?: string | null;
   location?: string | null;
