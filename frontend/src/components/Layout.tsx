@@ -1,5 +1,6 @@
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isAdmin, isEditor } from "../lib/permissions";
 import { CURRENT_PRODUCT_ID, PRODUCTS } from "../lib/products";
@@ -26,6 +27,29 @@ export default function Layout({ children }: { children: ReactNode }) {
   const admin = isAdmin(user);
   const [menuOpen, setMenuOpen] = useState(false);
 
+  // Tenant's uploaded logo (base64 data URL from tenant settings). When
+  // present it replaces the "Klaser Meetings" wordmark in the top corner.
+  // Readable by any signed-in user; refetched if the viewed tenant changes.
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user) {
+      setLogoUrl(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getTenantSettings()
+      .then((s) => {
+        if (!cancelled) setLogoUrl(s.logo_url);
+      })
+      .catch(() => {
+        if (!cancelled) setLogoUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.tenant_id]);
+
   // Portfolio switcher — only shown when the user is entitled to more than
   // one Klaser product. See docs/portfolio-integration.md (elrom-platform
   // repo) and Takanon's App.tsx for the reference implementation this is
@@ -39,9 +63,17 @@ export default function Layout({ children }: { children: ReactNode }) {
       <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-6">
-            <span className="font-display text-lg font-bold text-accent-dark">
-              Klaser Meetings
-            </span>
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt={user?.tenant_name || "לוגו"}
+                className="h-9 w-auto max-w-[180px] object-contain"
+              />
+            ) : (
+              <span className="font-display text-lg font-bold text-accent-dark">
+                Klaser Meetings
+              </span>
+            )}
             <nav className="flex items-center gap-1">
               <NavItem to="/home">בית</NavItem>
               <NavItem to="/meetings">ישיבות</NavItem>
