@@ -28,6 +28,13 @@ _UNFINISHED_STATUSES = (
     "pending_approval",
     "approved",
 )
+# The "continue to meeting" banner prefers a meeting that has moved past
+# the draft stage (invited/active/approval) over a bare draft. Within each
+# group it prefers the nearest upcoming meeting (date >= today), and if
+# there's none upcoming it falls back to the most recent past one that's
+# still unfinished — so a meeting you're mid-way through doesn't drop off
+# the banner just because its date has passed.
+_PAST_DRAFT_STATUSES = tuple(s for s in _UNFINISHED_STATUSES if s != "draft")
 # Only these count as "officially on the calendar" for the upcoming-
 # meeting card — a bare draft hasn't been invited to anyone yet, so it
 # isn't really "coming up" in the sense a member would expect.
@@ -46,12 +53,24 @@ def get_dashboard(
     tenant_id = UUID(user.tenant_id)
     today = dt.date.today()
 
-    continuing = db.execute(
-        select(Meeting)
-        .where(Meeting.tenant_id == tenant_id, Meeting.status.in_(_UNFINISHED_STATUSES))
-        .order_by(Meeting.updated_at.desc())
-        .limit(1)
-    ).scalar_one_or_none()
+    def _pick(statuses: tuple[str, ...]) -> Meeting | None:
+        base = select(Meeting).where(
+            Meeting.tenant_id == tenant_id, Meeting.status.in_(statuses)
+        )
+        # Nearest upcoming (incl. today) first...
+        upcoming = db.execute(
+            base.where(Meeting.date >= today).order_by(Meeting.date).limit(1)
+        ).scalar_one_or_none()
+        if upcoming is not None:
+            return upcoming
+        # ...otherwise the most recent still-unfinished past meeting.
+        return db.execute(
+            base.where(Meeting.date < today).order_by(Meeting.date.desc()).limit(1)
+        ).scalar_one_or_none()
+
+    # Prefer a meeting past the draft stage; fall back to a draft only if
+    # there's no unfinished non-draft meeting at all.
+    continuing = _pick(_PAST_DRAFT_STATUSES) or _pick(("draft",))
     continuing_out = None
     if continuing is not None:
         display_number = continuing.number or generate_meeting_number(
