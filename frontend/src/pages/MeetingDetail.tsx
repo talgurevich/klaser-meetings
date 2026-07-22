@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { api, apiErrorMessage, type Meeting, type MeetingStatus, type Topic, type TopicPoolItem } from "../lib/api";
 import {
   KIND_LABELS,
@@ -679,6 +679,15 @@ export default function MeetingDetail() {
             העבר לסטטוס: {STATUS_LABELS[nextStatus]}
           </button>
         )
+      )}
+
+      {meeting.status === "published" && (
+        <Link
+          to={`/meetings/${meeting.id}/protocol`}
+          className="mb-6 block w-full rounded-lg border border-accent bg-white px-4 py-3 text-center text-sm font-semibold text-accent-dark hover:bg-line"
+        >
+          📄 הפק PDF (פרוטוקול)
+        </Link>
       )}
 
       {(isActive || !isPrep) && (

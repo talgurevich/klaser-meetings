@@ -39,7 +39,7 @@ from app.services.defer_topic import (
     undo_defer_topic,
 )
 from app.services.identity import IdentityUser, identity_service, require_entitlement
-from app.services.meeting_summary import build_publish_summary
+from app.services.meeting_summary import attendance_names, build_publish_summary
 from app.services.meeting_utils import generate_meeting_number
 from app.services.permissions import is_editor, require_admin, require_editor
 
@@ -443,6 +443,19 @@ def publish_meeting(
     db.commit()
     db.refresh(meeting)
     return meeting
+
+
+@router.get("/{meeting_id}/attendance", response_model=list[str])
+def meeting_attendance(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> list[str]:
+    """Resolved names of who was present — members marked present (named via
+    invites, best-effort roster) plus attached participants. Backs the
+    printable protocol page's attendance section."""
+    meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    return attendance_names(db, meeting)
 
 
 @router.post("/{meeting_id}/internal-approval", response_model=MeetingOut)

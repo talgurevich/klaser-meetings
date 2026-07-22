@@ -521,6 +521,7 @@ export const api = {
     request<PublishPreview>(`/api/meetings/${id}/publish-preview`),
   publishMeeting: (id: string) =>
     request<Meeting>(`/api/meetings/${id}/publish`, { method: "POST" }),
+  getAttendance: (id: string) => request<string[]>(`/api/meetings/${id}/attendance`),
 
   addTopic: (meetingId: string, body: TopicCreateInput) =>
     request<Topic>(`/api/meetings/${meetingId}/topics`, {

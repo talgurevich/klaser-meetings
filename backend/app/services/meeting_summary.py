@@ -70,6 +70,11 @@ def _member_name_map(meeting: Meeting) -> dict[str, str]:
     return names
 
 
+def attendance_names(db: Session, meeting: Meeting) -> list[str]:
+    """Public wrapper — names of who was present, for the protocol page."""
+    return _attendance(db, meeting)
+
+
 def _attendance(db: Session, meeting: Meeting) -> list[str]:
     """Names of who was present — members marked present, then attached
     participants (the Participant directory people tracked for this

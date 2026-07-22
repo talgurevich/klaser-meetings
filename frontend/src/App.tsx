@@ -4,6 +4,7 @@ import Layout from "./components/Layout";
 import Home from "./pages/Home";
 import Meetings from "./pages/Meetings";
 import MeetingDetail from "./pages/MeetingDetail";
+import ProtocolView from "./pages/ProtocolView";
 import TopicPool from "./pages/TopicPool";
 import Register from "./pages/Register";
 import Users from "./pages/Users";
@@ -47,6 +48,7 @@ function AuthGate() {
          * since this setup screen already covers everything a wizard
          * would (and more: invitees, send actions). */}
         <Route path="/meetings/:id" element={<MeetingDetail />} />
+        <Route path="/meetings/:id/protocol" element={<ProtocolView />} />
         <Route path="/topic-pool" element={<TopicPool />} />
         <Route path="/participants" element={<Participants />} />
         <Route path="/action-items" element={<ActionItems />} />
