@@ -18,6 +18,7 @@ import ApprovalPanel from "../components/ApprovalPanel";
 import MeetingDetailsForm from "../components/MeetingDetailsForm";
 import InviteesPanel from "../components/InviteesPanel";
 import InviteActions from "../components/InviteActions";
+import PublishModal from "../components/PublishModal";
 import StatusStepper from "../components/StatusStepper";
 
 const PREP_STATUSES: MeetingStatus[] = ["draft", "invited_internal", "invited_public"];
@@ -87,6 +88,7 @@ export default function MeetingDetail() {
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [closingTopic, setClosingTopic] = useState<Topic | null>(null);
   const [followUpTopic, setFollowUpTopic] = useState<Topic | null>(null);
+  const [publishing, setPublishing] = useState(false);
 
   // While a meeting is active, "ערוך פרטים" toggles the same
   // MeetingDetailsForm used during prep inline — no status change, just a
@@ -658,6 +660,14 @@ export default function MeetingDetail() {
             </p>
           )}
         </div>
+      ) : editor && meeting.status === "approved" ? (
+        <button
+          onClick={() => setPublishing(true)}
+          disabled={busy}
+          className="mb-6 w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:opacity-50"
+        >
+          פרסם לציבור והעבר לפורסם
+        </button>
       ) : (
         editor &&
         nextStatus && (
@@ -722,6 +732,17 @@ export default function MeetingDetail() {
           initialValue={followUpTopic.action_item || ""}
           onCancel={() => setFollowUpTopic(null)}
           onSubmit={submitFollowUp}
+        />
+      )}
+
+      {publishing && (
+        <PublishModal
+          meetingId={meeting.id}
+          onCancel={() => setPublishing(false)}
+          onPublished={() => {
+            setPublishing(false);
+            load();
+          }}
         />
       )}
     </div>

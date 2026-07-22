@@ -100,6 +100,13 @@ def _wrap_html(body: str, org_line: str) -> str:
 _KIND_LABELS = {"meeting": "ישיבת ועד", "assembly": "אסיפה"}
 
 
+def send_prebuilt(*, to_email: str, subject: str, html_body: str, text_body: str) -> None:
+    """Send an already-rendered message (subject/html/text built elsewhere,
+    e.g. the meeting-summary publish flow). Same fire-and-forget / dry-run
+    semantics as every other sender here."""
+    _send(Message(to=to_email, subject=subject, html_body=html_body, text_body=text_body))
+
+
 def send_meeting_invite(
     *,
     to_email: str,

@@ -182,6 +182,22 @@ class MeetingOut(BaseModel):
     invites: list[MeetingInviteOut] = Field(default_factory=list)
 
 
+class PublishRecipient(BaseModel):
+    name: str
+    email: str
+
+
+class PublishPreviewOut(BaseModel):
+    """Pre-send preview for the "publish to public" flow — the rendered
+    summary email plus who will receive it (and who was skipped for
+    lacking an email). See routes/meetings.py publish_preview."""
+
+    subject: str
+    html: str
+    recipients: list[PublishRecipient] = Field(default_factory=list)
+    recipients_without_email: list[str] = Field(default_factory=list)
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # TopicPool
 # ─────────────────────────────────────────────────────────────────────────

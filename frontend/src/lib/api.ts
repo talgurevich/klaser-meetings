@@ -515,6 +515,13 @@ export const api = {
     request<Meeting>(`/api/meetings/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteMeeting: (id: string) => request<void>(`/api/meetings/${id}`, { method: "DELETE" }),
 
+  // Publish-to-public flow: preview the summary email + recipients, then
+  // confirm to send + transition approved -> published.
+  getPublishPreview: (id: string) =>
+    request<PublishPreview>(`/api/meetings/${id}/publish-preview`),
+  publishMeeting: (id: string) =>
+    request<Meeting>(`/api/meetings/${id}/publish`, { method: "POST" }),
+
   addTopic: (meetingId: string, body: TopicCreateInput) =>
     request<Topic>(`/api/meetings/${meetingId}/topics`, {
       method: "POST",

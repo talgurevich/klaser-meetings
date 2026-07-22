@@ -25,6 +25,8 @@ from app.schemas import (
     MeetingListItem,
     MeetingOut,
     MeetingUpdate,
+    PublishPreviewOut,
+    PublishRecipient,
     TopicCreate,
     TopicOut,
     TopicReorderItem,
@@ -37,6 +39,7 @@ from app.services.defer_topic import (
     undo_defer_topic,
 )
 from app.services.identity import IdentityUser, identity_service, require_entitlement
+from app.services.meeting_summary import build_publish_summary
 from app.services.meeting_utils import generate_meeting_number
 from app.services.permissions import is_editor, require_admin, require_editor
 
@@ -381,6 +384,62 @@ def update_meeting(
             if meeting.published_at is None:
                 meeting.published_at = now
 
+    db.commit()
+    db.refresh(meeting)
+    return meeting
+
+
+@router.get("/{meeting_id}/publish-preview", response_model=PublishPreviewOut)
+def publish_preview(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> PublishPreviewOut:
+    """The summary email + recipient list the publish action would send —
+    rendered but not sent, so the user can review it before confirming (see
+    the frontend PublishModal). Same builder backs the real send, so the
+    preview is exactly what goes out."""
+    meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    summary = build_publish_summary(db, meeting, user.tenant_name or "")
+    return PublishPreviewOut(
+        subject=summary.subject,
+        html=summary.html,
+        recipients=[PublishRecipient(name=r.name, email=r.email) for r in summary.recipients],
+        recipients_without_email=summary.recipients_without_email,
+    )
+
+
+@router.post("/{meeting_id}/publish", response_model=MeetingOut)
+def publish_meeting(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> Meeting:
+    """Publish to public: email the summary to every invitee + attached
+    participant, then transition approved -> published. Guarded exactly
+    like the plain stepper transition (must be 'approved' with at least one
+    protocol approval). A mail failure never blocks publishing — _send is
+    fire-and-forget per recipient."""
+    meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    if meeting.status != "approved":
+        raise HTTPException(status_code=409, detail="ניתן לפרסם רק ישיבה שאושרה.")
+    _check_status_transition(meeting, "published")  # enforces protocol approval
+
+    summary = build_publish_summary(db, meeting, user.tenant_name or "")
+    for r in summary.recipients:
+        mail.send_prebuilt(
+            to_email=r.email,
+            subject=summary.subject,
+            html_body=summary.html,
+            text_body=summary.text,
+        )
+
+    now = dt.datetime.now(dt.timezone.utc)
+    meeting.status = "published"
+    if meeting.number is None:
+        meeting.number = generate_meeting_number(meeting.date)
+    if meeting.published_at is None:
+        meeting.published_at = now
     db.commit()
     db.refresh(meeting)
     return meeting
