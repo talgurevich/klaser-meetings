@@ -17,11 +17,13 @@ export default function Participants() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [publicSend, setPublicSend] = useState(true);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editPublicSend, setEditPublicSend] = useState(true);
 
   function load() {
     api
@@ -42,10 +44,12 @@ export default function Participants() {
         full_name: fullName.trim(),
         phone: phone.trim() || null,
         email: email.trim() || null,
+        public_send: publicSend,
       });
       setFullName("");
       setPhone("");
       setEmail("");
+      setPublicSend(true);
       load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -59,6 +63,7 @@ export default function Participants() {
     setEditName(p.full_name);
     setEditPhone(p.phone || "");
     setEditEmail(p.email || "");
+    setEditPublicSend(p.public_send);
   }
 
   async function saveEdit(id: string) {
@@ -70,6 +75,7 @@ export default function Participants() {
         full_name: editName.trim(),
         phone: editPhone.trim() || null,
         email: editEmail.trim() || null,
+        public_send: editPublicSend,
       });
       setEditingId(null);
       load();
@@ -95,9 +101,10 @@ export default function Participants() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-2 font-display text-2xl font-bold">משתתפים</h1>
+      <h1 className="mb-2 font-display text-2xl font-bold">אלפון</h1>
       <p className="mb-6 text-sm text-ink-soft">
-        אנשי קשר שאינם משתמשי מערכת — מתועדים לצורך מעקב נוכחות בישיבות בלבד.
+        אנשי קשר שאינם משתמשי מערכת — לתיעוד נוכחות ולרשימת התפוצה הציבורית.
+        אנשי קשר המסומנים "שליחה ציבורית" מקבלים את סיכום הישיבה כשמפרסמים לציבור.
       </p>
 
       <form onSubmit={create} className="mb-8 rounded border border-line bg-white p-4">
@@ -141,6 +148,15 @@ export default function Participants() {
             הוסף
           </button>
         </div>
+        <label className="mt-3 flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={publicSend}
+            onChange={(e) => setPublicSend(e.target.checked)}
+            className="rounded"
+          />
+          <span className="text-ink-soft">שליחה ציבורית — לקבל את סיכום הישיבה כשמפרסמים לציבור</span>
+        </label>
       </form>
 
       {error && (
@@ -150,7 +166,7 @@ export default function Participants() {
       )}
 
       {items === null && !error && <p className="text-ink-soft">טוען…</p>}
-      {items && items.length === 0 && <p className="text-ink-soft">אין עדיין משתתפים.</p>}
+      {items && items.length === 0 && <p className="text-ink-soft">האלפון ריק.</p>}
 
       {items && items.length > 0 && (
         <div className="overflow-hidden rounded border border-line bg-white">
@@ -160,6 +176,7 @@ export default function Participants() {
                 <th className="px-4 py-2 font-medium">שם</th>
                 <th className="px-4 py-2 font-medium">טלפון</th>
                 <th className="px-4 py-2 font-medium">אימייל</th>
+                <th className="px-4 py-2 font-medium">שליחה ציבורית</th>
                 {editor && <th className="px-4 py-2 font-medium"></th>}
               </tr>
             </thead>
@@ -193,6 +210,14 @@ export default function Participants() {
                         dir="ltr"
                       />
                     </td>
+                    <td className="px-4 py-2 text-center">
+                      <input
+                        type="checkbox"
+                        checked={editPublicSend}
+                        onChange={(e) => setEditPublicSend(e.target.checked)}
+                        className="rounded"
+                      />
+                    </td>
                     <td className="px-4 py-2 text-left">
                       <div className="flex justify-end gap-2">
                         <button
@@ -220,6 +245,13 @@ export default function Participants() {
                     </td>
                     <td className="px-4 py-2" dir="ltr">
                       {p.email || "—"}
+                    </td>
+                    <td className="px-4 py-2 text-center">
+                      {p.public_send ? (
+                        <span className="text-emerald-700">✓</span>
+                      ) : (
+                        <span className="text-ink-soft">—</span>
+                      )}
                     </td>
                     {editor && (
                       <td className="px-4 py-2 text-left">

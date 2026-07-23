@@ -247,12 +247,14 @@ class ParticipantCreate(BaseModel):
     full_name: str
     phone: str | None = None
     email: str | None = None
+    public_send: bool = True
 
 
 class ParticipantUpdate(BaseModel):
     full_name: str | None = None
     phone: str | None = None
     email: str | None = None
+    public_send: bool | None = None
 
 
 class ParticipantOut(BaseModel):
@@ -262,6 +264,7 @@ class ParticipantOut(BaseModel):
     full_name: str
     phone: str | None
     email: str | None
+    public_send: bool
     created_by_user_id: UUID
     created_at: dt.datetime
     updated_at: dt.datetime

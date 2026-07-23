@@ -281,6 +281,11 @@ class Participant(Base):
     phone: Mapped[str | None] = mapped_column(String)
     email: Mapped[str | None] = mapped_column(String)
 
+    # On the tenant's public distribution list — when a meeting is published
+    # to the public, the summary email goes to every אלפון contact with this
+    # set. Defaults on for new contacts (see routes/participants.py).
+    public_send: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+
     created_by_user_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), nullable=False)  # no FK, see above
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

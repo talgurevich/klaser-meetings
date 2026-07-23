@@ -99,8 +99,11 @@ def _attendance(db: Session, meeting: Meeting) -> list[str]:
 
 
 def resolve_recipients(db: Session, meeting: Meeting) -> tuple[list[Recipient], list[str]]:
-    """All invitees + all attached participants, deduped by (lowercased)
-    email. Returns (recipients_with_email, names_without_email)."""
+    """Publish-to-public recipients: the meeting's invitees plus every
+    contact in the tenant's אלפון flagged for public sending
+    (Participant.public_send) — a tenant-wide distribution list, not just
+    the people attached to this meeting. Deduped by lowercased email;
+    returns (recipients_with_email, names_without_email)."""
     seen: dict[str, Recipient] = {}
     without: list[str] = []
 
@@ -113,25 +116,24 @@ def resolve_recipients(db: Session, meeting: Meeting) -> tuple[list[Recipient], 
         if key not in seen:
             seen[key] = Recipient(name=inv.display_name or email, email=email)
 
-    if meeting.participant_ids:
-        pids = [UUID(p) for p in meeting.participant_ids]
-        parts = (
-            db.execute(
-                select(Participant).where(
-                    Participant.id.in_(pids), Participant.tenant_id == meeting.tenant_id
-                )
+    public_contacts = (
+        db.execute(
+            select(Participant).where(
+                Participant.tenant_id == meeting.tenant_id,
+                Participant.public_send.is_(True),
             )
-            .scalars()
-            .all()
         )
-        for p in parts:
-            email = (p.email or "").strip()
-            if not email:
-                without.append(p.full_name)
-                continue
-            key = email.lower()
-            if key not in seen:
-                seen[key] = Recipient(name=p.full_name, email=email)
+        .scalars()
+        .all()
+    )
+    for p in public_contacts:
+        email = (p.email or "").strip()
+        if not email:
+            without.append(p.full_name)
+            continue
+        key = email.lower()
+        if key not in seen:
+            seen[key] = Recipient(name=p.full_name, email=email)
 
     return list(seen.values()), without
 

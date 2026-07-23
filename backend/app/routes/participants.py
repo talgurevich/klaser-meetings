@@ -49,6 +49,7 @@ def create_participant(
         full_name=body.full_name,
         phone=body.phone,
         email=body.email,
+        public_send=body.public_send,
         created_by_user_id=UUID(user.user_id),
     )
     db.add(participant)
