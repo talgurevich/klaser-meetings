@@ -288,12 +288,28 @@ export type Member = {
 export type Participant = {
   id: string;
   full_name: string;
+  first_name: string | null;
+  last_name: string | null;
+  nickname: string | null;
   phone: string | null;
   email: string | null;
+  role: string | null;
   public_send: boolean;
+  is_system_user: boolean;
   created_by_user_id: string;
   created_at: string;
   updated_at: string;
+};
+
+export type ParticipantInput = {
+  full_name?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  nickname?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  role?: string | null;
+  public_send?: boolean;
 };
 
 // A placeholder future meeting date, not yet a real Meeting — see
@@ -591,16 +607,12 @@ export const api = {
 
   // ─── Participants (non-login contacts, see api.ts's Participant type) ─
   listParticipants: () => request<Participant[]>("/api/participants"),
-  createParticipant: (body: {
-    full_name: string;
-    phone?: string | null;
-    email?: string | null;
-    public_send?: boolean;
-  }) => request<Participant>("/api/participants", { method: "POST", body: JSON.stringify(body) }),
-  updateParticipant: (
-    id: string,
-    body: Partial<Pick<Participant, "full_name" | "phone" | "email" | "public_send">>
-  ) => request<Participant>(`/api/participants/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  createParticipant: (body: ParticipantInput) =>
+    request<Participant>("/api/participants", { method: "POST", body: JSON.stringify(body) }),
+  updateParticipant: (id: string, body: ParticipantInput) =>
+    request<Participant>(`/api/participants/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  importParticipants: (file: File) =>
+    uploadFile<{ imported: number; skipped: number }>("/api/participants/import", file),
   deleteParticipant: (id: string) => request<void>(`/api/participants/${id}`, { method: "DELETE" }),
 
   // Attach/detach a directory participant to a specific meeting's

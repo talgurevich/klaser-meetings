@@ -244,16 +244,25 @@ class TopicPoolOut(BaseModel):
 
 
 class ParticipantCreate(BaseModel):
-    full_name: str
+    # Optional — composed from first/last when omitted (see create_participant).
+    full_name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    nickname: str | None = None
     phone: str | None = None
     email: str | None = None
+    role: str | None = None
     public_send: bool = True
 
 
 class ParticipantUpdate(BaseModel):
     full_name: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    nickname: str | None = None
     phone: str | None = None
     email: str | None = None
+    role: str | None = None
     public_send: bool | None = None
 
 
@@ -262,12 +271,24 @@ class ParticipantOut(BaseModel):
 
     id: UUID
     full_name: str
+    first_name: str | None
+    last_name: str | None
+    nickname: str | None
     phone: str | None
     email: str | None
+    role: str | None
     public_send: bool
+    # Derived, not stored: true when this contact's email matches an
+    # identity user in the tenant ("הרשאות עריכה" — they're a system user).
+    is_system_user: bool = False
     created_by_user_id: UUID
     created_at: dt.datetime
     updated_at: dt.datetime
+
+
+class ParticipantImportResult(BaseModel):
+    imported: int
+    skipped: int
 
 
 # ─────────────────────────────────────────────────────────────────────────

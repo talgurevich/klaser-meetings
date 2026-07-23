@@ -277,13 +277,21 @@ class Participant(Base):
     id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
     tenant_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), index=True, nullable=False)
 
+    # full_name is the display name used everywhere (attendance, invites,
+    # protocol). Kept as the canonical string; the structured parts below
+    # (from the CSV import / the fuller add form) compose into it.
     full_name: Mapped[str] = mapped_column(String, nullable=False)
+    first_name: Mapped[str | None] = mapped_column(String)
+    last_name: Mapped[str | None] = mapped_column(String)
+    nickname: Mapped[str | None] = mapped_column(String)
     phone: Mapped[str | None] = mapped_column(String)
     email: Mapped[str | None] = mapped_column(String)
+    role: Mapped[str | None] = mapped_column(String)  # תפקיד
 
-    # On the tenant's public distribution list — when a meeting is published
-    # to the public, the summary email goes to every אלפון contact with this
-    # set. Defaults on for new contacts (see routes/participants.py).
+    # "פעיל" / "שליחה ציבורית" — one and the same: on the tenant's public
+    # distribution list. When a meeting is published to the public, the
+    # summary email goes to every אלפון contact with this set. Defaults on;
+    # the CSV's "פעיל" column maps straight to it (see routes/participants.py).
     public_send: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
     created_by_user_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), nullable=False)  # no FK, see above

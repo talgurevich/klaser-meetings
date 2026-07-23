@@ -1,29 +1,39 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, apiErrorMessage, type Participant } from "../lib/api";
 import { useIsEditor } from "../components/Layout";
 
-/** Directory of non-login contacts (full name, phone, email) tracked for
- * meeting attendance — NOT identity Users, never authenticate. Any
- * entitled tenant member can add one here (mirrors the backend's
- * broader-than-editor gating on create/list); editing or removing an
- * existing entry is editor-only, since it may already be attached to
- * other meetings' attendance records. */
+const EMPTY = {
+  firstName: "",
+  lastName: "",
+  nickname: "",
+  phone: "",
+  email: "",
+  role: "",
+  publicSend: true,
+};
+
+/** אלפון — directory of non-login contacts (name, phone, email, role).
+ * Contacts flagged "שליחה ציבורית" receive the meeting summary when a
+ * meeting is published. "הרשאות עריכה" (system user) is derived from an
+ * email match with an identity user, not set here. Supports CSV import. */
 export default function Participants() {
   const editor = useIsEditor();
   const [items, setItems] = useState<Participant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
-  const [publicSend, setPublicSend] = useState(true);
-
+  const [form, setForm] = useState({ ...EMPTY });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState("");
-  const [editPhone, setEditPhone] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [editPublicSend, setEditPublicSend] = useState(true);
+  // Read-only: "הרשאות עריכה" is derived (email matches a system user), not
+  // settable here — shown so it's visible when editing a contact.
+  const [formSystemUser, setFormSystemUser] = useState(false);
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [importMsg, setImportMsg] = useState<string | null>(null);
+
+  function set<K extends keyof typeof EMPTY>(key: K, value: (typeof EMPTY)[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
 
   function load() {
     api
@@ -34,22 +44,30 @@ export default function Participants() {
 
   useEffect(load, []);
 
-  async function create(e: React.FormEvent) {
+  function resetForm() {
+    setForm({ ...EMPTY });
+    setEditingId(null);
+    setFormSystemUser(false);
+  }
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!fullName.trim()) return;
+    if (!form.firstName.trim() && !form.lastName.trim()) return;
     setBusy(true);
     setError(null);
+    const body = {
+      first_name: form.firstName.trim() || null,
+      last_name: form.lastName.trim() || null,
+      nickname: form.nickname.trim() || null,
+      phone: form.phone.trim() || null,
+      email: form.email.trim() || null,
+      role: form.role.trim() || null,
+      public_send: form.publicSend,
+    };
     try {
-      await api.createParticipant({
-        full_name: fullName.trim(),
-        phone: phone.trim() || null,
-        email: email.trim() || null,
-        public_send: publicSend,
-      });
-      setFullName("");
-      setPhone("");
-      setEmail("");
-      setPublicSend(true);
+      if (editingId) await api.updateParticipant(editingId, body);
+      else await api.createParticipant(body);
+      resetForm();
       load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -60,30 +78,17 @@ export default function Participants() {
 
   function startEdit(p: Participant) {
     setEditingId(p.id);
-    setEditName(p.full_name);
-    setEditPhone(p.phone || "");
-    setEditEmail(p.email || "");
-    setEditPublicSend(p.public_send);
-  }
-
-  async function saveEdit(id: string) {
-    if (!editName.trim()) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await api.updateParticipant(id, {
-        full_name: editName.trim(),
-        phone: editPhone.trim() || null,
-        email: editEmail.trim() || null,
-        public_send: editPublicSend,
-      });
-      setEditingId(null);
-      load();
-    } catch (err) {
-      setError(apiErrorMessage(err));
-    } finally {
-      setBusy(false);
-    }
+    setForm({
+      firstName: p.first_name || "",
+      lastName: p.last_name || "",
+      nickname: p.nickname || "",
+      phone: p.phone || "",
+      email: p.email || "",
+      role: p.role || "",
+      publicSend: p.public_send,
+    });
+    setFormSystemUser(p.is_system_user);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function remove(id: string) {
@@ -91,6 +96,7 @@ export default function Participants() {
     setError(null);
     try {
       await api.deleteParticipant(id);
+      if (editingId === id) resetForm();
       load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -99,183 +105,165 @@ export default function Participants() {
     }
   }
 
+  async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    setImportMsg(null);
+    try {
+      const r = await api.importParticipants(file);
+      setImportMsg(`יובאו ${r.imported} אנשי קשר${r.skipped ? `, דולגו ${r.skipped} (כפילויות אימייל)` : ""}.`);
+      load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const inputCls = "w-full rounded border border-line-strong px-3 py-2";
+  const yesNo = (v: boolean) =>
+    v ? <span className="text-emerald-700">✓</span> : <span className="text-ink-soft">—</span>;
+
   return (
-    <div className="max-w-3xl">
-      <h1 className="mb-2 font-display text-2xl font-bold">אלפון</h1>
+    <div className="max-w-5xl">
+      <div className="mb-2 flex items-center justify-between">
+        <h1 className="font-display text-2xl font-bold">אלפון</h1>
+        {editor && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+              className="rounded border border-line-strong px-3 py-2 text-sm hover:bg-line disabled:opacity-50"
+            >
+              ⬆ ייבוא CSV
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={onImportFile}
+            />
+          </div>
+        )}
+      </div>
       <p className="mb-6 text-sm text-ink-soft">
-        אנשי קשר שאינם משתמשי מערכת — לתיעוד נוכחות ולרשימת התפוצה הציבורית.
-        אנשי קשר המסומנים "שליחה ציבורית" מקבלים את סיכום הישיבה כשמפרסמים לציבור.
+        אנשי קשר שאינם משתמשי מערכת — לתיעוד נוכחות ולרשימת התפוצה הציבורית. אנשי קשר המסומנים
+        "שליחה ציבורית" מקבלים את סיכום הישיבה כשמפרסמים לציבור. "הרשאות עריכה" נקבע לפי התאמת האימייל
+        למשתמש מערכת קיים.
       </p>
 
-      <form onSubmit={create} className="mb-8 rounded border border-line bg-white p-4">
-        <h2 className="mb-3 text-sm font-semibold text-ink-soft">הוספת משתתף/ת חדש/ה</h2>
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="flex-1 text-sm">
-            <span className="mb-1 block font-medium text-ink-soft">שם מלא</span>
-            <input
-              type="text"
-              required
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full rounded border border-line-strong px-3 py-2"
-            />
-          </label>
-          <label className="flex-1 text-sm">
-            <span className="mb-1 block font-medium text-ink-soft">טלפון (אופציונלי)</span>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded border border-line-strong px-3 py-2"
-              dir="ltr"
-            />
-          </label>
-          <label className="flex-1 text-sm">
-            <span className="mb-1 block font-medium text-ink-soft">אימייל (אופציונלי)</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded border border-line-strong px-3 py-2"
-              dir="ltr"
-            />
-          </label>
-          <button
-            type="submit"
-            disabled={busy || !fullName.trim()}
-            className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
-          >
-            הוסף
-          </button>
+      {importMsg && (
+        <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          {importMsg}
         </div>
-        <label className="mt-3 flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={publicSend}
-            onChange={(e) => setPublicSend(e.target.checked)}
-            className="rounded"
-          />
-          <span className="text-ink-soft">שליחה ציבורית — לקבל את סיכום הישיבה כשמפרסמים לציבור</span>
-        </label>
+      )}
+
+      <form onSubmit={submit} className="mb-8 rounded border border-line bg-white p-4">
+        <h2 className="mb-3 text-sm font-semibold text-ink-soft">
+          {editingId ? "עריכת איש/אשת קשר" : "הוספת איש/אשת קשר"}
+        </h2>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-ink-soft">שם פרטי</span>
+            <input type="text" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} className={inputCls} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-ink-soft">שם משפחה</span>
+            <input type="text" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} className={inputCls} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-ink-soft">כינוי (אופציונלי)</span>
+            <input type="text" value={form.nickname} onChange={(e) => set("nickname", e.target.value)} className={inputCls} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-ink-soft">נייד</span>
+            <input type="tel" dir="ltr" value={form.phone} onChange={(e) => set("phone", e.target.value)} className={inputCls} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-ink-soft">אימייל</span>
+            <input type="email" dir="ltr" value={form.email} onChange={(e) => set("email", e.target.value)} className={inputCls} />
+          </label>
+          <label className="text-sm">
+            <span className="mb-1 block font-medium text-ink-soft">תפקיד (אופציונלי)</span>
+            <input type="text" value={form.role} onChange={(e) => set("role", e.target.value)} className={inputCls} />
+          </label>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.publicSend} onChange={(e) => set("publicSend", e.target.checked)} className="rounded" />
+            <span className="text-ink-soft">שליחה ציבורית (פעיל) — לקבל את סיכום הישיבה כשמפרסמים לציבור</span>
+          </label>
+          <label className="flex items-center gap-2 text-sm" title="נקבע אוטומטית לפי התאמת האימייל למשתמש מערכת">
+            <input type="checkbox" checked={formSystemUser} disabled className="rounded" />
+            <span className="text-ink-soft">הרשאות עריכה <span className="text-xs">(נקבע לפי אימייל)</span></span>
+          </label>
+          <div className="ms-auto flex gap-2">
+            {editingId && (
+              <button type="button" onClick={resetForm} disabled={busy} className="rounded border border-line-strong px-4 py-2 text-sm text-ink-soft hover:bg-line">
+                ביטול
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={busy || (!form.firstName.trim() && !form.lastName.trim())}
+              className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
+            >
+              {editingId ? "שמור" : "הוסף"}
+            </button>
+          </div>
+        </div>
       </form>
 
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
+        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       )}
 
       {items === null && !error && <p className="text-ink-soft">טוען…</p>}
       {items && items.length === 0 && <p className="text-ink-soft">האלפון ריק.</p>}
 
       {items && items.length > 0 && (
-        <div className="overflow-hidden rounded border border-line bg-white">
+        <div className="overflow-x-auto rounded border border-line bg-white">
           <table className="w-full text-right text-sm">
             <thead className="bg-surface text-ink-soft">
               <tr>
-                <th className="px-4 py-2 font-medium">שם</th>
-                <th className="px-4 py-2 font-medium">טלפון</th>
-                <th className="px-4 py-2 font-medium">אימייל</th>
-                <th className="px-4 py-2 font-medium">שליחה ציבורית</th>
-                {editor && <th className="px-4 py-2 font-medium"></th>}
+                <th className="px-3 py-2 font-medium">שם</th>
+                <th className="px-3 py-2 font-medium">כינוי</th>
+                <th className="px-3 py-2 font-medium">נייד</th>
+                <th className="px-3 py-2 font-medium">אימייל</th>
+                <th className="px-3 py-2 font-medium">תפקיד</th>
+                <th className="px-3 py-2 text-center font-medium">שליחה ציבורית</th>
+                <th className="px-3 py-2 text-center font-medium">הרשאות עריכה</th>
+                {editor && <th className="px-3 py-2 font-medium"></th>}
               </tr>
             </thead>
             <tbody>
-              {items.map((p) =>
-                editingId === p.id ? (
-                  <tr key={p.id} className="border-t border-line">
-                    <td className="px-4 py-2">
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        className="w-full rounded border border-line-strong px-2 py-1"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="tel"
-                        value={editPhone}
-                        onChange={(e) => setEditPhone(e.target.value)}
-                        className="w-full rounded border border-line-strong px-2 py-1"
-                        dir="ltr"
-                      />
-                    </td>
-                    <td className="px-4 py-2">
-                      <input
-                        type="email"
-                        value={editEmail}
-                        onChange={(e) => setEditEmail(e.target.value)}
-                        className="w-full rounded border border-line-strong px-2 py-1"
-                        dir="ltr"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={editPublicSend}
-                        onChange={(e) => setEditPublicSend(e.target.checked)}
-                        className="rounded"
-                      />
-                    </td>
-                    <td className="px-4 py-2 text-left">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => saveEdit(p.id)}
-                          disabled={busy || !editName.trim()}
-                          className="text-xs text-accent-dark hover:underline disabled:opacity-50"
-                        >
-                          שמור
+              {items.map((p) => (
+                <tr key={p.id} className="border-t border-line">
+                  <td className="px-3 py-2">{p.full_name}</td>
+                  <td className="px-3 py-2">{p.nickname || "—"}</td>
+                  <td className="px-3 py-2" dir="ltr">{p.phone || "—"}</td>
+                  <td className="px-3 py-2" dir="ltr">{p.email || "—"}</td>
+                  <td className="px-3 py-2">{p.role || "—"}</td>
+                  <td className="px-3 py-2 text-center">{yesNo(p.public_send)}</td>
+                  <td className="px-3 py-2 text-center">{yesNo(p.is_system_user)}</td>
+                  {editor && (
+                    <td className="px-3 py-2 text-left">
+                      <div className="flex justify-end gap-2 whitespace-nowrap">
+                        <button onClick={() => startEdit(p)} disabled={busy} className="text-xs text-accent-dark hover:underline disabled:opacity-50">
+                          ערוך
                         </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          disabled={busy}
-                          className="text-xs text-ink-soft hover:underline"
-                        >
-                          ביטול
+                        <button onClick={() => remove(p.id)} disabled={busy} className="text-xs text-red-700 hover:underline disabled:opacity-50">
+                          הסר
                         </button>
                       </div>
                     </td>
-                  </tr>
-                ) : (
-                  <tr key={p.id} className="border-t border-line">
-                    <td className="px-4 py-2">{p.full_name}</td>
-                    <td className="px-4 py-2" dir="ltr">
-                      {p.phone || "—"}
-                    </td>
-                    <td className="px-4 py-2" dir="ltr">
-                      {p.email || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      {p.public_send ? (
-                        <span className="text-emerald-700">✓</span>
-                      ) : (
-                        <span className="text-ink-soft">—</span>
-                      )}
-                    </td>
-                    {editor && (
-                      <td className="px-4 py-2 text-left">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            onClick={() => startEdit(p)}
-                            disabled={busy}
-                            className="text-xs text-accent-dark hover:underline disabled:opacity-50"
-                          >
-                            ערוך
-                          </button>
-                          <button
-                            onClick={() => remove(p.id)}
-                            disabled={busy}
-                            className="text-xs text-red-700 hover:underline disabled:opacity-50"
-                          >
-                            הסר
-                          </button>
-                        </div>
-                      </td>
-                    )}
-                  </tr>
-                )
-              )}
+                  )}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
