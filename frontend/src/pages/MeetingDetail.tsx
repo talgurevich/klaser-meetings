@@ -688,7 +688,7 @@ export default function MeetingDetail() {
         )
       )}
 
-      {meeting.status === "published" && (
+      {(meeting.status === "published" || meeting.status === "archived") && (
         <Link
           to={`/meetings/${meeting.id}/protocol`}
           className="mb-6 block w-full rounded-lg border border-accent bg-white px-4 py-3 text-center text-sm font-semibold text-accent-dark hover:bg-line"
