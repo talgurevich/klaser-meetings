@@ -277,6 +277,8 @@ def create_meeting(
 def list_meetings(
     kind: str | None = None,
     status: str | None = None,
+    date_from: dt.date | None = None,
+    date_to: dt.date | None = None,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_entitlement("meetings")),
 ) -> list[Meeting]:
@@ -285,6 +287,10 @@ def list_meetings(
         stmt = stmt.where(Meeting.kind == kind)
     if status:
         stmt = stmt.where(Meeting.status == status)
+    if date_from:
+        stmt = stmt.where(Meeting.date >= date_from)
+    if date_to:
+        stmt = stmt.where(Meeting.date <= date_to)
     stmt = stmt.order_by(Meeting.date.desc())
     return list(db.execute(stmt).scalars().all())
 

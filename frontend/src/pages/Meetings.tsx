@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, apiErrorMessage, type MeetingListItem } from "../lib/api";
+import { api, apiErrorMessage, type MeetingListItem, type MeetingStatus } from "../lib/api";
 import { KIND_LABELS, STATUS_COLORS, STATUS_LABELS, todayIso } from "../lib/meetingLabels";
 import { useIsAdmin, useIsEditor } from "../components/Layout";
 
@@ -19,14 +19,27 @@ export default function Meetings() {
   // easy-to-reflex-dismiss native dialog.
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
+  // Filters
+  const [status, setStatus] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const hasFilters = Boolean(status || dateFrom || dateTo);
+
   function load() {
     api
-      .listMeetings()
+      .listMeetings({
+        status: (status || undefined) as MeetingStatus | undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+      })
       .then(setMeetings)
       .catch((err) => setError(apiErrorMessage(err)));
   }
 
-  useEffect(load, []);
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, dateFrom, dateTo]);
 
   // Instant-create + redirect straight to the meeting's setup screen —
   // same pattern as Home.tsx's create buttons, see that file for why.
@@ -71,6 +84,54 @@ export default function Meetings() {
         )}
       </div>
 
+      <div className="mb-4 flex flex-wrap items-end gap-3">
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-soft">סטטוס</span>
+          <select
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+            className="rounded border border-line-strong px-3 py-2 text-sm"
+          >
+            <option value="">כל הסטטוסים</option>
+            {Object.entries(STATUS_LABELS).map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-soft">מתאריך</span>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="rounded border border-line-strong px-3 py-2 text-sm"
+          />
+        </label>
+        <label className="text-sm">
+          <span className="mb-1 block text-ink-soft">עד תאריך</span>
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="rounded border border-line-strong px-3 py-2 text-sm"
+          />
+        </label>
+        {hasFilters && (
+          <button
+            onClick={() => {
+              setStatus("");
+              setDateFrom("");
+              setDateTo("");
+            }}
+            className="py-2 text-sm text-ink-soft hover:underline"
+          >
+            נקה סינון
+          </button>
+        )}
+      </div>
+
       {error && (
         <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
@@ -80,7 +141,11 @@ export default function Meetings() {
       {meetings === null && !error && <p className="text-ink-soft">טוען…</p>}
 
       {meetings && meetings.length === 0 && (
-        <p className="text-ink-soft">אין עדיין ישיבות. {editor && "לחצו על \"ישיבה חדשה\" כדי להתחיל."}</p>
+        <p className="text-ink-soft">
+          {hasFilters
+            ? "לא נמצאו ישיבות התואמות לסינון."
+            : `אין עדיין ישיבות. ${editor ? 'לחצו על "ישיבה חדשה" כדי להתחיל.' : ""}`}
+        </p>
       )}
 
       {meetings && meetings.length > 0 && (

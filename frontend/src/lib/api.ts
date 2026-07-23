@@ -502,10 +502,17 @@ export const api = {
   ),
 
   // ─── Meetings ────────────────────────────────────────────────────────
-  listMeetings: (params?: { kind?: MeetingKind; status?: MeetingStatus }) => {
+  listMeetings: (params?: {
+    kind?: MeetingKind;
+    status?: MeetingStatus;
+    date_from?: string;
+    date_to?: string;
+  }) => {
     const qs = new URLSearchParams();
     if (params?.kind) qs.set("kind", params.kind);
     if (params?.status) qs.set("status", params.status);
+    if (params?.date_from) qs.set("date_from", params.date_from);
+    if (params?.date_to) qs.set("date_to", params.date_to);
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
     return request<MeetingListItem[]>(`/api/meetings${suffix}`);
   },
