@@ -661,13 +661,20 @@ export default function MeetingDetail() {
           )}
         </div>
       ) : editor && meeting.status === "approved" ? (
-        <button
-          onClick={() => setPublishing(true)}
-          disabled={busy}
-          className="mb-6 w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:opacity-50"
-        >
-          פרסם לציבור והעבר לפורסם
-        </button>
+        <div className="mb-6">
+          <button
+            onClick={() => setPublishing(true)}
+            disabled={busy || (meeting.protocol_approvals || []).length === 0}
+            className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
+          >
+            פרסם לציבור והעבר לפורסם
+          </button>
+          {(meeting.protocol_approvals || []).length === 0 && (
+            <p className="mt-1 text-center text-xs text-ink-soft">
+              נדרש לפחות אישור פרוטוקול אחד לפני הפרסום
+            </p>
+          )}
+        </div>
       ) : (
         editor &&
         nextStatus && (
