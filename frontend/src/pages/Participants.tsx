@@ -10,6 +10,7 @@ const EMPTY = {
   email: "",
   role: "",
   publicSend: true,
+  editPermission: false,
 };
 
 /** אלפון — directory of non-login contacts (name, phone, email, role).
@@ -63,6 +64,7 @@ export default function Participants() {
       email: form.email.trim() || null,
       role: form.role.trim() || null,
       public_send: form.publicSend,
+      edit_permission: form.editPermission,
     };
     try {
       if (editingId) await api.updateParticipant(editingId, body);
@@ -86,6 +88,7 @@ export default function Participants() {
       email: p.email || "",
       role: p.role || "",
       publicSend: p.public_send,
+      editPermission: p.edit_permission,
     });
     setFormSystemUser(p.is_system_user);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -197,9 +200,20 @@ export default function Participants() {
             <input type="checkbox" checked={form.publicSend} onChange={(e) => set("publicSend", e.target.checked)} className="rounded" />
             <span className="text-ink-soft">שליחה ציבורית (פעיל) — לקבל את סיכום הישיבה כשמפרסמים לציבור</span>
           </label>
-          <label className="flex items-center gap-2 text-sm" title="נקבע אוטומטית לפי התאמת האימייל למשתמש מערכת">
-            <input type="checkbox" checked={formSystemUser} disabled className="rounded" />
-            <span className="text-ink-soft">הרשאות עריכה <span className="text-xs">(נקבע לפי אימייל)</span></span>
+          <label
+            className="flex items-center gap-2 text-sm"
+            title={formSystemUser ? "יש הרשאה אוטומטית לפי התאמת אימייל למשתמש מערכת" : "סימון ידני של הרשאת עריכה"}
+          >
+            <input
+              type="checkbox"
+              checked={formSystemUser || form.editPermission}
+              disabled={formSystemUser}
+              onChange={(e) => set("editPermission", e.target.checked)}
+              className="rounded"
+            />
+            <span className="text-ink-soft">
+              הרשאות עריכה {formSystemUser && <span className="text-xs">(לפי אימייל)</span>}
+            </span>
           </label>
           <div className="ms-auto flex gap-2">
             {editingId && (
@@ -249,7 +263,7 @@ export default function Participants() {
                   <td className="px-3 py-2" dir="ltr">{p.email || "—"}</td>
                   <td className="px-3 py-2">{p.role || "—"}</td>
                   <td className="px-3 py-2 text-center">{yesNo(p.public_send)}</td>
-                  <td className="px-3 py-2 text-center">{yesNo(p.is_system_user)}</td>
+                  <td className="px-3 py-2 text-center">{yesNo(p.is_system_user || p.edit_permission)}</td>
                   {editor && (
                     <td className="px-3 py-2 text-left">
                       <div className="flex justify-end gap-2 whitespace-nowrap">

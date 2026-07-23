@@ -253,6 +253,7 @@ class ParticipantCreate(BaseModel):
     email: str | None = None
     role: str | None = None
     public_send: bool = True
+    edit_permission: bool = False
 
 
 class ParticipantUpdate(BaseModel):
@@ -264,6 +265,7 @@ class ParticipantUpdate(BaseModel):
     email: str | None = None
     role: str | None = None
     public_send: bool | None = None
+    edit_permission: bool | None = None
 
 
 class ParticipantOut(BaseModel):
@@ -278,8 +280,11 @@ class ParticipantOut(BaseModel):
     email: str | None
     role: str | None
     public_send: bool
+    # Manual "הרשאות עריכה" override (stored).
+    edit_permission: bool = False
     # Derived, not stored: true when this contact's email matches an
-    # identity user in the tenant ("הרשאות עריכה" — they're a system user).
+    # identity user in the tenant (they're a system user). The effective
+    # edit permission the UI shows is is_system_user OR edit_permission.
     is_system_user: bool = False
     created_by_user_id: UUID
     created_at: dt.datetime

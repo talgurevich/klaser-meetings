@@ -93,6 +93,7 @@ def create_participant(
         email=body.email,
         role=body.role,
         public_send=body.public_send,
+        edit_permission=body.edit_permission,
         created_by_user_id=UUID(user.user_id),
     )
     db.add(participant)
@@ -160,6 +161,9 @@ def import_participants(
                 role=g(row, "תפקיד") or None,
                 # "פעיל" == public-send flag (one and the same). Absent/כן -> on.
                 public_send=g(row, "פעיל") != "לא",
+                # CSV's "הרשאות עריכה" column = the manual override. Email-based
+                # permission still applies on top of it (derived at read time).
+                edit_permission=g(row, "הרשאות עריכה") == "כן",
                 created_by_user_id=UUID(user.user_id),
             )
         )

@@ -295,7 +295,8 @@ export type Participant = {
   email: string | null;
   role: string | null;
   public_send: boolean;
-  is_system_user: boolean;
+  edit_permission: boolean; // manual override
+  is_system_user: boolean; // derived from email match
   created_by_user_id: string;
   created_at: string;
   updated_at: string;
@@ -310,6 +311,7 @@ export type ParticipantInput = {
   email?: string | null;
   role?: string | null;
   public_send?: boolean;
+  edit_permission?: boolean;
 };
 
 // A placeholder future meeting date, not yet a real Meeting — see

@@ -294,6 +294,12 @@ class Participant(Base):
     # the CSV's "פעיל" column maps straight to it (see routes/participants.py).
     public_send: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
 
+    # "הרשאות עריכה" — manual override. The effective permission is this OR
+    # an email match with a tenant identity user (is_system_user, derived at
+    # read time). Lets an admin grant edit rights to a contact whose email
+    # isn't (yet) a system user. See routes/participants.py.
+    edit_permission: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+
     created_by_user_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), nullable=False)  # no FK, see above
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
