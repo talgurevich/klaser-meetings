@@ -236,7 +236,7 @@ def create_meeting(
         created_by_user_id=UUID(user.user_id),
         kind=body.kind,
         title=body.title,
-        number=generate_meeting_number(m_date),
+        number=generate_meeting_number(db, tenant_id=tenant_id, kind=body.kind, on=m_date),
         date=m_date,
         time_start=m_start,
         time_end=m_end,
@@ -354,19 +354,6 @@ def update_meeting(
     new_status = updates.get("status")
     is_transition = bool(new_status) and new_status != meeting.status
 
-    # The number defaults to the date (DDMMYY). Keep it tracking the date
-    # when the date changes — but only while the user hasn't customized it
-    # (current number still equals the old date's DDMMYY) and isn't setting
-    # an explicit number in this same request.
-    new_date = updates.get("date")
-    if (
-        new_date is not None
-        and new_date != meeting.date
-        and "number" not in updates
-        and (meeting.number or "") == generate_meeting_number(meeting.date)
-    ):
-        updates["number"] = generate_meeting_number(new_date)
-
     if is_transition:
         _check_status_transition(meeting, new_status)
 
@@ -386,7 +373,9 @@ def update_meeting(
             meeting.protocol_generated_at = now
         if new_status == "published":
             if meeting.number is None:
-                meeting.number = generate_meeting_number(meeting.date)
+                meeting.number = generate_meeting_number(
+                    db, tenant_id=meeting.tenant_id, kind=meeting.kind, on=meeting.date
+                )
             if meeting.published_at is None:
                 meeting.published_at = now
 
