@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, apiErrorMessage, type MeetingListItem, type MeetingStatus } from "../lib/api";
-import { KIND_LABELS, STATUS_COLORS, STATUS_LABELS, todayIso } from "../lib/meetingLabels";
+import { KIND_LABELS, STATUS_COLORS, STATUS_LABELS } from "../lib/meetingLabels";
 import { useIsAdmin, useIsEditor } from "../components/Layout";
 
 export default function Meetings() {
@@ -47,7 +47,7 @@ export default function Meetings() {
     setCreating(true);
     setError(null);
     try {
-      const meeting = await api.createMeeting({ kind: "meeting", date: todayIso() });
+      const meeting = await api.createMeeting({ kind: "meeting" });
       navigate(`/meetings/${meeting.id}`);
     } catch (err) {
       setError(apiErrorMessage(err));
