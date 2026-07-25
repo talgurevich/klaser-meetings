@@ -14,6 +14,7 @@ from pathlib import Path
 from uuid import UUID
 
 from fpdf import FPDF
+from fpdf.fonts import FontFace
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -165,22 +166,47 @@ def build_invite_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes:
     pdf.rtl(f"מוזמנים ({len(invitees)})", size=12, bold=True, h=6)
     pdf.rtl(", ".join(invitees) if invitees else "—", size=10, color=_SOFT, h=5, gap=3)
 
-    # ── Agenda ──────────────────────────────────────────────────────────
+    # ── Agenda (bordered # / נושא / זמן table) ──────────────────────────
     pdf.rtl("סדר יום", size=12, bold=True, h=6, gap=1)
+    num_w, time_w = 11, 40
+    topic_w = pdf.content_w - num_w - time_w
+    pdf.set_font("dejavu", "", 10)
+    pdf.set_text_color(*_INK)
+    pdf.set_draw_color(*_LINE)
+    pdf.set_line_width(0.2)
+    headings = FontFace(emphasis="BOLD", color=_SOFT, fill_color=(245, 245, 244))
     total = 0
-    for idx, t in enumerate(topics, start=1):
-        pdf.rtl(f"{idx}. {t.title}", size=11, bold=True, h=6)
-        if t.description:
-            pdf.rtl(t.description, size=10, color=_SOFT, h=5)
-        tg = [guests[str(g)] for g in (t.invited_guests or []) if str(g) in guests]
-        if tg:
-            pdf.rtl("מוזמן/ת: " + ", ".join(tg), size=9, color=_SOFT, h=5)
-        if t.duration_minutes:
-            total += t.duration_minutes
-            pdf.rtl(f"זמן מוקצה: {t.duration_minutes} דקות", size=9, color=_SOFT, h=5)
-        pdf.ln(1)
+    # visual left→right columns: זמן, נושא, #
+    with pdf.table(
+        width=pdf.content_w,
+        col_widths=(time_w, topic_w, num_w),
+        text_align=("RIGHT", "RIGHT", "CENTER"),
+        first_row_as_headings=True,
+        headings_style=headings,
+        markdown=True,
+        line_height=6,
+        padding=(2.5, 3, 2.5, 3),
+    ) as table:
+        hrow = table.row()
+        hrow.cell("זמן")
+        hrow.cell("נושא")
+        hrow.cell("#")
+        for idx, t in enumerate(topics, start=1):
+            parts = [f"**{t.title}**"]
+            if t.description:
+                parts.append(t.description)
+            tg = [guests[str(g)] for g in (t.invited_guests or []) if str(g) in guests]
+            if tg:
+                parts.append("מוזמן/ת: " + ", ".join(tg))
+            time_txt = f"זמן מוקצה: {t.duration_minutes} דקות" if t.duration_minutes else ""
+            if t.duration_minutes:
+                total += t.duration_minutes
+            r = table.row()
+            r.cell(time_txt)
+            r.cell("\n".join(parts))
+            r.cell(str(idx))
+    pdf.ln(2)
     if total:
-        pdf.ln(1)
         pdf.set_font("dejavu", "B", 11)
         pdf.set_text_color(*_ACCENT)
         pdf.cell(0, 6, f'סה"כ זמן משוער: {total} דקות', align="C", new_x="LMARGIN", new_y="NEXT")
@@ -229,12 +255,7 @@ def build_invite_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes:
                     pdf.cell(bw, 5, obj.member_display_name or "", align="C", new_x="LEFT", new_y="NEXT")
             pdf.set_y(base_y + 34)
 
-    # ── Confirm + footer ────────────────────────────────────────────────
-    pdf.ln(2)
-    pdf.set_font("dejavu", "B", 11)
-    pdf.set_text_color(*_ACCENT)
-    pdf.cell(0, 6, "אנא אשרו קבלה", align="C", new_x="LMARGIN", new_y="NEXT")
-
+    # ── Footer ──────────────────────────────────────────────────────────
     pdf._footer_text = f"{org_name} — הזמנה ל{kind_he}   ·   תאריך הפקה: {_fmt_date(dt.date.today())}"
     out = pdf.output()
     return bytes(out)
