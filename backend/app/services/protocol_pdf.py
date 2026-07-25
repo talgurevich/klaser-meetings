@@ -12,6 +12,13 @@ from app.models import Meeting, TenantSettings
 from app.services import pdf_common as pc
 from app.services.meeting_summary import attendance_names
 
+# Resolved topic statuses that stand in for a decision in the protocol.
+_STATUS_NOTE = {
+    "deferred": "הועבר לפגישה הבאה",
+    "skipped": "דולג",
+    "cancelled": "בוטל",
+}
+
 
 def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes:
     settings_row = db.execute(
@@ -59,7 +66,10 @@ def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes
     items = []
     for idx, t in enumerate(topics, start=1):
         parts = [f"**{t.title}**"]
-        if (t.decision_text or "").strip():
+        status_note = _STATUS_NOTE.get(t.status)
+        if status_note:
+            parts.append(status_note)
+        elif (t.decision_text or "").strip():
             parts.append(f"החלטה: {t.decision_text}")
         if (t.topic_notes or "").strip():
             parts.append(f"הערות: {t.topic_notes}")
