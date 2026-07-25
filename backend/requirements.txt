@@ -28,3 +28,7 @@ structlog==24.4.0
 pytest==8.3.4
 pytest-asyncio==0.24.0
 ruff==0.8.4
+
+# Server-side invitation PDF (pure-Python, no system libs) — RTL via uharfbuzz.
+fpdf2==2.8.7
+uharfbuzz==0.55.0

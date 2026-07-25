@@ -8,6 +8,7 @@ without a real Resend account.
 """
 from __future__ import annotations
 
+import base64
 import html
 from dataclasses import dataclass
 
@@ -20,11 +21,18 @@ log = structlog.get_logger()
 
 
 @dataclass(frozen=True)
+class Attachment:
+    filename: str
+    content: bytes
+
+
+@dataclass(frozen=True)
 class Message:
     to: str
     subject: str
     html_body: str
     text_body: str
+    attachments: tuple[Attachment, ...] = ()
 
 
 def _from_line() -> str:
@@ -41,15 +49,19 @@ def _send(msg: Message) -> None:
         return
     resend.api_key = settings.resend_api_key
     try:
-        resend.Emails.send(
-            {
-                "from": _from_line(),
-                "to": [msg.to],
-                "subject": msg.subject,
-                "html": msg.html_body,
-                "text": msg.text_body,
-            }
-        )
+        payload = {
+            "from": _from_line(),
+            "to": [msg.to],
+            "subject": msg.subject,
+            "html": msg.html_body,
+            "text": msg.text_body,
+        }
+        if msg.attachments:
+            payload["attachments"] = [
+                {"filename": a.filename, "content": base64.b64encode(a.content).decode()}
+                for a in msg.attachments
+            ]
+        resend.Emails.send(payload)
         log.info("mail.sent", to=msg.to, subject=msg.subject)
     except Exception as e:  # noqa: BLE001 — must not propagate
         log.warning("mail.send_failed", to=msg.to, error=str(e))
@@ -121,6 +133,8 @@ def send_meeting_invite(
     topics: list[tuple[str, int | None]],
     rsvp_url_attend: str,
     rsvp_url_decline: str,
+    invite_pdf: bytes | None = None,
+    invite_pdf_filename: str = "הזמנה.pdf",
 ) -> None:
     """One invitation email, sent (or dry-run logged) per invitee. Each
     RSVP button links straight to /rsvp/{token}?response=... — a single
@@ -165,6 +179,7 @@ def send_meeting_invite(
             subject=f"הזמנה ל{kind_he}{number_suffix} — {meeting_date}",
             html_body=_wrap_html(html_body, f"{tenant_name} · Klaser"),
             text_body=text_body,
+            attachments=(Attachment(filename=invite_pdf_filename, content=invite_pdf),) if invite_pdf else (),
         )
     )
 

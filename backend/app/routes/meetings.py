@@ -751,6 +751,12 @@ def _invite_topics(meeting: Meeting) -> list[tuple[str, int | None]]:
 def _send_pending_invites(db: Session, meeting: Meeting, user: IdentityUser) -> None:
     frontend = settings.primary_frontend_url.rstrip("/")
     topics = _invite_topics(meeting)
+    # Build the invitation PDF once and attach it to every invite email.
+    try:
+        pdf = build_invite_pdf(db, meeting, user.tenant_name or "")
+    except Exception:  # noqa: BLE001 — a PDF failure must not block invites
+        pdf = None
+    pdf_name = f"הזמנה {meeting.number}.pdf" if meeting.number else "הזמנה.pdf"
     for invite in meeting.invites:
         if invite.status != "pending":
             continue
@@ -767,6 +773,8 @@ def _send_pending_invites(db: Session, meeting: Meeting, user: IdentityUser) -> 
             topics=topics,
             rsvp_url_attend=f"{frontend}/rsvp/{invite.token}?response=confirmed_attend",
             rsvp_url_decline=f"{frontend}/rsvp/{invite.token}?response=confirmed_absent",
+            invite_pdf=pdf,
+            invite_pdf_filename=pdf_name,
         )
     db.commit()
 
