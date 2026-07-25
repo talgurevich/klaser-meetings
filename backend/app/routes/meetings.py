@@ -268,6 +268,8 @@ def create_meeting(
             )
         )
 
+    _invite_committee(db, meeting, tenant_id)
+
     db.commit()
     db.refresh(meeting)
     return meeting
@@ -619,6 +621,94 @@ def remove_participant_from_meeting(
 # ─────────────────────────────────────────────────────────────────────────
 
 
+def _committee_email_set(tenant_id: UUID) -> set[str]:
+    """Lowercased emails of the tenant's identity users — an אלפון contact
+    whose email matches one is a committee member ('עורך'). Best-effort:
+    empty if the roster can't be fetched (no service token)."""
+    try:
+        return {
+            (u.get("email") or "").strip().lower()
+            for u in identity_service.list_users(str(tenant_id))
+            if u.get("email")
+        }
+    except Exception:  # noqa: BLE001 — roster is best-effort here
+        return set()
+
+
+def _invite_committee(db: Session, meeting: Meeting, tenant_id: UUID) -> None:
+    """Committee members — אלפון contacts flagged 'עורך' (edit_permission
+    set, or an email matching a system user) — are auto-invited to every
+    meeting. Skips contacts without an email and anyone already invited."""
+    contacts = (
+        db.execute(select(Participant).where(Participant.tenant_id == tenant_id)).scalars().all()
+    )
+    if not contacts:
+        return
+    system_emails = _committee_email_set(tenant_id)
+    existing = {
+        (i.invitee_kind, str(i.invitee_id))
+        for i in db.execute(
+            select(MeetingInvite).where(MeetingInvite.meeting_id == meeting.id)
+        ).scalars()
+    }
+    for p in contacts:
+        if not p.email:
+            continue
+        is_committee = p.edit_permission or p.email.strip().lower() in system_emails
+        if not is_committee or ("participant", str(p.id)) in existing:
+            continue
+        db.add(
+            MeetingInvite(
+                tenant_id=tenant_id,
+                meeting_id=meeting.id,
+                invitee_kind="participant",
+                invitee_id=p.id,
+                email=p.email,
+                display_name=p.full_name,
+            )
+        )
+        existing.add(("participant", str(p.id)))
+
+
+def _invite_topic_guests(db: Session, meeting: Meeting, tenant_id: UUID, guest_ids: list | None) -> None:
+    """A topic can carry אלפון contacts (Participant ids in invited_guests).
+    When the topic lands on a meeting, invite those contacts as participant
+    invitees — skipping anyone already invited or without an email (a
+    MeetingInvite needs an address). Emails aren't sent here; they go out
+    with the normal invite-send action."""
+    if not guest_ids:
+        return
+    existing = {
+        (i.invitee_kind, str(i.invitee_id))
+        for i in db.execute(
+            select(MeetingInvite).where(MeetingInvite.meeting_id == meeting.id)
+        ).scalars()
+    }
+    for gid in guest_ids:
+        try:
+            pid = UUID(str(gid))
+        except (ValueError, TypeError):
+            continue
+        if ("participant", str(pid)) in existing:
+            continue
+        p = db.execute(
+            select(Participant).where(Participant.id == pid, Participant.tenant_id == tenant_id)
+        ).scalar_one_or_none()
+        if p is None or not p.email:
+            continue
+        db.add(
+            MeetingInvite(
+                tenant_id=tenant_id,
+                meeting_id=meeting.id,
+                invitee_kind="participant",
+                invitee_id=pid,
+                email=p.email,
+                display_name=p.full_name,
+            )
+        )
+        existing.add(("participant", str(pid)))
+
+
 def _resolve_invitee(db: Session, tenant_id: UUID, ref: InviteeRef) -> tuple[str, str | None]:
     """Returns (email, display_name) for a member or participant, scoped
     to this tenant — raises 400 rather than silently skipping a bad
@@ -838,6 +928,7 @@ def add_topic(
         invited_guests=body.invited_guests,
     )
     db.add(topic)
+    _invite_topic_guests(db, meeting, tenant_id, body.invited_guests)
     db.commit()
     db.refresh(topic)
     return topic
