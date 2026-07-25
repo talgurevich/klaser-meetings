@@ -36,9 +36,11 @@ from app.services import mail
 from app.services.defer_topic import (
     UndoDeferBlockedError,
     defer_topic_to_next_meeting,
+    pull_deferred_topics,
     undo_defer_topic,
 )
 from app.services.identity import IdentityUser, identity_service, require_entitlement
+from app.services.invite_pdf import build_invite_pdf
 from app.services.meeting_summary import attendance_names, build_publish_summary
 from app.services.meeting_utils import generate_meeting_number
 from app.services.permissions import is_editor, require_admin, require_editor
@@ -267,6 +269,14 @@ def create_meeting(
                 invited_guests=t.invited_guests,
             )
         )
+
+    # Carry over topics deferred from earlier meetings of this kind, and
+    # re-invite each carried topic's אלפון guests.
+    deferred = pull_deferred_topics(
+        db, new_meeting=meeting, start_order=leading_topics + len(body.topics)
+    )
+    for copy in deferred:
+        _invite_topic_guests(db, meeting, tenant_id, copy.invited_guests)
 
     _invite_committee(db, meeting, tenant_id)
 
@@ -1004,25 +1014,18 @@ def defer_topic(
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
 ) -> Topic:
-    """Move a topic that didn't get discussed onto the next open meeting
-    of the same kind. Returns the new copy created on the target meeting;
-    the source topic is left in place with status="deferred"."""
+    """Queue a topic that didn't get discussed for the next meeting created
+    of the same kind (see create_meeting's pull_deferred_topics). The topic
+    is marked status="deferred"; no future meeting is required."""
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
     topic = next((t for t in meeting.topics if t.id == topic_id), None)
     if topic is None:
         raise HTTPException(status_code=404, detail="הנושא לא נמצא")
 
-    try:
-        new_topic = defer_topic_to_next_meeting(db, source_meeting=meeting, topic=topic)
-    except LookupError as e:
-        raise HTTPException(
-            status_code=409,
-            detail="אין ישיבה עתידית פתוחה (בטיוטה או בהזמנה) שאליה ניתן לדחות את הנושא",
-        ) from e
-
+    defer_topic_to_next_meeting(db, topic=topic)
     db.commit()
-    db.refresh(new_topic)
-    return new_topic
+    db.refresh(topic)
+    return topic
 
 
 @router.post("/{meeting_id}/topics/{topic_id}/undo-defer", response_model=TopicOut)
