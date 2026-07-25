@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { api, apiErrorMessage, type Meeting, type MeetingStatus, type Topic, type TopicPoolItem } from "../lib/api";
 import {
   KIND_LABELS,
@@ -89,6 +89,28 @@ export default function MeetingDetail() {
   const [closingTopic, setClosingTopic] = useState<Topic | null>(null);
   const [followUpTopic, setFollowUpTopic] = useState<Topic | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+
+  async function downloadProtocol() {
+    if (!id) return;
+    setPdfBusy(true);
+    setError(null);
+    try {
+      const blob = await api.getProtocolPdf(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `פרוטוקול ${meeting?.number || id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setPdfBusy(false);
+    }
+  }
 
   // While a meeting is active, "ערוך פרטים" toggles the same
   // MeetingDetailsForm used during prep inline — no status change, just a
@@ -689,12 +711,13 @@ export default function MeetingDetail() {
       )}
 
       {(meeting.status === "published" || meeting.status === "archived") && (
-        <Link
-          to={`/meetings/${meeting.id}/protocol`}
-          className="mb-6 block w-full rounded-lg border border-accent bg-white px-4 py-3 text-center text-sm font-semibold text-accent-dark hover:bg-line"
+        <button
+          onClick={downloadProtocol}
+          disabled={pdfBusy}
+          className="mb-6 block w-full rounded-lg border border-accent bg-white px-4 py-3 text-center text-sm font-semibold text-accent-dark hover:bg-line disabled:opacity-50"
         >
-          📄 הפק PDF (פרוטוקול)
-        </Link>
+          {pdfBusy ? "מפיק…" : "📄 הפק PDF (פרוטוקול)"}
+        </button>
       )}
 
       {(isActive || !isPrep) && (

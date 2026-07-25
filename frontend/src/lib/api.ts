@@ -550,6 +550,11 @@ export const api = {
   publishMeeting: (id: string) =>
     request<Meeting>(`/api/meetings/${id}/publish`, { method: "POST" }),
   getAttendance: (id: string) => request<string[]>(`/api/meetings/${id}/attendance`),
+  getProtocolPdf: async (id: string): Promise<Blob> => {
+    const r = await fetch(`${BASE}/api/meetings/${id}/protocol.pdf`, { credentials: "include" });
+    if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));
+    return r.blob();
+  },
 
   addTopic: (meetingId: string, body: TopicCreateInput) =>
     request<Topic>(`/api/meetings/${meetingId}/topics`, {

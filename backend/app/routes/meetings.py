@@ -9,7 +9,7 @@ sourced from klaser-identity on every request (see identity-cutover.md).
 import datetime as dt
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -44,6 +44,7 @@ from app.services.invite_pdf import build_invite_pdf
 from app.services.meeting_summary import attendance_names, build_publish_summary
 from app.services.meeting_utils import generate_meeting_number
 from app.services.permissions import is_editor, require_admin, require_editor
+from app.services.protocol_pdf import build_protocol_pdf
 
 router = APIRouter()
 
@@ -463,6 +464,24 @@ def meeting_attendance(
     printable protocol page's attendance section."""
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
     return attendance_names(db, meeting)
+
+
+@router.get("/{meeting_id}/protocol.pdf")
+def meeting_protocol_pdf(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> Response:
+    """The meeting protocol as a server-generated PDF (Hebrew RTL), for
+    download after the meeting. Same look as the invitation PDF."""
+    meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    pdf = build_protocol_pdf(db, meeting, user.tenant_name or "")
+    filename = f"protocol-{meeting.number or meeting_id}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 @router.post("/{meeting_id}/internal-approval", response_model=MeetingOut)
