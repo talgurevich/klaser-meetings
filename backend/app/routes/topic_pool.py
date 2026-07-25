@@ -1,12 +1,12 @@
 """Topic pool — the backlog of candidate agenda topics (manual or publicly
 suggested) that feed meeting agendas.
 
-Read visibility mirrors the original spec's RLS rule: editors see every
-status; everyone else only sees topics already approved/in_meeting.
-Creation is open to any authenticated + entitled user so members can
-suggest topics — but a non-editor's submission is always forced to
-source="public_suggestion" / status="pending_review", never able to
-self-approve.
+Creation is open to any authenticated + entitled user, and topics are
+available immediately — there's no approval step (they land as
+status="approved"). Non-editors still can't delete or reprioritise. A
+topic may carry אלפון contacts (Participant ids in invited_guests) that
+get invited to the meeting when the topic is added to one (see
+meetings.py add_topic).
 """
 from uuid import UUID
 
@@ -46,18 +46,17 @@ def suggest_topic(
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_entitlement("meetings")),
 ) -> TopicPool:
-    editor = is_editor(user)
     topic = TopicPool(
         tenant_id=UUID(user.tenant_id),
         title=body.title,
         description=body.description,
         duration_minutes=body.duration_minutes,
         invited_guests=body.invited_guests,
-        priority=body.priority if editor else None,
-        # Non-editors can never self-approve or set source — always land
-        # as a pending public suggestion regardless of what they send.
-        source="manual" if editor else "public_suggestion",
-        status="pending_review",
+        priority=body.priority,
+        source="manual",
+        # No approval workflow — topics are available in the pool
+        # immediately (was "pending_review").
+        status="approved",
         suggested_by=UUID(user.user_id),
     )
     db.add(topic)
