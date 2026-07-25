@@ -92,6 +92,7 @@ def create_participant(
         phone=body.phone,
         email=body.email,
         role=body.role,
+        join_date=body.join_date,
         public_send=body.public_send,
         edit_permission=body.edit_permission,
         created_by_user_id=UUID(user.user_id),

@@ -287,6 +287,7 @@ class Participant(Base):
     phone: Mapped[str | None] = mapped_column(String)
     email: Mapped[str | None] = mapped_column(String)
     role: Mapped[str | None] = mapped_column(String)  # תפקיד
+    join_date: Mapped[date | None] = mapped_column(Date)  # תאריך הצטרפות
 
     # "פעיל" / "שליחה ציבורית" — one and the same: on the tenant's public
     # distribution list. When a meeting is published to the public, the

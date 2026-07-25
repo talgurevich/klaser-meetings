@@ -252,6 +252,7 @@ class ParticipantCreate(BaseModel):
     phone: str | None = None
     email: str | None = None
     role: str | None = None
+    join_date: dt.date | None = None
     public_send: bool = True
     edit_permission: bool = False
 
@@ -264,6 +265,7 @@ class ParticipantUpdate(BaseModel):
     phone: str | None = None
     email: str | None = None
     role: str | None = None
+    join_date: dt.date | None = None
     public_send: bool | None = None
     edit_permission: bool | None = None
 
@@ -279,6 +281,7 @@ class ParticipantOut(BaseModel):
     phone: str | None
     email: str | None
     role: str | None
+    join_date: dt.date | None
     public_send: bool
     # Manual "הרשאות עריכה" override (stored).
     edit_permission: bool = False

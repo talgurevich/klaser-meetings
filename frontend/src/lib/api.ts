@@ -294,6 +294,7 @@ export type Participant = {
   phone: string | null;
   email: string | null;
   role: string | null;
+  join_date: string | null;
   public_send: boolean;
   edit_permission: boolean; // manual override
   is_system_user: boolean; // derived from email match
@@ -310,6 +311,7 @@ export type ParticipantInput = {
   phone?: string | null;
   email?: string | null;
   role?: string | null;
+  join_date?: string | null;
   public_send?: boolean;
   edit_permission?: boolean;
 };
