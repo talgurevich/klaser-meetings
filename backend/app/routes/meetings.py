@@ -434,12 +434,21 @@ def publish_meeting(
     _check_status_transition(meeting, "published")  # enforces protocol approval
 
     summary = build_publish_summary(db, meeting, user.tenant_name or "")
+    # Attach the meeting protocol PDF to the summary email.
+    try:
+        protocol_pdf = build_protocol_pdf(db, meeting, user.tenant_name or "")
+        attachments = (
+            mail.Attachment(filename=f"פרוטוקול {meeting.number}.pdf", content=protocol_pdf),
+        )
+    except Exception:  # noqa: BLE001 — a PDF failure must not block publishing
+        attachments = ()
     for r in summary.recipients:
         mail.send_prebuilt(
             to_email=r.email,
             subject=summary.subject,
             html_body=summary.html,
             text_body=summary.text,
+            attachments=attachments,
         )
 
     now = dt.datetime.now(dt.timezone.utc)
