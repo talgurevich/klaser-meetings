@@ -88,7 +88,8 @@ export default function Participants() {
       </div>
       <p className="mb-6 text-sm text-ink-soft">
         אנשי הקשר של הארגון. "חבר" הוא איש מהציבור הכללי — מקבל את סיכום הישיבה כשמפרסמים לציבור, ויכול
-        להיות מוזמן שאינו חבר ועד. "עורך" הוא חבר ועד ההנהלה — מוזמן אוטומטית לכל פגישה.
+        להיות מוזמן שאינו חבר ועד. "חבר ועד" מוזמן אוטומטית לכל פגישה, ונקבע לפי סימון ידני או התאמת
+        האימייל למשתמש מערכת קיים.
       </p>
 
       {importMsg && (
@@ -114,7 +115,7 @@ export default function Participants() {
                 <th className="px-3 py-2 font-medium">תפקיד</th>
                 <th className="px-3 py-2 font-medium">הצטרפות</th>
                 <th className="px-3 py-2 text-center font-medium">חבר</th>
-                <th className="px-3 py-2 text-center font-medium">עורך</th>
+                <th className="px-3 py-2 text-center font-medium">חבר ועד</th>
                 {editor && <th className="px-3 py-2 font-medium"></th>}
               </tr>
             </thead>

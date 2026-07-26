@@ -125,7 +125,7 @@ export default function ContactModal({
               className="flex items-center gap-2 text-sm"
               title={systemUser ? "חבר ועד לפי התאמת אימייל — מוזמן אוטומטית לכל פגישה" : "חבר ועד — מוזמן אוטומטית לכל פגישה"}
             >
-              <span className="text-ink-soft">עורך {systemUser && <span className="text-xs">(לפי אימייל)</span>}</span>
+              <span className="text-ink-soft">חבר ועד {systemUser && <span className="text-xs">(לפי אימייל)</span>}</span>
               <Toggle checked={systemUser || editorFlag} disabled={systemUser} onChange={setEditorFlag} />
             </label>
           </div>
