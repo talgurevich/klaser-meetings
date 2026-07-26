@@ -27,6 +27,10 @@ export default function InviteActions({
   const [previewOpen, setPreviewOpen] = useState(false);
 
   const hasInvitees = meeting.invites.length > 0;
+  const confirmedCount = meeting.invites.filter((i) => i.status === "confirmed_attend").length;
+  const total = meeting.invites.length;
+  const majorityConfirmed = total > 0 && confirmedCount * 2 > total;
+  const isInvited = meeting.status === "invited_internal" || meeting.status === "invited_public";
 
   async function run(action: () => Promise<Meeting>) {
     setBusy(true);
@@ -75,7 +79,7 @@ export default function InviteActions({
           </button>
         )}
 
-        {(meeting.status === "invited_internal" || meeting.status === "invited_public") && (
+        {isInvited && (
           <button
             onClick={() => run(() => api.updateMeeting(meeting.id, { status: "active" }))}
             disabled={busy}
@@ -85,6 +89,13 @@ export default function InviteActions({
           </button>
         )}
       </div>
+
+      {isInvited && (
+        <p className="mt-2 text-xs text-ink-soft">
+          אישרו הגעה: {confirmedCount} מתוך {total} מוזמנים
+          {!majorityConfirmed && " · אפשר לפתוח את הישיבה גם ללא רוב אישורים"}
+        </p>
+      )}
 
       {previewOpen && (
         <InvitePreviewModal
