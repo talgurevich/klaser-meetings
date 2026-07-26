@@ -184,6 +184,10 @@ class Topic(Base):
     # own status — a topic can be "done" while its follow-up task is still
     # open. Powers the tenant-wide משימות לביצוע list (app/routes/action_items.py).
     action_item_done: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    # Name of the person responsible for the follow-up task, chosen when the
+    # follow-up is created (attendee or אלפון contact). Free-text label, not
+    # an FK — action items can be owned by non-system people.
+    action_item_owner: Mapped[str | None] = mapped_column(String)
     timer_elapsed: Mapped[int | None] = mapped_column(Integer)  # seconds
 
     source_pool_id: Mapped[UUID | None] = mapped_column(

@@ -151,6 +151,7 @@ export type Topic = {
   deferred_from_topic_id: string | null;
   decision_text: string | null;
   action_item: string | null;
+  action_item_owner: string | null;
   timer_elapsed: number | null;
   source_pool_id: string | null;
   suggested_by: string | null;
@@ -370,6 +371,7 @@ export type ActionItem = {
   topic_title: string;
   action_item: string;
   action_item_done: boolean;
+  action_item_owner: string | null;
 };
 
 export type InvitePreviewTopic = { title: string; duration_minutes: number | null };

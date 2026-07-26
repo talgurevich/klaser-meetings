@@ -50,6 +50,7 @@ def _to_out(topic: Topic, meeting: Meeting) -> ActionItemOut:
         topic_title=topic.title,
         action_item=topic.action_item or "",
         action_item_done=topic.action_item_done,
+        action_item_owner=topic.action_item_owner,
     )
 
 

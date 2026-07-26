@@ -93,7 +93,8 @@ def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes
         if (t.topic_notes or "").strip():
             parts.append(f"הערות: {t.topic_notes}")
         if (t.action_item or "").strip():
-            parts.append(f"משימה: {t.action_item}")
+            owner = (t.action_item_owner or "").strip()
+            parts.append(f"משימה: {t.action_item}{f' (אחראי: {owner})' if owner else ''}")
         time_txt = f"זמן מוקצה: {t.duration_minutes} דקות" if t.duration_minutes else ""
         items.append((idx, "\n".join(parts), time_txt))
     pc.agenda_table(pdf, items)

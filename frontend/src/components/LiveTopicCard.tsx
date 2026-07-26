@@ -20,7 +20,7 @@ export default function LiveTopicCard({
   onReset,
   onOpenClose,
   onCreateFollowUp,
-  onSkip,
+  onSaveNotes,
   onDefer,
   onUndoDefer,
   onCancel,
@@ -35,9 +35,9 @@ export default function LiveTopicCard({
   onStartDiscussion: () => void;
   onPauseTimer: () => void;
   onReset: () => void;
-  onOpenClose: () => void;
+  onOpenClose: (notes: string) => void;
   onCreateFollowUp: () => void;
-  onSkip: () => void;
+  onSaveNotes: (notes: string) => void;
   onDefer: () => void;
   onUndoDefer: () => void;
   onCancel: () => void;
@@ -45,6 +45,7 @@ export default function LiveTopicCard({
 }) {
   const [tick, setTick] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
+  const [notes, setNotes] = useState(topic.topic_notes || "");
 
   useEffect(() => {
     if (!isTiming) return;
@@ -189,9 +190,25 @@ export default function LiveTopicCard({
           )}
 
           {editable && !finished && (
+            <div className="mt-3">
+              <label className="mb-1 block text-xs font-medium text-ink-soft">הערות</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                onBlur={() => {
+                  if (notes !== (topic.topic_notes || "")) onSaveNotes(notes);
+                }}
+                rows={2}
+                placeholder="הערות לנושא — יתווספו לסגירת הנושא"
+                className="w-full rounded border border-line-strong px-3 py-2 text-sm"
+              />
+            </div>
+          )}
+
+          {editable && !finished && (
             <div className="mt-3 flex flex-wrap gap-2">
               <button
-                onClick={onOpenClose}
+                onClick={() => onOpenClose(notes)}
                 disabled={busy}
                 className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
               >
@@ -203,13 +220,6 @@ export default function LiveTopicCard({
                 className="rounded border border-line-strong px-3 py-1.5 text-sm hover:bg-line disabled:opacity-50"
               >
                 ☑ צור מעקב
-              </button>
-              <button
-                onClick={onSkip}
-                disabled={busy}
-                className="rounded border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:bg-line disabled:opacity-50"
-              >
-                ⏭ דלג
               </button>
               <button
                 onClick={onDefer}

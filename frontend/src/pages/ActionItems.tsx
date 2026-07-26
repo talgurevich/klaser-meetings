@@ -128,6 +128,11 @@ export default function ActionItems() {
           <span>
             <p className={item.action_item_done ? "text-ink-soft line-through" : "font-medium"}>
               {item.action_item}
+              {item.action_item_owner && (
+                <span className="mr-2 rounded-full bg-surface px-2 py-0.5 text-xs font-normal text-ink-soft">
+                  אחראי: {item.action_item_owner}
+                </span>
+              )}
             </p>
             <Link
               to={`/meetings/${item.meeting_id}`}

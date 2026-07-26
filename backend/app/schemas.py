@@ -39,6 +39,7 @@ class TopicUpdate(BaseModel):
     status: str | None = None  # pending | in_progress | done | deferred | skipped
     decision_text: str | None = None
     action_item: str | None = None
+    action_item_owner: str | None = None
     timer_elapsed: int | None = None
     topic_notes: str | None = None
     invited_guests: list[str] | None = None
@@ -65,6 +66,7 @@ class TopicOut(BaseModel):
     decision_text: str | None
     action_item: str | None
     action_item_done: bool
+    action_item_owner: str | None
     timer_elapsed: int | None
     source_pool_id: UUID | None
     suggested_by: UUID | None
@@ -378,6 +380,7 @@ class ActionItemOut(BaseModel):
     topic_title: str
     action_item: str
     action_item_done: bool
+    action_item_owner: str | None = None
 
 
 class ActionItemUpdate(BaseModel):

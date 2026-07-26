@@ -87,6 +87,7 @@ export default function MeetingDetail() {
   const [timingTopicId, setTimingTopicId] = useState<string | null>(null);
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [closingTopic, setClosingTopic] = useState<Topic | null>(null);
+  const [closeInitialNotes, setCloseInitialNotes] = useState("");
   const [followUpTopic, setFollowUpTopic] = useState<Topic | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -333,18 +334,16 @@ export default function MeetingDetail() {
     }
   }
 
-  async function skipTopic(topic: Topic) {
+  // Live per-topic notes, saved quietly on blur so they survive a reload and
+  // pre-fill the הערות field when the topic is closed.
+  async function saveTopicNotes(topic: Topic, notes: string) {
     if (!id) return;
-    setBusy(true);
     setError(null);
     try {
-      await finalizeTimer(topic);
-      await api.updateTopic(id, topic.id, { status: "skipped" });
+      await api.updateTopic(id, topic.id, { topic_notes: notes.trim() || null });
       load();
     } catch (err) {
       setError(apiErrorMessage(err));
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -410,12 +409,15 @@ export default function MeetingDetail() {
 
   // Standalone follow-up: adds/updates action_item without touching status
   // or the running timer — the topic stays exactly as it was.
-  async function submitFollowUp(actionItem: string) {
+  async function submitFollowUp(actionItem: string, owner: string) {
     if (!id || !followUpTopic) return;
     setBusy(true);
     setError(null);
     try {
-      await api.updateTopic(id, followUpTopic.id, { action_item: actionItem });
+      await api.updateTopic(id, followUpTopic.id, {
+        action_item: actionItem,
+        action_item_owner: owner || null,
+      });
       setFollowUpTopic(null);
       load();
     } catch (err) {
@@ -602,16 +604,20 @@ export default function MeetingDetail() {
               onStartDiscussion={() => startDiscussion(t)}
               onPauseTimer={() => pauseTimer(t)}
               onReset={() => resetTimer(t)}
-              onOpenClose={async () => {
+              onOpenClose={async (notes) => {
                 await finalizeTimer(t);
+                setCloseInitialNotes(notes);
                 setClosingTopic(t);
               }}
               onCreateFollowUp={() => setFollowUpTopic(t)}
-              onSkip={() => skipTopic(t)}
+              onSaveNotes={(notes) => saveTopicNotes(t, notes)}
               onDefer={() => deferTopicNow(t)}
               onUndoDefer={() => undoDefer(t)}
               onCancel={() => cancelTopic(t)}
-              onEdit={() => setClosingTopic(t)}
+              onEdit={() => {
+                setCloseInitialNotes(t.topic_notes || "");
+                setClosingTopic(t);
+              }}
             />
           ))}
         </div>
@@ -770,7 +776,7 @@ export default function MeetingDetail() {
           topicTitle={closingTopic.title}
           initialDecision={closingTopic.decision_text || ""}
           initialActionItem={closingTopic.action_item || ""}
-          initialNotes={closingTopic.topic_notes || ""}
+          initialNotes={closeInitialNotes}
           heading={closingTopic.status === "done" ? "עריכת נושא" : "סיום נושא"}
           submitLabel={closingTopic.status === "done" ? "שמור" : "סיים נושא"}
           onCancel={() => setClosingTopic(null)}
@@ -782,6 +788,9 @@ export default function MeetingDetail() {
         <FollowUpModal
           topicTitle={followUpTopic.title}
           initialValue={followUpTopic.action_item || ""}
+          initialOwner={followUpTopic.action_item_owner || ""}
+          presentMemberIds={meeting.attendees_present || []}
+          presentParticipantIds={meeting.participant_ids || []}
           onCancel={() => setFollowUpTopic(null)}
           onSubmit={submitFollowUp}
         />
