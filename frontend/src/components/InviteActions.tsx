@@ -25,12 +25,26 @@ export default function InviteActions({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [confirmingOpen, setConfirmingOpen] = useState(false);
 
   const hasInvitees = meeting.invites.length > 0;
   const confirmedCount = meeting.invites.filter((i) => i.status === "confirmed_attend").length;
   const total = meeting.invites.length;
   const majorityConfirmed = total > 0 && confirmedCount * 2 > total;
   const isInvited = meeting.status === "invited_internal" || meeting.status === "invited_public";
+  const everyoneConfirmed = total > 0 && confirmedCount === total;
+
+  function openMeeting() {
+    setConfirmingOpen(false);
+    run(() => api.updateMeeting(meeting.id, { status: "active" }));
+  }
+
+  function requestOpen() {
+    // Everyone confirmed (or no invitees) — open straight away; otherwise
+    // ask for confirmation showing how many have confirmed.
+    if (total === 0 || everyoneConfirmed) openMeeting();
+    else setConfirmingOpen(true);
+  }
 
   async function run(action: () => Promise<Meeting>) {
     setBusy(true);
@@ -81,7 +95,7 @@ export default function InviteActions({
 
         {isInvited && (
           <button
-            onClick={() => run(() => api.updateMeeting(meeting.id, { status: "active" }))}
+            onClick={requestOpen}
             disabled={busy}
             className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
@@ -103,6 +117,36 @@ export default function InviteActions({
           inviteeCount={meeting.invites.length}
           onClose={() => setPreviewOpen(false)}
         />
+      )}
+
+      {confirmingOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-line bg-white p-5 text-center shadow-lg">
+            <h2 className="mb-2 text-base font-semibold">פתיחת הישיבה</h2>
+            <p className="mb-1 text-sm">
+              אישרו הגעה: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> מוזמנים.
+            </p>
+            <p className="mb-4 text-sm text-ink-soft">
+              עדיין לא כל המוזמנים אישרו הגעה. לפתוח את הישיבה בכל זאת?
+            </p>
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={() => setConfirmingOpen(false)}
+                disabled={busy}
+                className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={openMeeting}
+                disabled={busy}
+                className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                פתח בכל זאת
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
