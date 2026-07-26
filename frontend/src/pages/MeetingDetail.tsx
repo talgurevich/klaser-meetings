@@ -11,6 +11,7 @@ import {
 import { useIsEditor } from "../components/Layout";
 import { useAuth } from "../lib/auth";
 import AttendanceList from "../components/AttendanceList";
+import MeetingRecorder from "../components/MeetingRecorder";
 import LiveTopicCard from "../components/LiveTopicCard";
 import CloseTopicModal, { type CloseTopicValues } from "../components/CloseTopicModal";
 import FollowUpModal from "../components/FollowUpModal";
@@ -543,6 +544,8 @@ export default function MeetingDetail() {
       )}
 
       {isActive && attendanceBlock}
+
+      {isActive && editor && <MeetingRecorder meetingId={meeting.id} />}
 
       <h2 className="mb-3 font-display text-lg font-semibold">סדר יום</h2>
 

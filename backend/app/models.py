@@ -36,6 +36,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    LargeBinary,
     String,
     Text,
     Time,
@@ -207,6 +208,40 @@ class Topic(Base):
     )
 
     meeting: Mapped[Meeting] = relationship(back_populates="topics", foreign_keys=[meeting_id])
+
+
+class MeetingRecording(Base):
+    """An audio recording of a meeting — captured live via the browser mic or
+    uploaded as a file. The audio bytes live in this table (`audio`) so the
+    feature is self-contained with no external object store; the Meeting
+    serialization never loads it (metadata is listed separately and the bytes
+    stream from a dedicated endpoint). `transcript`/`transcription_status` are
+    reserved for the later AI transcription + per-topic summary layer."""
+
+    __tablename__ = "meeting_recordings"
+
+    id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), index=True, nullable=False)
+    meeting_id: Mapped[UUID] = mapped_column(
+        SQLUUID(as_uuid=True), ForeignKey("meetings.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    created_by_user_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), nullable=False)
+
+    filename: Mapped[str] = mapped_column(String, nullable=False)
+    content_type: Mapped[str] = mapped_column(String, nullable=False, default="audio/webm")
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    duration_seconds: Mapped[int | None] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(String, nullable=False, default="mic")  # mic | upload
+    audio: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
+    # Reserved for the later AI layer — kept here so wiring transcription in
+    # doesn't need another migration.
+    transcript: Mapped[str | None] = mapped_column(Text)
+    transcription_status: Mapped[str] = mapped_column(
+        String, nullable=False, default="none", server_default="none"
+    )  # none | pending | done | failed
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 # ─────────────────────────────────────────────────────────────────────────

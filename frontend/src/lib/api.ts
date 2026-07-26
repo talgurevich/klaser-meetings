@@ -374,6 +374,18 @@ export type ActionItem = {
   action_item_owner: string | null;
 };
 
+export type MeetingRecording = {
+  id: string;
+  meeting_id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  duration_seconds: number | null;
+  source: "mic" | "upload";
+  transcription_status: string;
+  created_at: string;
+};
+
 export type InvitePreviewTopic = { title: string; duration_minutes: number | null };
 
 export type InvitePreview = {
@@ -560,6 +572,37 @@ export const api = {
     if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));
     return r.blob();
   },
+
+  // ─── Meeting recordings ───────────────────────────────────────────────
+  listRecordings: (meetingId: string) =>
+    request<MeetingRecording[]>(`/api/meetings/${meetingId}/recordings`),
+  uploadRecording: async (
+    meetingId: string,
+    blob: Blob,
+    opts: { filename: string; durationSeconds?: number | null; source: "mic" | "upload" },
+  ): Promise<MeetingRecording> => {
+    const form = new FormData();
+    form.append("file", blob, opts.filename);
+    const params = new URLSearchParams({ source: opts.source });
+    if (opts.durationSeconds != null) params.set("duration_seconds", String(opts.durationSeconds));
+    const r = await fetch(`${BASE}/api/meetings/${meetingId}/recordings?${params}`, {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));
+    return r.json();
+  },
+  getRecordingAudioBlob: async (meetingId: string, recordingId: string): Promise<Blob> => {
+    const r = await fetch(
+      `${BASE}/api/meetings/${meetingId}/recordings/${recordingId}/audio`,
+      { credentials: "include" },
+    );
+    if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));
+    return r.blob();
+  },
+  deleteRecording: (meetingId: string, recordingId: string) =>
+    request<void>(`/api/meetings/${meetingId}/recordings/${recordingId}`, { method: "DELETE" }),
 
   addTopic: (meetingId: string, body: TopicCreateInput) =>
     request<Topic>(`/api/meetings/${meetingId}/topics`, {

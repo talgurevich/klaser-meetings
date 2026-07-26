@@ -9,13 +9,21 @@ sourced from klaser-identity on every request (see identity-cutover.md).
 import datetime as dt
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
 from app.db import get_db
-from app.models import Meeting, MeetingInvite, Participant, TenantSettings, Topic, TopicPool
+from app.models import (
+    Meeting,
+    MeetingInvite,
+    MeetingRecording,
+    Participant,
+    TenantSettings,
+    Topic,
+    TopicPool,
+)
 from app.schemas import (
     InviteeRef,
     InvitePreviewOut,
@@ -24,6 +32,7 @@ from app.schemas import (
     MeetingInviteOut,
     MeetingListItem,
     MeetingOut,
+    MeetingRecordingOut,
     MeetingUpdate,
     PublishPreviewOut,
     PublishRecipient,
@@ -1085,3 +1094,122 @@ def undo_defer(
     db.commit()
     db.refresh(topic)
     return topic
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Meeting recordings — capture the meeting audio (browser mic or uploaded
+# file) so it can later be transcribed + summarised per topic. Audio bytes
+# are stored on the MeetingRecording row; metadata is listed separately and
+# the bytes stream from the /audio endpoint so the meeting payload stays light.
+# ─────────────────────────────────────────────────────────────────────────
+
+# Guard against a single upload exhausting memory / the DB row limit. ~2h of
+# opus-encoded audio is well under this; raise once we move to object storage.
+_MAX_RECORDING_BYTES = 100 * 1024 * 1024  # 100 MB
+
+
+@router.get("/{meeting_id}/recordings", response_model=list[MeetingRecordingOut])
+def list_recordings(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> list[MeetingRecording]:
+    """Recording metadata for a meeting, newest first (no audio bytes)."""
+    tenant_id = UUID(user.tenant_id)
+    _get_meeting_or_404(db, meeting_id, tenant_id)
+    return list(
+        db.execute(
+            select(MeetingRecording)
+            .where(
+                MeetingRecording.meeting_id == meeting_id,
+                MeetingRecording.tenant_id == tenant_id,
+            )
+            .order_by(MeetingRecording.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+
+@router.post("/{meeting_id}/recordings", response_model=MeetingRecordingOut)
+def upload_recording(
+    meeting_id: UUID,
+    file: UploadFile = File(...),
+    duration_seconds: int | None = None,
+    source: str = "upload",
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> MeetingRecording:
+    """Store an audio recording for a meeting — either a live mic capture
+    (source='mic') or an uploaded audio file (source='upload')."""
+    tenant_id = UUID(user.tenant_id)
+    _get_meeting_or_404(db, meeting_id, tenant_id)
+
+    data = file.file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="קובץ האודיו ריק.")
+    if len(data) > _MAX_RECORDING_BYTES:
+        raise HTTPException(status_code=413, detail="קובץ האודיו גדול מדי (מעל 100MB).")
+
+    rec = MeetingRecording(
+        tenant_id=tenant_id,
+        meeting_id=meeting_id,
+        created_by_user_id=UUID(user.user_id),
+        filename=file.filename or "recording.webm",
+        content_type=file.content_type or "audio/webm",
+        size_bytes=len(data),
+        duration_seconds=duration_seconds,
+        source="mic" if source == "mic" else "upload",
+        audio=data,
+    )
+    db.add(rec)
+    db.commit()
+    db.refresh(rec)
+    return rec
+
+
+@router.get("/{meeting_id}/recordings/{recording_id}/audio")
+def recording_audio(
+    meeting_id: UUID,
+    recording_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> Response:
+    """Stream the raw audio bytes for playback / download."""
+    tenant_id = UUID(user.tenant_id)
+    rec = db.execute(
+        select(MeetingRecording).where(
+            MeetingRecording.id == recording_id,
+            MeetingRecording.meeting_id == meeting_id,
+            MeetingRecording.tenant_id == tenant_id,
+        )
+    ).scalar_one_or_none()
+    if rec is None:
+        raise HTTPException(status_code=404, detail="ההקלטה לא נמצאה")
+    return Response(
+        content=rec.audio,
+        media_type=rec.content_type,
+        headers={"Content-Disposition": f'inline; filename="{rec.filename}"'},
+    )
+
+
+@router.delete("/{meeting_id}/recordings/{recording_id}", status_code=204)
+def delete_recording(
+    meeting_id: UUID,
+    recording_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> Response:
+    tenant_id = UUID(user.tenant_id)
+    rec = db.execute(
+        select(MeetingRecording).where(
+            MeetingRecording.id == recording_id,
+            MeetingRecording.meeting_id == meeting_id,
+            MeetingRecording.tenant_id == tenant_id,
+        )
+    ).scalar_one_or_none()
+    if rec is None:
+        raise HTTPException(status_code=404, detail="ההקלטה לא נמצאה")
+    db.delete(rec)
+    db.commit()
+    return Response(status_code=204)

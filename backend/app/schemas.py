@@ -50,6 +50,23 @@ class TopicReorderItem(BaseModel):
     order: int
 
 
+class MeetingRecordingOut(BaseModel):
+    """Recording metadata only — never carries the audio bytes (those stream
+    from the dedicated /audio endpoint)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    meeting_id: UUID
+    filename: str
+    content_type: str
+    size_bytes: int
+    duration_seconds: int | None
+    source: str
+    transcription_status: str
+    created_at: dt.datetime
+
+
 class TopicOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
