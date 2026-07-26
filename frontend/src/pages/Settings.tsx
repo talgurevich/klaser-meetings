@@ -344,6 +344,7 @@ export default function Settings() {
 
   const [mySignatureUrl, setMySignatureUrl] = useState<string | null>(null);
   const [signatureBusy, setSignatureBusy] = useState(false);
+  const [newRole, setNewRole] = useState("");
 
   // Local field drafts — seeded once from `settings` on first load (see
   // module note in SignatoryCard for why: these must NOT re-sync every
@@ -677,6 +678,65 @@ export default function Settings() {
             />
           </div>
         </div>
+      </div>
+
+      {/* בעלי תפקיד — role types for the אלפון */}
+      <div className={SECTION_CLS}>
+        <SectionHeader icon="🏷" title="בעלי תפקיד" />
+        <p className="mb-3 text-xs text-ink-soft">
+          סוגי תפקידים לארגון. הרשימה מופיעה כאפשרויות בשדה "תפקיד" באלפון.
+        </p>
+        {settings.role_titles.length > 0 ? (
+          <div className="mb-3 flex flex-wrap gap-2">
+            {settings.role_titles.map((r) => (
+              <span key={r} className="flex items-center gap-1.5 rounded-full bg-line px-3 py-1 text-sm">
+                {r}
+                {admin && (
+                  <button
+                    onClick={() => saveField({ role_titles: settings.role_titles.filter((x) => x !== r) })}
+                    disabled={busy}
+                    className="text-ink-soft hover:text-red-700 disabled:opacity-50"
+                    aria-label="הסר תפקיד"
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="mb-3 text-sm text-ink-soft">לא הוגדרו תפקידים עדיין.</p>
+        )}
+        {admin && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const v = newRole.trim();
+              if (!v || settings.role_titles.includes(v)) {
+                setNewRole("");
+                return;
+              }
+              saveField({ role_titles: [...settings.role_titles, v] });
+              setNewRole("");
+            }}
+            className="flex gap-2"
+          >
+            <input
+              type="text"
+              value={newRole}
+              onChange={(e) => setNewRole(e.target.value)}
+              placeholder="שם תפקיד חדש"
+              className={INPUT_CLS}
+            />
+            <button
+              type="submit"
+              disabled={busy || !newRole.trim()}
+              className="shrink-0 rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
+            >
+              הוסף
+            </button>
+          </form>
+        )}
       </div>
 
       {/* נושאים קבועים בכל ישיבה */}

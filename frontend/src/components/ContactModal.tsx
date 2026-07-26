@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api, apiErrorMessage, type Participant } from "../lib/api";
 
 function Toggle({
@@ -52,6 +52,14 @@ export default function ContactModal({
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [roleOptions, setRoleOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    api
+      .getTenantSettings()
+      .then((s) => setRoleOptions(s.role_titles))
+      .catch(() => setRoleOptions([]));
+  }, []);
 
   const valid = fullName.trim() && email.trim();
 
@@ -109,7 +117,19 @@ export default function ContactModal({
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-ink-soft">תפקיד</span>
-            <input type="text" value={role} onChange={(e) => setRole(e.target.value)} className={inputCls} />
+            {roleOptions.length > 0 ? (
+              <select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls}>
+                <option value="">— ללא —</option>
+                {roleOptions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+                {role && !roleOptions.includes(role) && <option value={role}>{role}</option>}
+              </select>
+            ) : (
+              <input type="text" value={role} onChange={(e) => setRole(e.target.value)} className={inputCls} />
+            )}
           </label>
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-ink-soft">תאריך הצטרפות</span>
