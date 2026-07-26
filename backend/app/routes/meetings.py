@@ -54,40 +54,21 @@ router = APIRouter()
 # always sort before it, without needing to renumber anything on insert.
 _DEFAULT_LAST_TOPIC_ORDER = 1_000_000
 
-# Every meeting opens with a fixed topic ratifying the previous meeting's
-# protocol — always present, ahead of any tenant-configured recurring
-# topic. Not driven by TenantSettings; it's a built-in first item.
-_PROTOCOL_APPROVAL_TITLE = "אישור פרוטוקול ישיבה קודמת"
-
-
 def _seed_recurring_topics(db: Session, meeting: Meeting, tenant_id: UUID) -> int:
-    """Seeds a new meeting's pinned topics and returns how many *leading*
-    topics (order 0, 1, …) were added, so create_meeting can offset any
-    user-supplied topics past them.
+    """Seeds the tenant's configured recurring topics on a new meeting and
+    returns how many *leading* topics (order 0, …) were added, so
+    create_meeting can offset any user-supplied topics past them.
 
-    Order 0 is always the fixed protocol-approval topic
-    (`_PROTOCOL_APPROVAL_TITLE`) — every meeting starts by ratifying the
-    prior meeting's protocol. If the tenant configured a 'נושא ראשון'
-    template it follows at order 1; a configured 'נושא אחרון' is pinned
-    last at the sentinel order (see TenantSettings.recurring_topic_*)."""
-    leading = 0
-    db.add(
-        Topic(
-            tenant_id=tenant_id,
-            meeting_id=meeting.id,
-            order=leading,
-            title=_PROTOCOL_APPROVAL_TITLE,
-            is_default_first=True,
-        )
-    )
-    leading += 1
-
+    A configured 'נושא ראשון' (TenantSettings.recurring_topic_first) is
+    pinned at order 0; a configured 'נושא אחרון' is pinned last at the
+    sentinel order. Nothing is seeded when neither is set."""
     tenant_settings = db.execute(
         select(TenantSettings).where(TenantSettings.tenant_id == tenant_id)
     ).scalar_one_or_none()
     if tenant_settings is None:
-        return leading
+        return 0
 
+    leading = 0
     if tenant_settings.recurring_topic_first_title:
         db.add(
             Topic(
