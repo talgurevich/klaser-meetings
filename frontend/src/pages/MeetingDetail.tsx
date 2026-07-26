@@ -588,7 +588,7 @@ export default function MeetingDetail() {
               key={t.id}
               topic={t}
               index={i + 1}
-              editable={editor && isActive}
+              editable={editor}
               isTiming={timingTopicId === t.id}
               timerStartedAt={timingTopicId === t.id ? timerStartedAt : null}
               busy={busy}
@@ -604,6 +604,7 @@ export default function MeetingDetail() {
               onDefer={() => deferTopicNow(t)}
               onUndoDefer={() => undoDefer(t)}
               onCancel={() => cancelTopic(t)}
+              onEdit={() => setClosingTopic(t)}
             />
           ))}
         </div>
@@ -725,9 +726,9 @@ export default function MeetingDetail() {
           <AttendanceList
             meetingId={meeting.id}
             presentIds={meeting.attendees_present || []}
-            editable={editor && isActive}
+            editable={editor}
             participantIds={meeting.participant_ids || []}
-            participantsEditable={isActive}
+            participantsEditable={editor}
             onChanged={load}
           />
         </div>
@@ -760,6 +761,11 @@ export default function MeetingDetail() {
       {closingTopic && (
         <CloseTopicModal
           topicTitle={closingTopic.title}
+          initialDecision={closingTopic.decision_text || ""}
+          initialActionItem={closingTopic.action_item || ""}
+          initialNotes={closingTopic.topic_notes || ""}
+          heading={closingTopic.status === "done" ? "עריכת נושא" : "סיום נושא"}
+          submitLabel={closingTopic.status === "done" ? "שמור" : "סיים נושא"}
           onCancel={() => setClosingTopic(null)}
           onSubmit={submitClose}
         />

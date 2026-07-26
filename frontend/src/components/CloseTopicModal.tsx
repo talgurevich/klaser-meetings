@@ -10,14 +10,24 @@ export default function CloseTopicModal({
   topicTitle,
   onCancel,
   onSubmit,
+  initialDecision = "",
+  initialActionItem = "",
+  initialNotes = "",
+  heading = "סיום נושא",
+  submitLabel = "סיים נושא",
 }: {
   topicTitle: string;
   onCancel: () => void;
   onSubmit: (values: CloseTopicValues) => void | Promise<void>;
+  initialDecision?: string;
+  initialActionItem?: string;
+  initialNotes?: string;
+  heading?: string;
+  submitLabel?: string;
 }) {
-  const [decisionText, setDecisionText] = useState("");
-  const [actionItem, setActionItem] = useState("");
-  const [notes, setNotes] = useState("");
+  const [decisionText, setDecisionText] = useState(initialDecision);
+  const [actionItem, setActionItem] = useState(initialActionItem);
+  const [notes, setNotes] = useState(initialNotes);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -40,7 +50,7 @@ export default function CloseTopicModal({
         onSubmit={handleSubmit}
         className="w-full max-w-lg rounded-lg border border-line bg-white p-5 shadow-lg"
       >
-        <h2 className="mb-1 font-display text-lg font-semibold">סיום נושא</h2>
+        <h2 className="mb-1 font-display text-lg font-semibold">{heading}</h2>
         <p className="mb-4 text-sm text-ink-soft">{topicTitle}</p>
 
         <label className="mb-3 block text-sm">
@@ -89,7 +99,7 @@ export default function CloseTopicModal({
             disabled={submitting}
             className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
           >
-            {submitting ? "שומר…" : "סיים נושא"}
+            {submitting ? "שומר…" : submitLabel}
           </button>
         </div>
       </form>

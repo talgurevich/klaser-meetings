@@ -44,10 +44,29 @@ def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes
         if meeting.time_end:
             time_range += f" - {meeting.time_end.strftime('%H:%M')}"
 
+    # Was this protocol already distributed and then edited? If so this is
+    # a revised document — say so, and reference the originally-issued date.
+    revised = bool(
+        meeting.published_at
+        and any(t.updated_at and t.updated_at > meeting.published_at for t in meeting.topics)
+    )
+
     pdf = pc.RtlPdf()
     logo = pc.img_reader(settings_row.logo_data, settings_row.logo_mime) if settings_row else None
     pc.header(pdf, org_name, "פרוטוקול ישיבה", logo)
     pc.title(pdf, "פרוטוקול ישיבה")
+    if revised:
+        pdf.set_font("dejavu", "B", 10)
+        pdf.set_text_color(*pc.ACCENT)
+        pdf.cell(
+            0,
+            6,
+            f"מסמך מעודכן — מעדכן את הפרוטוקול שהופץ ב-{pc.fmt_date(meeting.published_at.date())}",
+            align="C",
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
+        pdf.ln(2)
 
     detail_rows = [("מספר ישיבה", meeting.number or "—"), ("תאריך", pc.fmt_date(meeting.date))]
     if time_range:

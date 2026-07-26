@@ -24,6 +24,7 @@ export default function LiveTopicCard({
   onDefer,
   onUndoDefer,
   onCancel,
+  onEdit,
 }: {
   topic: Topic;
   index: number;
@@ -40,6 +41,7 @@ export default function LiveTopicCard({
   onDefer: () => void;
   onUndoDefer: () => void;
   onCancel: () => void;
+  onEdit: () => void;
 }) {
   const [tick, setTick] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
@@ -172,6 +174,17 @@ export default function LiveTopicCard({
                 </div>
               )}
               {topic.status === "cancelled" && <p className="text-ink-soft">הנושא בוטל.</p>}
+              {editable && topic.status === "done" && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={onEdit}
+                    disabled={busy}
+                    className="text-xs text-accent-dark hover:underline disabled:opacity-50"
+                  >
+                    ✏ ערוך החלטה
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
