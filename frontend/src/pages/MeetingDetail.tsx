@@ -467,13 +467,25 @@ export default function MeetingDetail() {
     (meeting.attendees_present?.length || 0) > 0 || (meeting.participant_ids?.length || 0) > 0;
   const showActiveDetailsForm = isActive && editor && editingActiveDetails;
 
+  const timeHM = meeting.time_start ? meeting.time_start.slice(0, 5) : "";
+  // Single detail-format header line — kind · מס׳ N · date time · location.
+  const detailLine = [
+    KIND_LABELS[meeting.kind],
+    meeting.number ? `מס׳ ${meeting.number}` : null,
+    `${meeting.date}${timeHM ? ` ${timeHM}` : ""}`,
+    meeting.location || null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
     <div className="max-w-3xl">
       <div className="mb-1 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <h1 className="font-display text-2xl font-bold">
-            {meeting.title || KIND_LABELS[meeting.kind]}
-            {meeting.number && ` ${meeting.number}`}
+          <h1 className={`font-display font-bold ${isActive ? "text-lg" : "text-2xl"}`}>
+            {isActive
+              ? detailLine
+              : `${meeting.title || KIND_LABELS[meeting.kind]}${meeting.number ? ` ${meeting.number}` : ""}`}
           </h1>
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[meeting.status]}`}>
             {STATUS_LABELS[meeting.status]}
@@ -491,13 +503,8 @@ export default function MeetingDetail() {
 
       <StatusStepper status={meeting.status} />
 
-      {!(isPrep && editor) && !showActiveDetailsForm && (
-        <p className="mb-6 text-sm text-ink-soft">
-          {KIND_LABELS[meeting.kind]}
-          {meeting.number && ` · מס׳ ${meeting.number}`} · {meeting.date}
-          {meeting.time_start && ` ${meeting.time_start}`}
-          {meeting.location && ` · ${meeting.location}`}
-        </p>
+      {!(isPrep && editor) && !showActiveDetailsForm && !isActive && (
+        <p className="mb-6 text-sm text-ink-soft">{detailLine}</p>
       )}
 
       {error && (
