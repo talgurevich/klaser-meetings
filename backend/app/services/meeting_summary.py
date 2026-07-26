@@ -15,7 +15,8 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import Meeting, Participant
+from app.models import Meeting, Participant, Topic
+from app.services import mail
 from app.services.identity import identity_service
 from app.services.mail import _KIND_LABELS, _wrap_html
 
@@ -219,3 +220,83 @@ def build_publish_summary(db: Session, meeting: Meeting, tenant_name: str) -> Pu
         recipients=recipients,
         recipients_without_email=without,
     )
+
+
+def _owner_email_map(db: Session, meeting: Meeting) -> dict[str, str]:
+    """Best-effort name -> email for resolving an action item's owner. The
+    owner is stored as a plain name (chosen from attendees or the אלפון), so
+    we look it up against the אלפון contacts, this meeting's member invites,
+    and the identity roster. First match wins; unresolved names are skipped."""
+    m: dict[str, str] = {}
+    parts = (
+        db.execute(select(Participant).where(Participant.tenant_id == meeting.tenant_id))
+        .scalars()
+        .all()
+    )
+    for p in parts:
+        if p.full_name and p.email:
+            m.setdefault(p.full_name.strip(), p.email.strip())
+    for inv in meeting.invites:
+        if inv.invitee_kind == "member" and inv.display_name and inv.email:
+            m.setdefault(inv.display_name.strip(), inv.email.strip())
+    try:
+        for u in identity_service.list_users(str(meeting.tenant_id)):
+            nm = (u.get("display_name") or "").strip()
+            em = (u.get("email") or "").strip()
+            if nm and em:
+                m.setdefault(nm, em)
+    except Exception:  # noqa: BLE001 — roster is a nicety here, never fatal
+        pass
+    return m
+
+
+def notify_action_owners(db: Session, meeting: Meeting, tenant_name: str) -> None:
+    """After a meeting is locked/published, email each person assigned to a
+    follow-up task the details of the task(s) they own. Grouped so an owner
+    with several tasks gets one email. Fire-and-forget per recipient — a
+    mail failure never blocks publishing."""
+    kind_he = _KIND_LABELS.get(meeting.kind, meeting.kind)
+    number_suffix = f" מספר {meeting.number}" if meeting.number else ""
+    date_s = _fmt_date(meeting)
+
+    by_owner: dict[str, list[Topic]] = {}
+    for t in sorted(meeting.topics, key=lambda x: x.order):
+        owner = (t.action_item_owner or "").strip()
+        if owner and (t.action_item or "").strip():
+            by_owner.setdefault(owner, []).append(t)
+    if not by_owner:
+        return
+
+    name_email = _owner_email_map(db, meeting)
+
+    for owner, topics in by_owner.items():
+        email = name_email.get(owner)
+        if not email:
+            continue
+
+        def esc(s: str) -> str:
+            return html.escape(s)
+
+        rows_html = "".join(
+            f"<li><strong>{esc(t.title)}</strong><br>{esc(t.action_item or '')}</li>" for t in topics
+        )
+        body_html = (
+            f"<h1>משימת המשך — {esc(kind_he)}{esc(number_suffix)}</h1>"
+            f"<p>שלום {esc(owner)},</p>"
+            f"<p>בסיכום {esc(kind_he)}{esc(number_suffix)} מתאריך {esc(date_s)} "
+            f"הוטלו עליך המשימות הבאות:</p>"
+            f"<ol>{rows_html}</ol>"
+        )
+        rows_text = "\n".join(f"{i + 1}. {t.title}: {t.action_item or ''}" for i, t in enumerate(topics))
+        body_text = (
+            f"משימת המשך — {kind_he}{number_suffix}\n\n"
+            f"שלום {owner},\n"
+            f"בסיכום {kind_he}{number_suffix} מתאריך {date_s} הוטלו עליך המשימות הבאות:\n\n"
+            f"{rows_text}\n\n— {tenant_name}"
+        )
+        mail.send_prebuilt(
+            to_email=email,
+            subject=f"משימת המשך מ{kind_he}{number_suffix}",
+            html_body=_wrap_html(body_html, f"{tenant_name} · Klaser"),
+            text_body=body_text,
+        )

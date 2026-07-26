@@ -41,7 +41,11 @@ from app.services.defer_topic import (
 )
 from app.services.identity import IdentityUser, identity_service, require_entitlement
 from app.services.invite_pdf import build_invite_pdf
-from app.services.meeting_summary import attendance_names, build_publish_summary
+from app.services.meeting_summary import (
+    attendance_names,
+    build_publish_summary,
+    notify_action_owners,
+)
 from app.services.meeting_utils import generate_meeting_number
 from app.services.permissions import is_editor, require_admin, require_editor
 from app.services.protocol_pdf import build_protocol_pdf
@@ -375,6 +379,11 @@ def update_meeting(
 
     db.commit()
     db.refresh(meeting)
+
+    # Publishing via the plain status stepper (not only the /publish button)
+    # must also email follow-up owners their task(s).
+    if is_transition and new_status == "published":
+        notify_action_owners(db, meeting, user.tenant_name or "")
     return meeting
 
 
@@ -440,6 +449,9 @@ def publish_meeting(
         meeting.published_at = now
     db.commit()
     db.refresh(meeting)
+
+    # Email each follow-up owner their task(s) once the meeting is locked.
+    notify_action_owners(db, meeting, user.tenant_name or "")
     return meeting
 
 

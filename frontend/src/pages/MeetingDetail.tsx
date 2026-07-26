@@ -480,6 +480,22 @@ export default function MeetingDetail() {
     .filter(Boolean)
     .join(" · ");
 
+  // Attendance is shown while active and in every post-prep phase. During an
+  // active meeting it sits ABOVE the agenda (mark who's here first); in the
+  // later read-only phases it stays below.
+  const attendanceBlock = (isActive || !isPrep) && (
+    <div className="mb-6">
+      <AttendanceList
+        meetingId={meeting.id}
+        presentIds={meeting.attendees_present || []}
+        editable={editor}
+        participantIds={meeting.participant_ids || []}
+        participantsEditable={editor}
+        onChanged={load}
+      />
+    </div>
+  );
+
   return (
     <div className="max-w-3xl">
       <div className="mb-1 flex items-center justify-between gap-3">
@@ -525,6 +541,8 @@ export default function MeetingDetail() {
           }}
         />
       )}
+
+      {isActive && attendanceBlock}
 
       <h2 className="mb-3 font-display text-lg font-semibold">סדר יום</h2>
 
@@ -734,18 +752,7 @@ export default function MeetingDetail() {
         </button>
       )}
 
-      {(isActive || !isPrep) && (
-        <div className="mb-6">
-          <AttendanceList
-            meetingId={meeting.id}
-            presentIds={meeting.attendees_present || []}
-            editable={editor}
-            participantIds={meeting.participant_ids || []}
-            participantsEditable={editor}
-            onChanged={load}
-          />
-        </div>
-      )}
+      {!isActive && attendanceBlock}
 
       {showInternalApproval && (
         <div className="mb-4">
@@ -776,6 +783,9 @@ export default function MeetingDetail() {
           topicTitle={closingTopic.title}
           initialDecision={closingTopic.decision_text || ""}
           initialActionItem={closingTopic.action_item || ""}
+          initialActionOwner={closingTopic.action_item_owner || ""}
+          presentMemberIds={meeting.attendees_present || []}
+          presentParticipantIds={meeting.participant_ids || []}
           initialNotes={closeInitialNotes}
           heading={closingTopic.status === "done" ? "עריכת נושא" : "סיום נושא"}
           submitLabel={closingTopic.status === "done" ? "שמור" : "סיים נושא"}
