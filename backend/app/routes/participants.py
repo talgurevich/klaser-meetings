@@ -52,6 +52,9 @@ def _system_user_emails(tenant_id: str) -> set[str]:
 def _to_out(p: Participant, system_emails: set[str]) -> ParticipantOut:
     out = ParticipantOut.model_validate(p)
     out.is_system_user = bool(p.email) and p.email.strip().lower() in system_emails
+    # Fall back to the legacy single `role` for rows saved before roles.
+    if not out.roles and p.role:
+        out.roles = [p.role]
     return out
 
 
@@ -92,6 +95,7 @@ def create_participant(
         phone=body.phone,
         email=body.email,
         role=body.role,
+        roles=body.roles,
         join_date=body.join_date,
         public_send=body.public_send,
         edit_permission=body.edit_permission,
@@ -160,6 +164,7 @@ def import_participants(
                 phone=g(row, "נייד") or None,
                 email=email or None,
                 role=g(row, "תפקיד") or None,
+                roles=[g(row, "תפקיד")] if g(row, "תפקיד") else None,
                 # "פעיל" == public-send flag (one and the same). Absent/כן -> on.
                 public_send=g(row, "פעיל") != "לא",
                 # CSV's "הרשאות עריכה" column = the manual override. Email-based

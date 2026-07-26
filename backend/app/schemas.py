@@ -13,7 +13,7 @@ Qualifying the module sidesteps the collision entirely.
 import datetime as dt
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 # ─────────────────────────────────────────────────────────────────────────
 # Topic
@@ -252,6 +252,7 @@ class ParticipantCreate(BaseModel):
     phone: str | None = None
     email: str | None = None
     role: str | None = None
+    roles: list[str] | None = None
     join_date: dt.date | None = None
     public_send: bool = True
     edit_permission: bool = False
@@ -265,6 +266,7 @@ class ParticipantUpdate(BaseModel):
     phone: str | None = None
     email: str | None = None
     role: str | None = None
+    roles: list[str] | None = None
     join_date: dt.date | None = None
     public_send: bool | None = None
     edit_permission: bool | None = None
@@ -281,8 +283,14 @@ class ParticipantOut(BaseModel):
     phone: str | None
     email: str | None
     role: str | None
+    roles: list[str] = Field(default_factory=list)
     join_date: dt.date | None
     public_send: bool
+
+    @field_validator("roles", mode="before")
+    @classmethod
+    def _roles_none_to_list(cls, v: object) -> object:
+        return v or []
     # Manual "הרשאות עריכה" override (stored).
     edit_permission: bool = False
     # Derived, not stored: true when this contact's email matches an

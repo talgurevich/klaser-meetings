@@ -125,7 +125,7 @@ export default function Participants() {
                   <td className="px-3 py-2">{p.full_name}</td>
                   <td className="px-3 py-2" dir="ltr">{p.phone || "—"}</td>
                   <td className="px-3 py-2" dir="ltr">{p.email || "—"}</td>
-                  <td className="px-3 py-2">{p.role || "—"}</td>
+                  <td className="px-3 py-2">{p.roles.length ? p.roles.join(", ") : "—"}</td>
                   <td className="px-3 py-2" dir="ltr">{fmtDate(p.join_date)}</td>
                   <td className="px-3 py-2 text-center">{yesNo(p.public_send)}</td>
                   <td className="px-3 py-2 text-center">{yesNo(p.is_system_user || p.edit_permission)}</td>

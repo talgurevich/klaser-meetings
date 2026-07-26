@@ -44,7 +44,8 @@ export default function ContactModal({
   const [fullName, setFullName] = useState(contact?.full_name ?? "");
   const [email, setEmail] = useState(contact?.email ?? "");
   const [phone, setPhone] = useState(contact?.phone ?? "");
-  const [role, setRole] = useState(contact?.role ?? "");
+  const [roles, setRoles] = useState<string[]>(contact?.roles ?? []);
+  const [customRole, setCustomRole] = useState("");
   const [joinDate, setJoinDate] = useState(contact?.join_date ?? "");
   const [member, setMember] = useState(contact ? contact.public_send : true);
   const [editorFlag, setEditorFlag] = useState(contact ? contact.edit_permission : false);
@@ -72,7 +73,7 @@ export default function ContactModal({
       full_name: fullName.trim(),
       email: email.trim(),
       phone: phone.trim() || null,
-      role: role.trim() || null,
+      roles,
       join_date: joinDate || null,
       public_send: member,
       edit_permission: editorFlag,
@@ -115,22 +116,57 @@ export default function ContactModal({
             <span className="mb-1 block font-medium text-ink-soft">טלפון</span>
             <input type="tel" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
           </label>
-          <label className="block text-sm">
-            <span className="mb-1 block font-medium text-ink-soft">תפקיד</span>
-            {roleOptions.length > 0 ? (
-              <select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls}>
-                <option value="">— ללא —</option>
-                {roleOptions.map((r) => (
-                  <option key={r} value={r}>
+          <div className="text-sm">
+            <span className="mb-1 block font-medium text-ink-soft">תפקידים</span>
+            <div className="flex flex-wrap gap-1.5">
+              {[...new Set([...roleOptions, ...roles])].map((r) => {
+                const on = roles.includes(r);
+                return (
+                  <button
+                    type="button"
+                    key={r}
+                    onClick={() => setRoles((prev) => (on ? prev.filter((x) => x !== r) : [...prev, r]))}
+                    className={`rounded-full px-3 py-1 text-xs ${
+                      on ? "bg-accent-dark text-white" : "border border-line-strong text-ink hover:bg-line"
+                    }`}
+                  >
                     {r}
-                  </option>
-                ))}
-                {role && !roleOptions.includes(role) && <option value={role}>{role}</option>}
-              </select>
-            ) : (
-              <input type="text" value={role} onChange={(e) => setRole(e.target.value)} className={inputCls} />
-            )}
-          </label>
+                  </button>
+                );
+              })}
+              {roleOptions.length === 0 && roles.length === 0 && (
+                <span className="text-xs text-ink-soft">אפשר להגדיר בעלי תפקיד בהגדרות, או להוסיף כאן ידנית.</span>
+              )}
+            </div>
+            <div className="mt-2 flex gap-2">
+              <input
+                type="text"
+                value={customRole}
+                onChange={(e) => setCustomRole(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    const v = customRole.trim();
+                    if (v && !roles.includes(v)) setRoles((prev) => [...prev, v]);
+                    setCustomRole("");
+                  }
+                }}
+                placeholder="הוסף תפקיד…"
+                className={inputCls}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const v = customRole.trim();
+                  if (v && !roles.includes(v)) setRoles((prev) => [...prev, v]);
+                  setCustomRole("");
+                }}
+                className="shrink-0 rounded border border-line-strong px-3 py-2 text-sm hover:bg-line"
+              >
+                הוסף
+              </button>
+            </div>
+          </div>
           <label className="block text-sm">
             <span className="mb-1 block font-medium text-ink-soft">תאריך הצטרפות</span>
             <input type="date" value={joinDate} onChange={(e) => setJoinDate(e.target.value)} className={inputCls} />

@@ -293,7 +293,8 @@ export type Participant = {
   nickname: string | null;
   phone: string | null;
   email: string | null;
-  role: string | null;
+  role: string | null; // legacy single role — use roles
+  roles: string[];
   join_date: string | null;
   public_send: boolean;
   edit_permission: boolean; // manual override
@@ -311,6 +312,7 @@ export type ParticipantInput = {
   phone?: string | null;
   email?: string | null;
   role?: string | null;
+  roles?: string[];
   join_date?: string | null;
   public_send?: boolean;
   edit_permission?: boolean;

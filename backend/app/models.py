@@ -286,7 +286,8 @@ class Participant(Base):
     nickname: Mapped[str | None] = mapped_column(String)
     phone: Mapped[str | None] = mapped_column(String)
     email: Mapped[str | None] = mapped_column(String)
-    role: Mapped[str | None] = mapped_column(String)  # תפקיד
+    role: Mapped[str | None] = mapped_column(String)  # legacy single תפקיד — superseded by roles
+    roles: Mapped[list | None] = mapped_column(JSON)  # תפקידים (multi) from TenantSettings.role_titles
     join_date: Mapped[date | None] = mapped_column(Date)  # תאריך הצטרפות
 
     # "פעיל" / "שליחה ציבורית" — one and the same: on the tenant's public
