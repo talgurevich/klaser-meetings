@@ -148,9 +148,40 @@ export default function AttendanceList({
     };
   });
 
-  const allRows = [...memberRows, ...participantRows];
   const totalChecked = presentIds.length + participantIds.length;
   const totalCount = members.length + participants.length;
+
+  function grid(rows: Row[]) {
+    if (rows.length === 0) {
+      return <p className="mb-2 text-sm text-ink-soft">—</p>;
+    }
+    return (
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+        {rows.map((row) => (
+          <label
+            key={row.key}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+              row.checked ? "border-accent bg-accent/5" : "border-line"
+            } ${row.rowEditable ? "cursor-pointer hover:bg-surface" : ""}`}
+          >
+            <input
+              type="checkbox"
+              checked={row.checked}
+              disabled={!row.rowEditable || busyId === row.id}
+              onChange={row.onToggle}
+              className="shrink-0 rounded"
+            />
+            <span
+              title={row.name}
+              className={`min-w-0 truncate ${row.checked ? "text-ink" : "text-ink-soft"}`}
+            >
+              {truncateName(row.name)}
+            </span>
+          </label>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="rounded border border-line bg-white p-4">
@@ -158,34 +189,15 @@ export default function AttendanceList({
         <span aria-hidden>👥</span> נוכחות: {totalChecked}/{totalCount}
       </h3>
 
-      {allRows.length === 0 ? (
-        <p className="mb-2 text-sm text-ink-soft">אין עדיין אנשים לסימון נוכחות.</p>
-      ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-          {allRows.map((row) => (
-            <label
-              key={row.key}
-              className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-                row.checked ? "border-accent bg-accent/5" : "border-line"
-              } ${row.rowEditable ? "cursor-pointer hover:bg-surface" : ""}`}
-            >
-              <input
-                type="checkbox"
-                checked={row.checked}
-                disabled={!row.rowEditable || busyId === row.id}
-                onChange={row.onToggle}
-                className="shrink-0 rounded"
-              />
-              <span
-                title={row.name}
-                className={`min-w-0 truncate ${row.checked ? "text-ink" : "text-ink-soft"}`}
-              >
-                {truncateName(row.name)}
-              </span>
-            </label>
-          ))}
-        </div>
-      )}
+      <p className="mb-2 text-xs font-semibold text-ink-soft">
+        מוזמנים לפגישה ({presentIds.length}/{members.length})
+      </p>
+      {grid(memberRows)}
+
+      <p className="mb-2 mt-4 text-xs font-semibold text-ink-soft">
+        מוזמנים חיצוניים ({participantIds.length}/{participants.length})
+      </p>
+      {grid(participantRows)}
 
       <div className="mt-4 border-t border-line pt-3">
         {participantsEditable && !addingOpen && (
