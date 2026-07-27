@@ -300,6 +300,7 @@ export type Participant = {
   public_send: boolean;
   edit_permission: boolean; // manual override
   is_system_user: boolean; // derived from email match
+  signature_image_url: string | null; // data: URL, role-holder signature
   created_by_user_id: string;
   created_at: string;
   updated_at: string;
@@ -671,6 +672,10 @@ export const api = {
   importParticipants: (file: File) =>
     uploadFile<{ imported: number; skipped: number }>("/api/participants/import", file),
   deleteParticipant: (id: string) => request<void>(`/api/participants/${id}`, { method: "DELETE" }),
+  uploadParticipantSignature: (id: string, file: File) =>
+    uploadFile<Participant>(`/api/participants/${id}/signature`, file),
+  deleteParticipantSignature: (id: string) =>
+    request<Participant>(`/api/participants/${id}/signature`, { method: "DELETE" }),
 
   // Attach/detach a directory participant to a specific meeting's
   // attendance. Open to any entitled user server-side (not editor-only —

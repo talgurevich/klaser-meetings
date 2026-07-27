@@ -341,6 +341,13 @@ class Participant(Base):
     # isn't (yet) a system user. See routes/participants.py.
     edit_permission: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
 
+    # Personal signature image for role-holders (contacts with a role from
+    # TenantSettings.role_titles). Rendered in the protocol/invite signature
+    # block alongside the admin-curated Signatory list. base64, same storage
+    # rationale as Signatory.signature_image_data.
+    signature_image_data: Mapped[str | None] = mapped_column(Text)
+    signature_image_mime: Mapped[str | None] = mapped_column(String)
+
     created_by_user_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), nullable=False)  # no FK, see above
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

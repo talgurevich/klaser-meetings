@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { api, apiErrorMessage, type Member, type Signatory, type TenantSettings } from "../lib/api";
+import {
+  api,
+  apiErrorMessage,
+  type Member,
+  type Participant,
+  type Signatory,
+  type TenantSettings,
+} from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isAdmin } from "../lib/permissions";
 
@@ -330,6 +337,66 @@ function SignatoryCard({
   );
 }
 
+// ─── One role-holder's signature row (name + roles + signature) ──────────
+
+function RoleHolderSignatureCard({
+  contact,
+  disabled,
+  onSaved,
+}: {
+  contact: Participant;
+  disabled: boolean;
+  onSaved: (p: Participant) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="mb-3 rounded border border-line p-4 last:mb-0">
+      <div className="mb-3">
+        <p className="text-sm font-semibold">{contact.full_name}</p>
+        <p className="text-xs text-ink-soft">{contact.roles.join(" · ")}</p>
+      </div>
+      <ImageField
+        imageUrl={contact.signature_image_url}
+        disabled={disabled || busy}
+        hint="עד 2MB — PNG/SVG/JPG"
+        onUpload={async (file) => {
+          setBusy(true);
+          try {
+            onSaved(await api.uploadParticipantSignature(contact.id, file));
+          } finally {
+            setBusy(false);
+          }
+        }}
+        onRemove={async () => {
+          setBusy(true);
+          try {
+            onSaved(await api.deleteParticipantSignature(contact.id));
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
+      {!contact.signature_image_url && (
+        <div className="mt-3">
+          <div className="mb-1 text-xs text-ink-soft">או ציירו חתימה:</div>
+          <SignaturePad
+            saving={busy}
+            onSave={async (dataUrl) => {
+              setBusy(true);
+              try {
+                const file = dataUrlToFile(dataUrl, `signature-${contact.id}.png`);
+                onSaved(await api.uploadParticipantSignature(contact.id, file));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main page ──────────────────────────────────────────────────────────
 
 export default function Settings() {
@@ -345,6 +412,15 @@ export default function Settings() {
   const [mySignatureUrl, setMySignatureUrl] = useState<string | null>(null);
   const [signatureBusy, setSignatureBusy] = useState(false);
   const [newRole, setNewRole] = useState("");
+  const [roleHolders, setRoleHolders] = useState<Participant[]>([]);
+  const [roleHoldersOpen, setRoleHoldersOpen] = useState(false);
+
+  function loadRoleHolders() {
+    api
+      .listParticipants()
+      .then((all) => setRoleHolders(all.filter((p) => p.roles.length > 0)))
+      .catch(() => setRoleHolders([]));
+  }
 
   // Local field drafts — seeded once from `settings` on first load (see
   // module note in SignatoryCard for why: these must NOT re-sync every
@@ -367,6 +443,7 @@ export default function Settings() {
       .then(setSettings)
       .catch((err) => setError(apiErrorMessage(err)));
     api.listMembers().then(setMembers).catch(() => setMembers([]));
+    loadRoleHolders();
     api
       .getMySignature()
       .then((r) => setMySignatureUrl(r.signature_image_url))
@@ -545,6 +622,47 @@ export default function Settings() {
             />
           ))
         )}
+
+        {/* בעלי תפקידים מהאלפון — auto-listed from role assignments, collapsible */}
+        <div className="mt-5 border-t border-line pt-4">
+          <button
+            type="button"
+            onClick={() => setRoleHoldersOpen((o) => !o)}
+            className="flex w-full items-center justify-between text-right"
+          >
+            <span className="text-sm font-semibold text-ink-soft">
+              בעלי תפקידים מהאלפון
+              {roleHolders.length > 0 && (
+                <span className="mr-1.5 font-normal text-ink-soft">({roleHolders.length})</span>
+              )}
+            </span>
+            <span className="text-ink-soft">{roleHoldersOpen ? "﹀" : "︿"}</span>
+          </button>
+
+          {roleHoldersOpen && (
+            <div className="mt-3">
+              <p className="mb-3 text-xs text-ink-soft">
+                כל איש קשר שהוגדר לו תפקיד מרשימת התפקידים מופיע כאן. הוסיפו לו חתימה שתופיע בפרוטוקולים ובהזמנות.
+              </p>
+              {roleHolders.length === 0 ? (
+                <p className="text-sm text-ink-soft">
+                  אין בעלי תפקידים. הגדירו תפקיד לאיש קשר באלפון כדי שיופיע כאן.
+                </p>
+              ) : (
+                roleHolders.map((c) => (
+                  <RoleHolderSignatureCard
+                    key={c.id}
+                    contact={c}
+                    disabled={editDisabled}
+                    onSaved={(updated) =>
+                      setRoleHolders((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+                    }
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* חותמת ופרטים תפעוליים */}

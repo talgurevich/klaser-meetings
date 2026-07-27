@@ -316,6 +316,9 @@ class ParticipantOut(BaseModel):
     # identity user in the tenant (they're a system user). The effective
     # edit permission the UI shows is is_system_user OR edit_permission.
     is_system_user: bool = False
+    # data: URL of the role-holder's signature image, built server-side from
+    # the stored base64 (None when no signature uploaded).
+    signature_image_url: str | None = None
     created_by_user_id: UUID
     created_at: dt.datetime
     updated_at: dt.datetime

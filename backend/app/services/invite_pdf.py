@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import Meeting, Participant, TenantSettings
 from app.services import pdf_common as pc
 from app.services.mail import _KIND_LABELS
+from app.services.signatures import combined_signatory_rows
 
 
 def _guest_name_map(db: Session, meeting: Meeting) -> dict[str, str]:
@@ -95,7 +96,7 @@ def build_invite_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes:
 
     if settings_row:
         stamp = pc.img_reader(settings_row.stamp_data, settings_row.stamp_mime)
-        pc.signatures(pdf, sorted(settings_row.signatories, key=lambda s: s.order), stamp)
+        pc.signatures(pdf, combined_signatory_rows(db, settings_row), stamp)
 
     pdf._footer_text = f"{org_name} — הזמנה ל{kind_he}   ·   תאריך הפקה: {pc.fmt_date(dt.date.today())}"
     return bytes(pdf.output())

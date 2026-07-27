@@ -30,6 +30,7 @@ from app.schemas import (
     ParticipantUpdate,
 )
 from app.services.identity import IdentityUser, identity_service, require_entitlement
+from app.services.images import data_url, read_and_validate_image
 from app.services.permissions import require_editor
 
 router = APIRouter()
@@ -55,7 +56,19 @@ def _to_out(p: Participant, system_emails: set[str]) -> ParticipantOut:
     # Fall back to the legacy single `role` for rows saved before roles.
     if not out.roles and p.role:
         out.roles = [p.role]
+    out.signature_image_url = data_url(p.signature_image_data, p.signature_image_mime)
     return out
+
+
+def _get_participant_or_404(db: Session, tenant_id: UUID, participant_id: UUID) -> Participant:
+    p = db.execute(
+        select(Participant).where(
+            Participant.id == participant_id, Participant.tenant_id == tenant_id
+        )
+    ).scalar_one_or_none()
+    if p is None:
+        raise HTTPException(status_code=404, detail="איש הקשר לא נמצא")
+    return p
 
 
 def _compose_full_name(full_name: str | None, first: str | None, last: str | None, email: str | None) -> str:
@@ -224,3 +237,38 @@ def delete_participant(
         raise HTTPException(status_code=404, detail="איש/אשת הקשר לא נמצא/ה")
     db.delete(participant)
     db.commit()
+
+
+# ─── Role-holder signature image ─────────────────────────────────────────
+
+
+@router.post("/{participant_id}/signature", response_model=ParticipantOut)
+async def upload_participant_signature(
+    participant_id: UUID,
+    file: UploadFile,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> ParticipantOut:
+    """Attach a signature image to a role-holder — shown in the protocol /
+    invite signature block alongside the admin-curated signatories."""
+    tenant_id = UUID(user.tenant_id)
+    p = _get_participant_or_404(db, tenant_id, participant_id)
+    p.signature_image_data, p.signature_image_mime = await read_and_validate_image(file)
+    db.commit()
+    db.refresh(p)
+    return _to_out(p, _system_user_emails(user.tenant_id))
+
+
+@router.delete("/{participant_id}/signature", response_model=ParticipantOut)
+def delete_participant_signature(
+    participant_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> ParticipantOut:
+    tenant_id = UUID(user.tenant_id)
+    p = _get_participant_or_404(db, tenant_id, participant_id)
+    p.signature_image_data = None
+    p.signature_image_mime = None
+    db.commit()
+    db.refresh(p)
+    return _to_out(p, _system_user_emails(user.tenant_id))

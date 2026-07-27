@@ -162,21 +162,24 @@ def agenda_table(pdf: RtlPdf, items: list[tuple[int, str, str]]) -> None:
 
 
 def signatures(pdf: RtlPdf, signatory_rows, stamp: io.BytesIO | None) -> None:
-    """Fixed three-slot signature block, all sourced from tenant settings:
-    the first signatory on the right (e.g. יו״ר), the org stamp (חותמת
-    האגודה) in the centre, the second signatory on the left (e.g. מנהל
-    קהילה). Each slot is drawn only if its source exists — nothing is shown
-    for a missing signatory/stamp."""
-    sigs = list(signatory_rows)[:2]
-    if not sigs and stamp is None:
+    """Signature block laid out three-across, right-to-left: each signatory
+    (admin-curated signatories first, then אלפון role-holders) gets a slot,
+    and the org stamp (חותמת האגודה) gets its own slot at the end. Wraps to
+    a new row every 3 cells — and to a new page if it won't fit — so any
+    number of role-holders is supported rather than a fixed three. Each slot
+    is drawn only if its source exists."""
+    sigs = list(signatory_rows)
+    cells: list = [("sig", s) for s in sigs]
+    if stamp is not None:
+        cells.append(("stamp", None))
+    if not cells:
         return
-    bw = pdf.content_w / 3
-    base_y = pdf.get_y() + 4
-    x_left = pdf.l_margin
-    x_center = pdf.l_margin + bw
-    x_right = pdf.l_margin + 2 * bw
 
-    def _line_labels(x: float, label: str, name: str | None) -> None:
+    per_row = 3
+    bw = pdf.content_w / per_row
+    row_h = 34
+
+    def _line_labels(x: float, base_y: float, label: str, name: str | None) -> None:
         ly = base_y + 22
         pdf.set_draw_color(*LINE)
         pdf.set_line_width(0.2)
@@ -191,24 +194,30 @@ def signatures(pdf: RtlPdf, signatory_rows, stamp: io.BytesIO | None) -> None:
             pdf.set_text_color(*SOFT)
             pdf.cell(bw, 5, name, align="C", new_x="LEFT", new_y="NEXT")
 
-    def _draw_sig(sig, x: float) -> None:
+    def _draw_sig(sig, x: float, base_y: float) -> None:
         img = img_reader(sig.signature_image_data, sig.signature_image_mime)
         if img is not None:
             try:
                 pdf.image(img, x=x + bw / 2 - 14, y=base_y + 2, h=14)
             except Exception:  # noqa: BLE001
                 pass
-        _line_labels(x, sig.position_title or sig.member_role or "", sig.member_display_name or "")
+        _line_labels(x, base_y, sig.position_title or sig.member_role or "", sig.member_display_name or "")
 
-    if len(sigs) >= 1:  # right slot — chair (יו״ר)
-        _draw_sig(sigs[0], x_right)
-    if stamp is not None:  # centre slot — org stamp (חותמת האגודה)
-        try:
-            pdf.image(stamp, x=x_center + bw / 2 - 11, y=base_y, h=20)
-        except Exception:  # noqa: BLE001
-            pass
-        _line_labels(x_center, "חותמת", None)
-    if len(sigs) >= 2:  # left slot — community manager (מנהל קהילה)
-        _draw_sig(sigs[1], x_left)
-
-    pdf.set_y(base_y + 34)
+    for i in range(0, len(cells), per_row):
+        row = cells[i : i + per_row]
+        base_y = pdf.get_y() + 4
+        if base_y + row_h > pdf.page_break_trigger:
+            pdf.add_page()
+            base_y = pdf.get_y() + 4
+        for j, (kind, obj) in enumerate(row):
+            # Right-to-left: the first cell in the row sits at the rightmost x.
+            x = pdf.l_margin + (per_row - 1 - j) * bw
+            if kind == "stamp":
+                try:
+                    pdf.image(stamp, x=x + bw / 2 - 11, y=base_y, h=20)
+                except Exception:  # noqa: BLE001
+                    pass
+                _line_labels(x, base_y, "חותמת", None)
+            else:
+                _draw_sig(obj, x, base_y)
+        pdf.set_y(base_y + row_h)

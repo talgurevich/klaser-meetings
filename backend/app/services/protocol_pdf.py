@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import Meeting, TenantSettings
 from app.services import pdf_common as pc
 from app.services.meeting_summary import attendance_names
+from app.services.signatures import combined_signatory_rows
 
 # Resolved topic statuses that stand in for a decision in the protocol.
 _STATUS_NOTE = {
@@ -102,7 +103,7 @@ def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes
 
     if settings_row:
         stamp = pc.img_reader(settings_row.stamp_data, settings_row.stamp_mime)
-        pc.signatures(pdf, sorted(settings_row.signatories, key=lambda s: s.order), stamp)
+        pc.signatures(pdf, combined_signatory_rows(db, settings_row), stamp)
 
     pdf._footer_text = f"{org_name} — פרוטוקול ישיבה   ·   תאריך הפקה: {pc.fmt_datetime(dt.datetime.now())}"
     return bytes(pdf.output())
