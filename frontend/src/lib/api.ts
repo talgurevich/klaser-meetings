@@ -387,6 +387,13 @@ export type MeetingRecording = {
   created_at: string;
 };
 
+export type PreviousMeeting = {
+  id: string;
+  kind: MeetingKind;
+  number: string | null;
+  date: string;
+};
+
 export type InvitePreviewTopic = { title: string; duration_minutes: number | null };
 
 export type InvitePreview = {
@@ -445,6 +452,7 @@ export type TenantSettingsUpdateInput = Partial<
 export type RsvpMeeting = {
   recipient_name: string;
   status: "pending" | "confirmed_attend" | "confirmed_absent";
+  protocol_receipt_confirmed: boolean;
   tenant_name: string;
   meeting_kind: MeetingKind;
   meeting_number: string | null;
@@ -453,6 +461,14 @@ export type RsvpMeeting = {
   time_end: string | null;
   location: string | null;
   topics: InvitePreviewTopic[];
+};
+
+export type ProtocolReceiptStatus = {
+  sent: boolean;
+  sent_at: string | null;
+  total: number;
+  confirmed: number;
+  threshold_met: boolean;
 };
 
 // ─── Endpoints ─────────────────────────────────────────────────────────
@@ -568,6 +584,14 @@ export const api = {
   publishMeeting: (id: string) =>
     request<Meeting>(`/api/meetings/${id}/publish`, { method: "POST" }),
   getAttendance: (id: string) => request<string[]>(`/api/meetings/${id}/attendance`),
+  getPreviousMeeting: (id: string) =>
+    request<PreviousMeeting | null>(`/api/meetings/${id}/previous`),
+  getProtocolReceiptStatus: (id: string) =>
+    request<ProtocolReceiptStatus>(`/api/meetings/${id}/protocol-receipt-status`),
+  distributeProtocolApproval: (id: string) =>
+    request<ProtocolReceiptStatus>(`/api/meetings/${id}/distribute-protocol-approval`, {
+      method: "POST",
+    }),
   getProtocolPdf: async (id: string): Promise<Blob> => {
     const r = await fetch(`${BASE}/api/meetings/${id}/protocol.pdf`, { credentials: "include" });
     if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));
@@ -737,6 +761,10 @@ export const api = {
     request<RsvpMeeting>(`/api/public/rsvp/${encodeURIComponent(token)}`, {
       method: "POST",
       body: JSON.stringify({ response }),
+    }),
+  confirmProtocolReceipt: (token: string) =>
+    request<RsvpMeeting>(`/api/public/rsvp/${encodeURIComponent(token)}/protocol-receipt`, {
+      method: "POST",
     }),
 
   // ─── Tenant settings — reads open to any entitled user, writes

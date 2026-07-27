@@ -54,6 +54,7 @@ def _to_out(invite: MeetingInvite) -> RsvpMeetingOut:
     return RsvpMeetingOut(
         recipient_name=invite.display_name or invite.email,
         status=invite.status,
+        protocol_receipt_confirmed=invite.protocol_receipt_confirmed_at is not None,
         tenant_name=_tenant_name(str(meeting.tenant_id)),
         meeting_kind=meeting.kind,
         meeting_number=meeting.number,
@@ -81,4 +82,17 @@ def submit_rsvp(token: str, body: RsvpSubmitRequest, db: Session = Depends(get_d
     invite.responded_at = dt.datetime.now(dt.timezone.utc)
     db.commit()
     db.refresh(invite)
+    return _to_out(invite)
+
+
+@router.post("/{token}/protocol-receipt", response_model=RsvpMeetingOut)
+def confirm_protocol_receipt(token: str, db: Session = Depends(get_db)) -> RsvpMeetingOut:
+    """Token-holder confirms they received the distributed protocol — counts
+    toward the ≥50% gate before the protocol can be published to the public.
+    Idempotent: re-confirming keeps the original timestamp."""
+    invite = _get_invite_or_404(db, token)
+    if invite.protocol_receipt_confirmed_at is None:
+        invite.protocol_receipt_confirmed_at = dt.datetime.now(dt.timezone.utc)
+        db.commit()
+        db.refresh(invite)
     return _to_out(invite)

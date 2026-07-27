@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { api, apiErrorMessage, type Meeting, type MeetingStatus, type Topic, type TopicPoolItem } from "../lib/api";
+import {
+  api,
+  apiErrorMessage,
+  type Meeting,
+  type MeetingStatus,
+  type PreviousMeeting,
+  type ProtocolReceiptStatus,
+  type Topic,
+  type TopicPoolItem,
+} from "../lib/api";
 import {
   KIND_LABELS,
   STATUS_COLORS,
@@ -92,6 +101,42 @@ export default function MeetingDetail() {
   const [followUpTopic, setFollowUpTopic] = useState<Topic | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
+  const [prevMeeting, setPrevMeeting] = useState<PreviousMeeting | null>(null);
+  const [prevPdfBusy, setPrevPdfBusy] = useState(false);
+  const [receipt, setReceipt] = useState<ProtocolReceiptStatus | null>(null);
+  const [receiptBusy, setReceiptBusy] = useState(false);
+
+  async function distributeApproval() {
+    if (!id) return;
+    setReceiptBusy(true);
+    setError(null);
+    try {
+      setReceipt(await api.distributeProtocolApproval(id));
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setReceiptBusy(false);
+    }
+  }
+
+  // Open the previous meeting's protocol PDF (for the recurring "אישור
+  // פרוטוקול ישיבה קודמת" topic). Opened in a new tab for on-screen review.
+  async function showPreviousProtocol() {
+    if (!prevMeeting) return;
+    setPrevPdfBusy(true);
+    setError(null);
+    try {
+      const blob = await api.getProtocolPdf(prevMeeting.id);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      // Revoke a little later so the new tab has time to load the blob.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setPrevPdfBusy(false);
+    }
+  }
 
   async function downloadProtocol() {
     if (!id) return;
@@ -140,6 +185,31 @@ export default function MeetingDetail() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Look up the previous meeting only while active — powers the "show
+  // previous protocol" button on the recurring approval topic.
+  useEffect(() => {
+    if (!id || meeting?.status !== "active") {
+      setPrevMeeting(null);
+      return;
+    }
+    api
+      .getPreviousMeeting(id)
+      .then(setPrevMeeting)
+      .catch(() => setPrevMeeting(null));
+  }, [id, meeting?.status]);
+
+  // Protocol-receipt gate progress — only relevant once locked.
+  useEffect(() => {
+    if (!id || (meeting?.status !== "pending_approval" && meeting?.status !== "approved")) {
+      setReceipt(null);
+      return;
+    }
+    api
+      .getProtocolReceiptStatus(id)
+      .then(setReceipt)
+      .catch(() => setReceipt(null));
+  }, [id, meeting?.status]);
 
   useEffect(() => {
     // No status filter — every pool topic is pickable regardless of its
@@ -639,6 +709,17 @@ export default function MeetingDetail() {
                 setCloseInitialNotes(t.topic_notes || "");
                 setClosingTopic(t);
               }}
+              prevProtocol={
+                prevMeeting && (t.is_default_first || /פרוט/.test(t.title))
+                  ? {
+                      label: `📄 הצג פרוטוקול ${
+                        prevMeeting.number ? `מס׳ ${prevMeeting.number}` : "ישיבה קודמת"
+                      }`,
+                      busy: prevPdfBusy,
+                      onOpen: showPreviousProtocol,
+                    }
+                  : null
+              }
             />
           ))}
         </div>
@@ -721,15 +802,26 @@ export default function MeetingDetail() {
         <div className="mb-6">
           <button
             onClick={() => setPublishing(true)}
-            disabled={busy || (meeting.protocol_approvals || []).length === 0}
+            disabled={
+              busy ||
+              (meeting.protocol_approvals || []).length === 0 ||
+              (receipt !== null && !receipt.threshold_met)
+            }
             className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
           >
             פרסם לציבור והעבר לפורסם
           </button>
-          {(meeting.protocol_approvals || []).length === 0 && (
+          {(meeting.protocol_approvals || []).length === 0 ? (
             <p className="mt-1 text-center text-xs text-ink-soft">
               נדרש לפחות אישור פרוטוקול אחד לפני הפרסום
             </p>
+          ) : (
+            receipt !== null &&
+            !receipt.threshold_met && (
+              <p className="mt-1 text-center text-xs text-ink-soft">
+                נדרש שלפחות מחצית מהמוזמנים יאשרו קבלת הפרוטוקול לפני פרסום לציבור
+              </p>
+            )
           )}
         </div>
       ) : (
@@ -778,6 +870,51 @@ export default function MeetingDetail() {
             canApprove={meeting.status === "approved"}
             onApprove={approveProtocol}
           />
+        </div>
+      )}
+
+      {editor && (meeting.status === "pending_approval" || meeting.status === "approved") && (
+        <div className="mb-6 rounded border border-line bg-white p-4">
+          <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
+            <span aria-hidden>📨</span> אישור קבלת פרוטוקול (מוזמנים)
+          </h3>
+          <p className="mb-3 text-xs text-ink-soft">
+            הפצת הפרוטוקול למוזמנים לאישור קבלה. יש צורך שלפחות מחצית מהמוזמנים יאשרו קבלה לפני פרסום
+            לציבור.
+          </p>
+
+          {receipt && receipt.total > 0 && (
+            <div className="mb-3">
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span className="text-ink-soft">אישרו קבלה</span>
+                <span className={receipt.threshold_met ? "font-semibold text-emerald-700" : "font-medium"}>
+                  {receipt.confirmed} מתוך {receipt.total}
+                  {receipt.threshold_met ? " · הרוב הושג ✓" : ""}
+                </span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-line">
+                <div
+                  className={`h-full ${receipt.threshold_met ? "bg-emerald-500" : "bg-accent"}`}
+                  style={{ width: `${Math.min(100, (receipt.confirmed / receipt.total) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+          {receipt && receipt.total === 0 && (
+            <p className="mb-3 text-xs text-ink-soft">אין מוזמנים עם כתובת אימייל להפצה.</p>
+          )}
+
+          <button
+            onClick={distributeApproval}
+            disabled={receiptBusy || (receipt?.total ?? 0) === 0}
+            className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            {receiptBusy
+              ? "שולח…"
+              : receipt?.sent
+                ? "📨 הפץ שוב לאישור"
+                : "📨 הפץ פרוטוקול לאישור"}
+          </button>
         </div>
       )}
 

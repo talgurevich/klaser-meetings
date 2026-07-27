@@ -120,6 +120,9 @@ class Meeting(Base):
     invite_sent_internal_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     invite_sent_public_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     protocol_generated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When the protocol was distributed to invitees for receipt confirmation
+    # (the ≥50% receipt gate before public publish). See routes/meetings.py.
+    protocol_approval_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
@@ -291,6 +294,11 @@ class MeetingInvite(Base):
     # pending | confirmed_attend | confirmed_absent
     status: Mapped[str] = mapped_column(String, nullable=False, default="pending")
     responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # When this invitee confirmed receipt of the distributed protocol — the
+    # ≥50%-of-invitees gate before public publish. Separate from `status`
+    # (RSVP to the invitation) — a different acknowledgement entirely.
+    protocol_receipt_confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

@@ -34,6 +34,8 @@ from app.schemas import (
     MeetingOut,
     MeetingRecordingOut,
     MeetingUpdate,
+    PreviousMeetingOut,
+    ProtocolReceiptStatus,
     PublishPreviewOut,
     PublishRecipient,
     TopicCreate,
@@ -346,6 +348,42 @@ def _check_status_transition(meeting: Meeting, new_status: str) -> None:
                 status_code=409,
                 detail="נדרש לפחות אישור פרוטוקול אחד לפני פרסום",
             )
+        # Extra gate: at least half the invitees must have confirmed receipt
+        # of the distributed protocol before it can go public.
+        if not _receipt_threshold_met(meeting):
+            total, confirmed = _protocol_receipt_counts(meeting)
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"נדרש שלפחות מחצית מהמוזמנים יאשרו קבלת הפרוטוקול לפני פרסום לציבור "
+                    f"(אושרו {confirmed} מתוך {total})."
+                ),
+            )
+
+
+def _protocol_receipt_counts(meeting: Meeting) -> tuple[int, int]:
+    """(total_invitees_with_email, how_many_confirmed_receipt)."""
+    invites = [i for i in meeting.invites if (i.email or "").strip()]
+    confirmed = sum(1 for i in invites if i.protocol_receipt_confirmed_at is not None)
+    return len(invites), confirmed
+
+
+def _receipt_threshold_met(meeting: Meeting) -> bool:
+    """True once ≥50% of invitees have confirmed receipt. No invitees ⇒ met
+    (nothing to gate on)."""
+    total, confirmed = _protocol_receipt_counts(meeting)
+    return total == 0 or confirmed * 2 >= total
+
+
+def _receipt_status_out(meeting: Meeting) -> "ProtocolReceiptStatus":
+    total, confirmed = _protocol_receipt_counts(meeting)
+    return ProtocolReceiptStatus(
+        sent=meeting.protocol_approval_sent_at is not None,
+        sent_at=meeting.protocol_approval_sent_at,
+        total=total,
+        confirmed=confirmed,
+        threshold_met=_receipt_threshold_met(meeting),
+    )
 
 
 @router.patch("/{meeting_id}", response_model=MeetingOut)
@@ -462,6 +500,109 @@ def publish_meeting(
     # Email each follow-up owner their task(s) once the meeting is locked.
     notify_action_owners(db, meeting, user.tenant_name or "")
     return meeting
+
+
+@router.get("/{meeting_id}/previous", response_model=PreviousMeetingOut | None)
+def previous_meeting(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> Meeting | None:
+    """The most recent *published* meeting of the same kind before this one —
+    so an active meeting can pull up the previous protocol for the recurring
+    'אישור פרוטוקול ישיבה קודמת' topic. Returns null when there is none."""
+    tenant_id = UUID(user.tenant_id)
+    meeting = _get_meeting_or_404(db, meeting_id, tenant_id)
+    return (
+        db.execute(
+            select(Meeting)
+            .where(
+                Meeting.tenant_id == tenant_id,
+                Meeting.kind == meeting.kind,
+                Meeting.id != meeting.id,
+                Meeting.published_at.is_not(None),
+                Meeting.date <= meeting.date,
+            )
+            .order_by(Meeting.date.desc(), Meeting.published_at.desc())
+        )
+        .scalars()
+        .first()
+    )
+
+
+@router.get("/{meeting_id}/protocol-receipt-status", response_model=ProtocolReceiptStatus)
+def protocol_receipt_status(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> ProtocolReceiptStatus:
+    """Progress of the protocol-receipt gate — how many invitees confirmed
+    receipt, and whether the ≥50% threshold is met."""
+    meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    return _receipt_status_out(meeting)
+
+
+@router.post("/{meeting_id}/distribute-protocol-approval", response_model=ProtocolReceiptStatus)
+def distribute_protocol_approval(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> ProtocolReceiptStatus:
+    """Email every invitee the protocol (PDF) plus a link to confirm receipt.
+    Only after the meeting is locked (pending_approval/approved). Confirmations
+    accrue toward the ≥50% gate that unlocks public publish."""
+    meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    if meeting.status not in ("pending_approval", "approved"):
+        raise HTTPException(
+            status_code=409,
+            detail="ניתן להפיץ את הפרוטוקול לאישור רק לאחר נעילת הישיבה.",
+        )
+
+    frontend = settings.primary_frontend_url.rstrip("/")
+    try:
+        pdf = build_protocol_pdf(db, meeting, user.tenant_name or "")
+        attachments = (
+            mail.Attachment(
+                filename=f"פרוטוקול {meeting.number}.pdf" if meeting.number else "פרוטוקול.pdf",
+                content=pdf,
+            ),
+        )
+    except Exception:  # noqa: BLE001 — a PDF failure must not block the send
+        attachments = ()
+
+    kind_he = mail._KIND_LABELS.get(meeting.kind, meeting.kind)
+    num = f" מס׳ {meeting.number}" if meeting.number else ""
+    org = user.tenant_name or ""
+    for inv in meeting.invites:
+        email = (inv.email or "").strip()
+        if not email:
+            continue
+        link = f"{frontend}/protocol-receipt/{inv.token}"
+        body_html = mail._wrap_html(
+            f"<h1>אישור קבלת פרוטוקול — {kind_he}{num}</h1>"
+            f"<p>שלום {inv.display_name or ''},</p>"
+            f"<p>מצורף פרוטוקול {kind_he}{num} מתאריך {meeting.date.strftime('%d/%m/%Y')}. "
+            f"נא לאשר את קבלתו:</p>"
+            f'<p><a href="{link}" class="btn btn-attend">אישור קבלת הפרוטוקול</a></p>',
+            f"{org} · Klaser",
+        )
+        body_text = (
+            f"אישור קבלת פרוטוקול — {kind_he}{num}\n\n"
+            f"שלום {inv.display_name or ''},\n"
+            f"מצורף פרוטוקול {kind_he}{num}. לאישור קבלה: {link}\n\n— {org}"
+        )
+        mail.send_prebuilt(
+            to_email=email,
+            subject=f"אישור קבלת פרוטוקול — {kind_he}{num}",
+            html_body=body_html,
+            text_body=body_text,
+            attachments=attachments,
+        )
+
+    meeting.protocol_approval_sent_at = dt.datetime.now(dt.timezone.utc)
+    db.commit()
+    db.refresh(meeting)
+    return _receipt_status_out(meeting)
 
 
 @router.get("/{meeting_id}/attendance", response_model=list[str])

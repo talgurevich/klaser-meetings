@@ -25,6 +25,7 @@ export default function LiveTopicCard({
   onUndoDefer,
   onCancel,
   onEdit,
+  prevProtocol,
 }: {
   topic: Topic;
   index: number;
@@ -42,6 +43,7 @@ export default function LiveTopicCard({
   onUndoDefer: () => void;
   onCancel: () => void;
   onEdit: () => void;
+  prevProtocol?: { label: string; busy: boolean; onOpen: () => void } | null;
 }) {
   const [tick, setTick] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
@@ -145,6 +147,16 @@ export default function LiveTopicCard({
               </span>
             )}
           </div>
+
+          {prevProtocol && (
+            <button
+              onClick={prevProtocol.onOpen}
+              disabled={prevProtocol.busy}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-accent bg-white px-3 py-1.5 text-sm font-medium text-accent-dark hover:bg-line disabled:opacity-50"
+            >
+              {prevProtocol.busy ? "טוען…" : prevProtocol.label}
+            </button>
+          )}
 
           {finished && (
             <div className="mt-3 space-y-1 rounded bg-surface p-3 text-sm">

@@ -153,6 +153,30 @@ class MeetingListItem(BaseModel):
     created_at: dt.datetime
 
 
+class PreviousMeetingOut(BaseModel):
+    """Minimal reference to the most recent published meeting of the same
+    kind — lets the active meeting show/link its protocol (for the recurring
+    'אישור פרוטוקול ישיבה קודמת' topic)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    kind: str
+    number: str | None
+    date: dt.date
+
+
+class ProtocolReceiptStatus(BaseModel):
+    """Progress of the protocol-receipt approval gate: how many invitees have
+    confirmed receipt vs. the total, and whether the ≥50% threshold is met."""
+
+    sent: bool
+    sent_at: dt.datetime | None
+    total: int
+    confirmed: int
+    threshold_met: bool
+
+
 class MeetingInviteOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -465,6 +489,7 @@ class RsvpMeetingOut(BaseModel):
 
     recipient_name: str
     status: str  # pending | confirmed_attend | confirmed_absent
+    protocol_receipt_confirmed: bool = False
     tenant_name: str
     meeting_kind: str
     meeting_number: str | None

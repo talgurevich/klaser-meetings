@@ -12,6 +12,7 @@ import Participants from "./pages/Participants";
 import ActionItems from "./pages/ActionItems";
 import Settings from "./pages/Settings";
 import Rsvp from "./pages/Rsvp";
+import ProtocolReceipt from "./pages/ProtocolReceipt";
 
 const IDENTITY_BASE =
   import.meta.env.VITE_IDENTITY_BASE_URL || "http://localhost:8001";
@@ -71,6 +72,7 @@ export default function App() {
         {/* Also anonymous-reachable — an invitation recipient clicking an
          * RSVP link from their email was never asked to log in at all. */}
         <Route path="/rsvp/:token" element={<Rsvp />} />
+        <Route path="/protocol-receipt/:token" element={<ProtocolReceipt />} />
         <Route path="/*" element={<AuthGate />} />
       </Routes>
     </BrowserRouter>
