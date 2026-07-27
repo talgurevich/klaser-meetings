@@ -105,6 +105,10 @@ export default function MeetingDetail() {
   const [prevPdfBusy, setPrevPdfBusy] = useState(false);
   const [receipt, setReceipt] = useState<ProtocolReceiptStatus | null>(null);
   const [receiptBusy, setReceiptBusy] = useState(false);
+  // Post-lock, the whole agenda is edited behind a single toggle rather than
+  // every topic card exposing its controls at once.
+  const [agendaEditing, setAgendaEditing] = useState(false);
+  const [finishEditModal, setFinishEditModal] = useState(false);
 
   async function distributeApproval() {
     if (!id) return;
@@ -519,6 +523,10 @@ export default function MeetingDetail() {
   const nextStatus = currentIdx === -1 ? undefined : STATUS_ORDER[currentIdx + 1];
   const isPrep = PREP_STATUSES.includes(meeting.status);
   const isActive = meeting.status === "active";
+  // Locked-but-editable phases (after the meeting ends, before archive):
+  // topics are read-only until the single "ערוך סדר יום" toggle is on.
+  const isLockedEditable = editor && !isActive && !isPrep && meeting.status !== "archived";
+  const topicsEditable = isActive ? editor : isLockedEditable && agendaEditing;
   const pendingApprovalIdx = STATUS_ORDER.indexOf("pending_approval");
   const approvedIdx = STATUS_ORDER.indexOf("approved");
   const showInternalApproval = currentIdx >= pendingApprovalIdx;
@@ -617,7 +625,29 @@ export default function MeetingDetail() {
 
       {isActive && editor && <MeetingRecorder meetingId={meeting.id} />}
 
-      <h2 className="mb-3 font-display text-lg font-semibold">סדר יום</h2>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="font-display text-lg font-semibold">סדר יום</h2>
+        {isLockedEditable && (
+          <button
+            onClick={() => {
+              if (!agendaEditing) {
+                setAgendaEditing(true);
+              } else if (meeting.status === "pending_approval" || meeting.status === "approved") {
+                setFinishEditModal(true);
+              } else {
+                setAgendaEditing(false);
+              }
+            }}
+            className={`rounded border px-3 py-1.5 text-sm font-medium ${
+              agendaEditing
+                ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                : "border-line-strong text-ink hover:bg-line"
+            }`}
+          >
+            {agendaEditing ? "✓ סיום עריכה" : "✏ ערוך סדר יום"}
+          </button>
+        )}
+      </div>
 
       {isPrep ? (
         <div className="space-y-2">
@@ -688,7 +718,7 @@ export default function MeetingDetail() {
               key={t.id}
               topic={t}
               index={i + 1}
-              editable={editor}
+              editable={topicsEditable}
               isTiming={timingTopicId === t.id}
               timerStartedAt={timingTopicId === t.id ? timerStartedAt : null}
               busy={busy}
@@ -955,6 +985,41 @@ export default function MeetingDetail() {
             load();
           }}
         />
+      )}
+
+      {finishEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-line bg-white p-5 text-center shadow-lg">
+            <h2 className="mb-2 text-base font-semibold">סיום עריכת הפרוטוקול</h2>
+            <p className="mb-4 text-sm text-ink-soft">
+              לשלוח את הפרוטוקול הערוך לאישור משתתפי הפגישה? הם יקבלו את הנוסח המעודכן במייל ויתבקשו לאשר
+              קבלה.
+            </p>
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={() => {
+                  setFinishEditModal(false);
+                  setAgendaEditing(false);
+                }}
+                disabled={receiptBusy}
+                className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
+              >
+                לא, רק סיים
+              </button>
+              <button
+                onClick={async () => {
+                  await distributeApproval();
+                  setFinishEditModal(false);
+                  setAgendaEditing(false);
+                }}
+                disabled={receiptBusy}
+                className="rounded bg-accent-dark px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {receiptBusy ? "שולח…" : "כן, שלח לאישור"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
