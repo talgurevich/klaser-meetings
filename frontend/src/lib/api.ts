@@ -378,6 +378,7 @@ export type ActionItem = {
 export type MeetingRecording = {
   id: string;
   meeting_id: string;
+  topic_id: string | null;
   filename: string;
   content_type: string;
   size_bytes: number;
@@ -605,12 +606,18 @@ export const api = {
   uploadRecording: async (
     meetingId: string,
     blob: Blob,
-    opts: { filename: string; durationSeconds?: number | null; source: "mic" | "upload" },
+    opts: {
+      filename: string;
+      durationSeconds?: number | null;
+      source: "mic" | "upload";
+      topicId?: string | null;
+    },
   ): Promise<MeetingRecording> => {
     const form = new FormData();
     form.append("file", blob, opts.filename);
     const params = new URLSearchParams({ source: opts.source });
     if (opts.durationSeconds != null) params.set("duration_seconds", String(opts.durationSeconds));
+    if (opts.topicId) params.set("topic_id", opts.topicId);
     const r = await fetch(`${BASE}/api/meetings/${meetingId}/recordings?${params}`, {
       method: "POST",
       credentials: "include",

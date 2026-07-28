@@ -232,6 +232,11 @@ class MeetingRecording(Base):
     meeting_id: Mapped[UUID] = mapped_column(
         SQLUUID(as_uuid=True), ForeignKey("meetings.id", ondelete="CASCADE"), index=True, nullable=False
     )
+    # Recordings are now captured per agenda topic (null = legacy meeting-level
+    # recording). Deleting the topic removes its recordings.
+    topic_id: Mapped[UUID | None] = mapped_column(
+        SQLUUID(as_uuid=True), ForeignKey("topics.id", ondelete="CASCADE"), index=True
+    )
     created_by_user_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), nullable=False)
 
     filename: Mapped[str] = mapped_column(String, nullable=False)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import type { Topic } from "../lib/api";
+import type { MeetingRecording, Topic } from "../lib/api";
+import TopicRecorder from "./TopicRecorder";
 import { TOPIC_STATUS_COLORS, TOPIC_STATUS_LABELS } from "../lib/meetingLabels";
 
 function formatElapsed(totalSeconds: number): string {
@@ -26,6 +27,10 @@ export default function LiveTopicCard({
   onCancel,
   onEdit,
   prevProtocol,
+  meetingId,
+  recordings,
+  canRecord,
+  onRecordingsChanged,
 }: {
   topic: Topic;
   index: number;
@@ -44,6 +49,10 @@ export default function LiveTopicCard({
   onCancel: () => void;
   onEdit: () => void;
   prevProtocol?: { label: string; busy: boolean; onOpen: () => void } | null;
+  meetingId: string;
+  recordings: MeetingRecording[];
+  canRecord: boolean;
+  onRecordingsChanged: () => void;
 }) {
   const [tick, setTick] = useState(0);
   const [collapsed, setCollapsed] = useState(false);
@@ -248,6 +257,17 @@ export default function LiveTopicCard({
                 ✕ בטל נושא
               </button>
             </div>
+          )}
+
+          {(canRecord || recordings.length > 0) && (
+            <TopicRecorder
+              meetingId={meetingId}
+              topicId={topic.id}
+              topicTitle={topic.title}
+              recordings={recordings}
+              canRecord={canRecord}
+              onChanged={onRecordingsChanged}
+            />
           )}
         </>
       )}

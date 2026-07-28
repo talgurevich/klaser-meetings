@@ -58,6 +58,7 @@ class MeetingRecordingOut(BaseModel):
 
     id: UUID
     meeting_id: UUID
+    topic_id: UUID | None
     filename: str
     content_type: str
     size_bytes: int

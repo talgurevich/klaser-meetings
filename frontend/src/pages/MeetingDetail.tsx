@@ -4,6 +4,7 @@ import {
   api,
   apiErrorMessage,
   type Meeting,
+  type MeetingRecording,
   type MeetingStatus,
   type PreviousMeeting,
   type ProtocolReceiptStatus,
@@ -20,7 +21,6 @@ import {
 import { useIsEditor } from "../components/Layout";
 import { useAuth } from "../lib/auth";
 import AttendanceList from "../components/AttendanceList";
-import MeetingRecorder from "../components/MeetingRecorder";
 import LiveTopicCard from "../components/LiveTopicCard";
 import CloseTopicModal, { type CloseTopicValues } from "../components/CloseTopicModal";
 import FollowUpModal from "../components/FollowUpModal";
@@ -186,9 +186,23 @@ export default function MeetingDetail() {
       .catch((err) => setError(apiErrorMessage(err)));
   }, [id]);
 
+  const [recordings, setRecordings] = useState<MeetingRecording[]>([]);
+  const loadRecordings = useCallback(() => {
+    if (!id) return;
+    api
+      .listRecordings(id)
+      .then(setRecordings)
+      .catch(() => setRecordings([]));
+  }, [id]);
+
   useEffect(() => {
     load();
   }, [load]);
+
+  // Per-topic recordings — available once the meeting is live and afterwards.
+  useEffect(() => {
+    if (id && meeting && !PREP_STATUSES.includes(meeting.status)) loadRecordings();
+  }, [id, meeting?.status, loadRecordings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Look up the previous meeting only while active — powers the "show
   // previous protocol" button on the recurring approval topic.
@@ -623,8 +637,6 @@ export default function MeetingDetail() {
 
       {isActive && attendanceBlock}
 
-      {isActive && editor && <MeetingRecorder meetingId={meeting.id} />}
-
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="font-display text-lg font-semibold">סדר יום</h2>
         {isLockedEditable && (
@@ -750,6 +762,10 @@ export default function MeetingDetail() {
                     }
                   : null
               }
+              meetingId={meeting.id}
+              recordings={recordings.filter((r) => r.topic_id === t.id)}
+              canRecord={isActive && editor}
+              onRecordingsChanged={loadRecordings}
             />
           ))}
         </div>

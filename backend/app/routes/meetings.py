@@ -1300,13 +1300,24 @@ def upload_recording(
     file: UploadFile = File(...),
     duration_seconds: int | None = None,
     source: str = "upload",
+    topic_id: UUID | None = None,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
 ) -> MeetingRecording:
     """Store an audio recording for a meeting — either a live mic capture
-    (source='mic') or an uploaded audio file (source='upload')."""
+    (source='mic') or an uploaded audio file (source='upload'), optionally
+    tied to a specific agenda topic (topic_id)."""
     tenant_id = UUID(user.tenant_id)
     _get_meeting_or_404(db, meeting_id, tenant_id)
+
+    if topic_id is not None:
+        topic = db.execute(
+            select(Topic).where(
+                Topic.id == topic_id, Topic.meeting_id == meeting_id, Topic.tenant_id == tenant_id
+            )
+        ).scalar_one_or_none()
+        if topic is None:
+            raise HTTPException(status_code=404, detail="הנושא לא נמצא")
 
     data = file.file.read()
     if not data:
@@ -1317,6 +1328,7 @@ def upload_recording(
     rec = MeetingRecording(
         tenant_id=tenant_id,
         meeting_id=meeting_id,
+        topic_id=topic_id,
         created_by_user_id=UUID(user.user_id),
         filename=file.filename or "recording.webm",
         content_type=file.content_type or "audio/webm",
