@@ -23,7 +23,6 @@ import { useAuth } from "../lib/auth";
 import AttendanceList from "../components/AttendanceList";
 import LiveTopicCard from "../components/LiveTopicCard";
 import CloseTopicModal, { type CloseTopicValues } from "../components/CloseTopicModal";
-import FollowUpModal from "../components/FollowUpModal";
 import ApprovalPanel from "../components/ApprovalPanel";
 import MeetingDetailsForm from "../components/MeetingDetailsForm";
 import InviteesPanel from "../components/InviteesPanel";
@@ -98,7 +97,6 @@ export default function MeetingDetail() {
   const [timerStartedAt, setTimerStartedAt] = useState<number | null>(null);
   const [closingTopic, setClosingTopic] = useState<Topic | null>(null);
   const [closeInitialNotes, setCloseInitialNotes] = useState("");
-  const [followUpTopic, setFollowUpTopic] = useState<Topic | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [prevMeeting, setPrevMeeting] = useState<PreviousMeeting | null>(null);
@@ -522,23 +520,6 @@ export default function MeetingDetail() {
 
   // Standalone follow-up: adds/updates action_item without touching status
   // or the running timer — the topic stays exactly as it was.
-  async function submitFollowUp(actionItem: string, owner: string) {
-    if (!id || !followUpTopic) return;
-    setBusy(true);
-    setError(null);
-    try {
-      await api.updateTopic(id, followUpTopic.id, {
-        action_item: actionItem,
-        action_item_owner: owner || null,
-      });
-      setFollowUpTopic(null);
-      load();
-    } catch (err) {
-      setError(apiErrorMessage(err));
-    } finally {
-      setBusy(false);
-    }
-  }
 
   if (error && !meeting) {
     return (
@@ -766,7 +747,6 @@ export default function MeetingDetail() {
                 setCloseInitialNotes(notes);
                 setClosingTopic(t);
               }}
-              onCreateFollowUp={() => setFollowUpTopic(t)}
               onSaveNotes={(notes) => saveTopicNotes(t, notes)}
               onDefer={() => deferTopicNow(t)}
               onUndoDefer={() => undoDefer(t)}
@@ -1004,17 +984,6 @@ export default function MeetingDetail() {
         />
       )}
 
-      {followUpTopic && (
-        <FollowUpModal
-          topicTitle={followUpTopic.title}
-          initialValue={followUpTopic.action_item || ""}
-          initialOwner={followUpTopic.action_item_owner || ""}
-          presentMemberIds={meeting.attendees_present || []}
-          presentParticipantIds={meeting.participant_ids || []}
-          onCancel={() => setFollowUpTopic(null)}
-          onSubmit={submitFollowUp}
-        />
-      )}
 
       {publishing && (
         <PublishModal

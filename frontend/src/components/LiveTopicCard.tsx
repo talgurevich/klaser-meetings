@@ -20,7 +20,6 @@ export default function LiveTopicCard({
   onPauseTimer,
   onReset,
   onOpenClose,
-  onCreateFollowUp,
   onSaveNotes,
   onDefer,
   onUndoDefer,
@@ -42,7 +41,6 @@ export default function LiveTopicCard({
   onPauseTimer: () => void;
   onReset: () => void;
   onOpenClose: (notes: string) => void;
-  onCreateFollowUp: () => void;
   onSaveNotes: (notes: string) => void;
   onDefer: () => void;
   onUndoDefer: () => void;
@@ -234,13 +232,6 @@ export default function LiveTopicCard({
                 className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
               >
                 ✓ סגור נושא
-              </button>
-              <button
-                onClick={onCreateFollowUp}
-                disabled={busy}
-                className="rounded border border-line-strong px-3 py-1.5 text-sm hover:bg-line disabled:opacity-50"
-              >
-                ☑ צור מעקב
               </button>
               <button
                 onClick={onDefer}
