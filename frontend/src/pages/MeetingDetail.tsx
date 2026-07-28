@@ -110,12 +110,12 @@ export default function MeetingDetail() {
   const [agendaEditing, setAgendaEditing] = useState(false);
   const [finishEditModal, setFinishEditModal] = useState(false);
 
-  async function distributeApproval() {
+  async function distributeApproval(reset = false) {
     if (!id) return;
     setReceiptBusy(true);
     setError(null);
     try {
-      setReceipt(await api.distributeProtocolApproval(id));
+      setReceipt(await api.distributeProtocolApproval(id, reset));
     } catch (err) {
       setError(apiErrorMessage(err));
     } finally {
@@ -935,7 +935,7 @@ export default function MeetingDetail() {
           )}
 
           <button
-            onClick={distributeApproval}
+            onClick={() => distributeApproval(false)}
             disabled={receiptBusy || (receipt?.total ?? 0) === 0}
             className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
@@ -993,7 +993,7 @@ export default function MeetingDetail() {
             <h2 className="mb-2 text-base font-semibold">סיום עריכת הפרוטוקול</h2>
             <p className="mb-4 text-sm text-ink-soft">
               לשלוח את הפרוטוקול הערוך לאישור משתתפי הפגישה? הם יקבלו את הנוסח המעודכן במייל ויתבקשו לאשר
-              קבלה.
+              קבלה מחדש (אישורים קודמים יתאפסו כי הפרוטוקול עודכן).
             </p>
             <div className="flex justify-center gap-2">
               <button
@@ -1008,14 +1008,14 @@ export default function MeetingDetail() {
               </button>
               <button
                 onClick={async () => {
-                  await distributeApproval();
+                  await distributeApproval(true);
                   setFinishEditModal(false);
                   setAgendaEditing(false);
                 }}
                 disabled={receiptBusy}
                 className="rounded bg-accent-dark px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
-                {receiptBusy ? "שולח…" : "כן, שלח לאישור"}
+                {receiptBusy ? "שולח…" : "כן, שלח לאישור מחדש"}
               </button>
             </div>
           </div>

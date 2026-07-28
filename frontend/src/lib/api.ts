@@ -588,10 +588,11 @@ export const api = {
     request<PreviousMeeting | null>(`/api/meetings/${id}/previous`),
   getProtocolReceiptStatus: (id: string) =>
     request<ProtocolReceiptStatus>(`/api/meetings/${id}/protocol-receipt-status`),
-  distributeProtocolApproval: (id: string) =>
-    request<ProtocolReceiptStatus>(`/api/meetings/${id}/distribute-protocol-approval`, {
-      method: "POST",
-    }),
+  distributeProtocolApproval: (id: string, reset = false) =>
+    request<ProtocolReceiptStatus>(
+      `/api/meetings/${id}/distribute-protocol-approval${reset ? "?reset=true" : ""}`,
+      { method: "POST" },
+    ),
   getProtocolPdf: async (id: string): Promise<Blob> => {
     const r = await fetch(`${BASE}/api/meetings/${id}/protocol.pdf`, { credentials: "include" });
     if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));

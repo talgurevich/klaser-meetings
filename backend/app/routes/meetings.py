@@ -547,18 +547,27 @@ def protocol_receipt_status(
 @router.post("/{meeting_id}/distribute-protocol-approval", response_model=ProtocolReceiptStatus)
 def distribute_protocol_approval(
     meeting_id: UUID,
+    reset: bool = False,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
 ) -> ProtocolReceiptStatus:
     """Email every invitee the protocol (PDF) plus a link to confirm receipt.
     Only after the meeting is locked (pending_approval/approved). Confirmations
-    accrue toward the ≥50% gate that unlocks public publish."""
+    accrue toward the ≥50% gate that unlocks public publish.
+
+    `reset=True` (used when re-sending an *edited* protocol) clears every prior
+    receipt confirmation first — the confirmations were for the old version, so
+    the edited one needs a fresh majority. A plain reminder send keeps them."""
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
     if meeting.status not in ("pending_approval", "approved"):
         raise HTTPException(
             status_code=409,
             detail="ניתן להפיץ את הפרוטוקול לאישור רק לאחר נעילת הישיבה.",
         )
+
+    if reset:
+        for inv in meeting.invites:
+            inv.protocol_receipt_confirmed_at = None
 
     frontend = settings.primary_frontend_url.rstrip("/")
     try:

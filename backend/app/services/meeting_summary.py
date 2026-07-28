@@ -13,8 +13,11 @@ import html
 from dataclasses import dataclass, field
 from uuid import UUID
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+log = structlog.get_logger()
 
 from app.models import Meeting, Participant, Topic
 from app.services import mail
@@ -224,28 +227,37 @@ def build_publish_summary(db: Session, meeting: Meeting, tenant_name: str) -> Pu
 
 
 def _owner_email_map(db: Session, meeting: Meeting) -> dict[str, str]:
-    """Best-effort name -> email for resolving an action item's owner. The
-    owner is stored as a plain name (chosen from attendees or the אלפון), so
-    we look it up against the אלפון contacts, this meeting's member invites,
-    and the identity roster. First match wins; unresolved names are skipped."""
+    """Best-effort lookup key -> email for resolving an action item's owner.
+    The owner is stored as a plain name (chosen from attendees or the אלפון),
+    so we key every candidate by BOTH its name and its email, normalized
+    (stripped + lowercased), across the אלפון contacts, all of this meeting's
+    invitees, and the identity roster. Keying by email too means an owner
+    stored as an email (member without a display name) still resolves; the
+    normalization tolerates case/whitespace drift between where the name was
+    picked and where it's stored."""
     m: dict[str, str] = {}
+
+    def add(key: str | None, email: str | None) -> None:
+        k = (key or "").strip().lower()
+        e = (email or "").strip()
+        if k and e:
+            m.setdefault(k, e)
+
     parts = (
         db.execute(select(Participant).where(Participant.tenant_id == meeting.tenant_id))
         .scalars()
         .all()
     )
     for p in parts:
-        if p.full_name and p.email:
-            m.setdefault(p.full_name.strip(), p.email.strip())
-    for inv in meeting.invites:
-        if inv.invitee_kind == "member" and inv.display_name and inv.email:
-            m.setdefault(inv.display_name.strip(), inv.email.strip())
+        add(p.full_name, p.email)
+        add(p.email, p.email)
+    for inv in meeting.invites:  # both member and participant invitees
+        add(inv.display_name, inv.email)
+        add(inv.email, inv.email)
     try:
         for u in identity_service.list_users(str(meeting.tenant_id)):
-            nm = (u.get("display_name") or "").strip()
-            em = (u.get("email") or "").strip()
-            if nm and em:
-                m.setdefault(nm, em)
+            add(u.get("display_name"), u.get("email"))
+            add(u.get("email"), u.get("email"))
     except Exception:  # noqa: BLE001 — roster is a nicety here, never fatal
         pass
     return m
@@ -275,8 +287,11 @@ def notify_action_owners(db: Session, meeting: Meeting, tenant_name: str) -> Non
     notified_any = False
 
     for owner, topics in by_owner.items():
-        email = name_email.get(owner)
+        email = name_email.get(owner.strip().lower())
         if not email:
+            # Surface the miss rather than dropping it silently — the owner's
+            # name didn't match any known email (no אלפון/invitee/roster entry).
+            log.warning("action_owner.unresolved", owner=owner, meeting_id=str(meeting.id))
             continue
 
         def esc(s: str) -> str:
