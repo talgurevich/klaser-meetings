@@ -8,6 +8,7 @@ the pre-send preview so what the user approves is exactly what goes out.
 """
 from __future__ import annotations
 
+import datetime as dt
 import html
 from dataclasses import dataclass, field
 from uuid import UUID
@@ -251,10 +252,12 @@ def _owner_email_map(db: Session, meeting: Meeting) -> dict[str, str]:
 
 
 def notify_action_owners(db: Session, meeting: Meeting, tenant_name: str) -> None:
-    """After a meeting is locked/published, email each person assigned to a
-    follow-up task the details of the task(s) they own. Grouped so an owner
-    with several tasks gets one email. Fire-and-forget per recipient — a
-    mail failure never blocks publishing."""
+    """Email each person assigned to a follow-up task the details of the
+    task(s) they own — called when the meeting is locked, re-distributed, or
+    published. Idempotent: only tasks not yet notified (action_item_notified_at
+    is null) are sent, and they're marked once emailed, so a task owner is
+    never double-emailed across those transitions. Grouped so an owner with
+    several tasks gets one email; fire-and-forget per recipient."""
     kind_he = _KIND_LABELS.get(meeting.kind, meeting.kind)
     number_suffix = f" מספר {meeting.number}" if meeting.number else ""
     date_s = _fmt_date(meeting)
@@ -262,12 +265,14 @@ def notify_action_owners(db: Session, meeting: Meeting, tenant_name: str) -> Non
     by_owner: dict[str, list[Topic]] = {}
     for t in sorted(meeting.topics, key=lambda x: x.order):
         owner = (t.action_item_owner or "").strip()
-        if owner and (t.action_item or "").strip():
+        if owner and (t.action_item or "").strip() and t.action_item_notified_at is None:
             by_owner.setdefault(owner, []).append(t)
     if not by_owner:
         return
 
     name_email = _owner_email_map(db, meeting)
+    now = dt.datetime.now(dt.timezone.utc)
+    notified_any = False
 
     for owner, topics in by_owner.items():
         email = name_email.get(owner)
@@ -300,3 +305,9 @@ def notify_action_owners(db: Session, meeting: Meeting, tenant_name: str) -> Non
             html_body=_wrap_html(body_html, f"{tenant_name} · Klaser"),
             text_body=body_text,
         )
+        for t in topics:
+            t.action_item_notified_at = now
+        notified_any = True
+
+    if notified_any:
+        db.commit()

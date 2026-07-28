@@ -427,9 +427,11 @@ def update_meeting(
     db.commit()
     db.refresh(meeting)
 
-    # Publishing via the plain status stepper (not only the /publish button)
-    # must also email follow-up owners their task(s).
-    if is_transition and new_status == "published":
+    # Email follow-up owners their task(s) as soon as the meeting is locked
+    # (active -> pending_approval), and again on publish for any assigned
+    # afterward. notify_action_owners is idempotent (per-topic flag), so no
+    # one is double-emailed across the two transitions.
+    if is_transition and new_status in ("pending_approval", "published"):
         notify_action_owners(db, meeting, user.tenant_name or "")
     return meeting
 
@@ -602,6 +604,10 @@ def distribute_protocol_approval(
     meeting.protocol_approval_sent_at = dt.datetime.now(dt.timezone.utc)
     db.commit()
     db.refresh(meeting)
+
+    # Also email any follow-up owners not yet notified (e.g. tasks assigned
+    # while editing the protocol post-lock). Idempotent per task.
+    notify_action_owners(db, meeting, user.tenant_name or "")
     return _receipt_status_out(meeting)
 
 
@@ -1139,7 +1145,13 @@ def update_topic(
     if topic is None:
         raise HTTPException(status_code=404, detail="הנושא לא נמצא")
 
-    for field, value in body.model_dump(exclude_unset=True).items():
+    updates = body.model_dump(exclude_unset=True)
+    # If the follow-up owner changes, clear the notified flag so the new owner
+    # gets emailed on the next lock/distribute/publish (the old owner keeps
+    # whatever they already received).
+    if "action_item_owner" in updates and updates["action_item_owner"] != topic.action_item_owner:
+        topic.action_item_notified_at = None
+    for field, value in updates.items():
         setattr(topic, field, value)
 
     db.commit()

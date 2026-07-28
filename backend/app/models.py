@@ -192,6 +192,10 @@ class Topic(Base):
     # follow-up is created (attendee or אלפון contact). Free-text label, not
     # an FK — action items can be owned by non-system people.
     action_item_owner: Mapped[str | None] = mapped_column(String)
+    # When the owner was emailed the task — so lock/distribute/publish can all
+    # notify newly-assigned owners without re-emailing anyone. Reset to null
+    # when the owner changes (see routes/meetings.py update_topic).
+    action_item_notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     timer_elapsed: Mapped[int | None] = mapped_column(Integer)  # seconds
 
     source_pool_id: Mapped[UUID | None] = mapped_column(
