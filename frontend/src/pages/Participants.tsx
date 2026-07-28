@@ -113,7 +113,7 @@ export default function Participants() {
                 <th className="px-3 py-2 font-medium">נייד</th>
                 <th className="px-3 py-2 font-medium">אימייל</th>
                 <th className="px-3 py-2 font-medium">תפקיד</th>
-                <th className="px-3 py-2 font-medium">הצטרפות</th>
+                <th className="px-3 py-2 font-medium">הצטרפות לתפקיד</th>
                 <th className="px-3 py-2 text-center font-medium">חבר</th>
                 <th className="px-3 py-2 text-center font-medium">חבר ועד</th>
                 {editor && <th className="px-3 py-2 font-medium"></th>}

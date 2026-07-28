@@ -62,7 +62,7 @@ export default function ContactModal({
       .catch(() => setRoleOptions([]));
   }, []);
 
-  const valid = fullName.trim() && email.trim();
+  const valid = fullName.trim() && email.trim() && joinDate;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -168,8 +168,14 @@ export default function ContactModal({
             </div>
           </div>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-ink-soft">תאריך הצטרפות</span>
-            <input type="date" value={joinDate} onChange={(e) => setJoinDate(e.target.value)} className={inputCls} />
+            <span className="mb-1 block font-medium text-ink-soft">תאריך הצטרפות לתפקיד *</span>
+            <input
+              type="date"
+              required
+              value={joinDate}
+              onChange={(e) => setJoinDate(e.target.value)}
+              className={inputCls}
+            />
           </label>
 
           <div className="flex items-center justify-end gap-6 pt-1">
