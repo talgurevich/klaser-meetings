@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { api, apiErrorMessage, type Member, type MeetingInvite, type Participant } from "../lib/api";
 
 const RSVP_LABELS: Record<MeetingInvite["status"], string> = {
@@ -24,11 +24,19 @@ export default function InviteesPanel({
   meetingId,
   invites,
   editable,
+  showRsvp,
+  actions,
   onChanged,
 }: {
   meetingId: string;
   invites: MeetingInvite[];
   editable: boolean;
+  // RSVP-status block appears only once invites have actually been sent
+  // (after "שלח לחברי ועד") — there's nothing to confirm before that.
+  showRsvp: boolean;
+  // Rendered between the invitees list and the RSVP block (the send/preview
+  // actions live here).
+  actions?: ReactNode;
   onChanged: () => void;
 }) {
   const [members, setMembers] = useState<Member[] | null>(null);
@@ -190,7 +198,9 @@ export default function InviteesPanel({
         </div>
       )}
 
-      {invites.length > 0 && (
+      {actions}
+
+      {showRsvp && invites.length > 0 && (
         <div className="rounded border border-line bg-surface p-3">
           <p className="mb-2 text-sm font-medium">
             אישורי השתתפות: {confirmedCount} מאשרים מתוך {invites.length} מוזמנים

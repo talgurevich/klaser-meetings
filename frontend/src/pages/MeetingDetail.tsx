@@ -824,12 +824,17 @@ export default function MeetingDetail() {
       )}
 
       {isPrep && (
-        <InviteesPanel meetingId={meeting.id} invites={meeting.invites} editable={editor} onChanged={load} />
+        <InviteesPanel
+          meetingId={meeting.id}
+          invites={meeting.invites}
+          editable={editor}
+          showRsvp={meeting.status !== "draft"}
+          actions={editor ? <InviteActions meeting={meeting} onChanged={load} /> : undefined}
+          onChanged={load}
+        />
       )}
 
-      {isPrep && editor ? (
-        <InviteActions meeting={meeting} onChanged={load} />
-      ) : isActive && editor ? (
+      {isPrep ? null : isActive && editor ? (
         <div className="mb-6">
           <button
             onClick={() => nextStatus && changeStatus(nextStatus)}
