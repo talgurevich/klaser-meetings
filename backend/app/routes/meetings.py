@@ -7,6 +7,7 @@ no auth state of its own; `user.tenant_id` / `user.user_id` are plain UUIDs
 sourced from klaser-identity on every request (see identity-cutover.md).
 """
 import datetime as dt
+from urllib.parse import quote
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
@@ -1348,10 +1349,14 @@ def recording_audio(
     ).scalar_one_or_none()
     if rec is None:
         raise HTTPException(status_code=404, detail="ההקלטה לא נמצאה")
+    # Content-Disposition must be Latin-1 encodable; a Hebrew filename would
+    # blow up header encoding (→ 500 / "Failed to fetch"). Use an ASCII
+    # fallback plus RFC 5987 filename* for the real (UTF-8) name.
+    disposition = f"inline; filename=\"recording\"; filename*=UTF-8''{quote(rec.filename)}"
     return Response(
         content=rec.audio,
         media_type=rec.content_type,
-        headers={"Content-Disposition": f'inline; filename="{rec.filename}"'},
+        headers={"Content-Disposition": disposition},
     )
 
 
