@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   api,
@@ -203,6 +203,30 @@ export default function MeetingDetail() {
   useEffect(() => {
     if (id && meeting && !PREP_STATUSES.includes(meeting.status)) loadRecordings();
   }, [id, meeting?.status, loadRecordings]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Live refresh: RSVP responses and protocol-receipt confirmations arrive via
+  // public email links, off-screen. Poll while the page is open so they show
+  // up without a manual refresh — paused when the tab is hidden or an action
+  // is in flight (so a background fetch never clobbers what the user is doing).
+  const busyRef = useRef(false);
+  busyRef.current = busy;
+  const statusRef = useRef<MeetingStatus | undefined>(undefined);
+  statusRef.current = meeting?.status;
+  useEffect(() => {
+    if (!id) return;
+    const handle = window.setInterval(() => {
+      if (document.hidden || busyRef.current) return;
+      const status = statusRef.current;
+      api.getMeeting(id).then(setMeeting).catch(() => {});
+      if (status === "pending_approval" || status === "approved") {
+        api.getProtocolReceiptStatus(id).then(setReceipt).catch(() => {});
+      }
+      if (status && !PREP_STATUSES.includes(status)) {
+        api.listRecordings(id).then(setRecordings).catch(() => {});
+      }
+    }, 12000);
+    return () => window.clearInterval(handle);
+  }, [id]);
 
   // Look up the previous meeting only while active — powers the "show
   // previous protocol" button on the recurring approval topic.
