@@ -77,6 +77,7 @@ export default function Layout({ children }: { children: ReactNode }) {
             <nav className="flex items-center gap-1">
               <NavItem to="/home">בית</NavItem>
               <NavItem to="/meetings">ישיבות</NavItem>
+              <NavItem to="/committees">ועדות</NavItem>
               <NavItem to="/topic-pool">מאגר נושאים</NavItem>
               <NavItem to="/participants">אלפון</NavItem>
               <NavItem to="/action-items">משימות לביצוע</NavItem>

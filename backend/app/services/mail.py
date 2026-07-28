@@ -109,7 +109,7 @@ def _wrap_html(body: str, org_line: str) -> str:
 </html>"""
 
 
-_KIND_LABELS = {"meeting": "ישיבת ועד", "assembly": "אסיפה"}
+_KIND_LABELS = {"meeting": "ישיבת ועד", "assembly": "אסיפה", "committee": "ועדה"}
 
 
 def send_prebuilt(

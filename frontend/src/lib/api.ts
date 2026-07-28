@@ -125,7 +125,7 @@ export type TenantUserItem = {
 
 // ─── Meetings domain types (mirror backend/app/schemas.py) ───────────────
 
-export type MeetingKind = "meeting" | "assembly";
+export type MeetingKind = "meeting" | "assembly" | "committee";
 export type MeetingStatus =
   | "draft"
   | "invited_internal"

@@ -3,6 +3,7 @@ import type { MeetingKind, MeetingStatus, TopicPoolStatus, TopicStatus } from ".
 export const KIND_LABELS: Record<MeetingKind, string> = {
   meeting: "ישיבת ועד",
   assembly: "אסיפה",
+  committee: "ועדה",
 };
 
 export const STATUS_LABELS: Record<MeetingStatus, string> = {

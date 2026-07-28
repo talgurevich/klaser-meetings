@@ -4,7 +4,11 @@ import { api, apiErrorMessage, type MeetingListItem, type MeetingStatus } from "
 import { KIND_LABELS, STATUS_COLORS, STATUS_LABELS } from "../lib/meetingLabels";
 import { useIsAdmin, useIsEditor } from "../components/Layout";
 
-export default function Meetings() {
+/** Shared list page for both the ישיבות area and the ועדות area — a ועדה is
+ * just a meeting of kind="committee" with the identical flow. `section`
+ * selects which kind(s) the page shows and creates. */
+export default function Meetings({ section = "board" }: { section?: "board" | "committee" }) {
+  const isCommittee = section === "committee";
   const editor = useIsEditor();
   const admin = useIsAdmin();
   const navigate = useNavigate();
@@ -28,18 +32,21 @@ export default function Meetings() {
   function load() {
     api
       .listMeetings({
+        kind: isCommittee ? "committee" : undefined,
         status: (status || undefined) as MeetingStatus | undefined,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
       })
-      .then(setMeetings)
+      // The board list shows everything except committees (those live in
+      // their own area); the committee list is already kind-filtered server-side.
+      .then((list) => setMeetings(isCommittee ? list : list.filter((m) => m.kind !== "committee")))
       .catch((err) => setError(apiErrorMessage(err)));
   }
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, dateFrom, dateTo]);
+  }, [status, dateFrom, dateTo, section]);
 
   // Instant-create + redirect straight to the meeting's setup screen —
   // same pattern as Home.tsx's create buttons, see that file for why.
@@ -47,7 +54,7 @@ export default function Meetings() {
     setCreating(true);
     setError(null);
     try {
-      const meeting = await api.createMeeting({ kind: "meeting" });
+      const meeting = await api.createMeeting({ kind: isCommittee ? "committee" : "meeting" });
       navigate(`/meetings/${meeting.id}`);
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -72,14 +79,14 @@ export default function Meetings() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold">ישיבות ואסיפות</h1>
+        <h1 className="font-display text-2xl font-bold">{isCommittee ? "ועדות" : "ישיבות ואסיפות"}</h1>
         {editor && (
           <button
             onClick={createAndGo}
             disabled={creating}
             className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
           >
-            + ישיבה חדשה
+            {isCommittee ? "+ ועדה חדשה" : "+ ישיבה חדשה"}
           </button>
         )}
       </div>
@@ -143,8 +150,10 @@ export default function Meetings() {
       {meetings && meetings.length === 0 && (
         <p className="text-ink-soft">
           {hasFilters
-            ? "לא נמצאו ישיבות התואמות לסינון."
-            : `אין עדיין ישיבות. ${editor ? 'לחצו על "ישיבה חדשה" כדי להתחיל.' : ""}`}
+            ? `לא נמצאו ${isCommittee ? "ועדות" : "ישיבות"} התואמות לסינון.`
+            : isCommittee
+              ? `אין עדיין ועדות. ${editor ? 'לחצו על "ועדה חדשה" כדי להתחיל.' : ""}`
+              : `אין עדיין ישיבות. ${editor ? 'לחצו על "ישיבה חדשה" כדי להתחיל.' : ""}`}
         </p>
       )}
 
