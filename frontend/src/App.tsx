@@ -44,7 +44,7 @@ function AuthGate() {
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/home" element={<Home />} />
         <Route path="/meetings" element={<Meetings />} />
-        <Route path="/committees" element={<Meetings section="committee" />} />
+        <Route path="/assemblies" element={<Meetings section="assembly" />} />
         {/* No separate creation form — "+ ישיבה חדשה" instant-creates a
          * draft and redirects straight here (see Home.tsx / Meetings.tsx),
          * since this setup screen already covers everything a wizard

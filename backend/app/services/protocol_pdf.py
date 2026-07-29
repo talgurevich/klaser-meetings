@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models import Meeting, TenantSettings
 from app.services import pdf_common as pc
+from app.services.mail import _KIND_LABELS
 from app.services.meeting_summary import attendance_names
 from app.services.signatures import combined_signatory_rows
 
@@ -52,10 +53,13 @@ def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes
         and any(t.updated_at and t.updated_at > meeting.published_at for t in meeting.topics)
     )
 
+    kind_he = _KIND_LABELS.get(meeting.kind, "ישיבה")
+    doc_title = f"פרוטוקול {kind_he}"
+
     pdf = pc.RtlPdf()
     logo = pc.img_reader(settings_row.logo_data, settings_row.logo_mime) if settings_row else None
-    pc.header(pdf, org_name, "פרוטוקול ישיבה", logo)
-    pc.title(pdf, "פרוטוקול ישיבה")
+    pc.header(pdf, org_name, doc_title, logo)
+    pc.title(pdf, doc_title)
     if revised:
         pdf.set_font("dejavu", "B", 10)
         pdf.set_text_color(*pc.ACCENT)
@@ -105,5 +109,5 @@ def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes
         stamp = pc.img_reader(settings_row.stamp_data, settings_row.stamp_mime)
         pc.signatures(pdf, combined_signatory_rows(db, settings_row), stamp)
 
-    pdf._footer_text = f"{org_name} — פרוטוקול ישיבה   ·   תאריך הפקה: {pc.fmt_datetime(dt.datetime.now())}"
+    pdf._footer_text = f"{org_name} — {doc_title}   ·   תאריך הפקה: {pc.fmt_datetime(dt.datetime.now())}"
     return bytes(pdf.output())

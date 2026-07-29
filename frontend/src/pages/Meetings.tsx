@@ -4,11 +4,11 @@ import { api, apiErrorMessage, type MeetingListItem, type MeetingStatus } from "
 import { KIND_LABELS, STATUS_COLORS, STATUS_LABELS } from "../lib/meetingLabels";
 import { useIsAdmin, useIsEditor } from "../components/Layout";
 
-/** Shared list page for both the ישיבות area and the ועדות area — a ועדה is
- * just a meeting of kind="committee" with the identical flow. `section`
- * selects which kind(s) the page shows and creates. */
-export default function Meetings({ section = "board" }: { section?: "board" | "committee" }) {
-  const isCommittee = section === "committee";
+/** Shared list page for both the ישיבות area (board meetings) and the אסיפות
+ * area (assemblies) — same flow, different kind. `section` selects which
+ * kind(s) the page shows and creates. */
+export default function Meetings({ section = "board" }: { section?: "board" | "assembly" }) {
+  const isAssembly = section === "assembly";
   const editor = useIsEditor();
   const admin = useIsAdmin();
   const navigate = useNavigate();
@@ -32,14 +32,14 @@ export default function Meetings({ section = "board" }: { section?: "board" | "c
   function load() {
     api
       .listMeetings({
-        kind: isCommittee ? "committee" : undefined,
+        kind: isAssembly ? "assembly" : undefined,
         status: (status || undefined) as MeetingStatus | undefined,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
       })
-      // The board list shows everything except committees (those live in
-      // their own area); the committee list is already kind-filtered server-side.
-      .then((list) => setMeetings(isCommittee ? list : list.filter((m) => m.kind !== "committee")))
+      // The board list shows only ישיבות (assemblies live in their own area);
+      // the assembly list is already kind-filtered server-side.
+      .then((list) => setMeetings(isAssembly ? list : list.filter((m) => m.kind !== "assembly")))
       .catch((err) => setError(apiErrorMessage(err)));
   }
 
@@ -54,7 +54,7 @@ export default function Meetings({ section = "board" }: { section?: "board" | "c
     setCreating(true);
     setError(null);
     try {
-      const meeting = await api.createMeeting({ kind: isCommittee ? "committee" : "meeting" });
+      const meeting = await api.createMeeting({ kind: isAssembly ? "assembly" : "meeting" });
       navigate(`/meetings/${meeting.id}`);
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -81,10 +81,10 @@ export default function Meetings({ section = "board" }: { section?: "board" | "c
       <header className="mb-8 flex items-start justify-between gap-4">
         <div>
           <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">
-            {isCommittee ? "ועדה" : "פגישה"}
+            {isAssembly ? "אסיפה" : "ישיבה"}
           </div>
           <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
-            {isCommittee ? "ועדות" : "ישיבות ואסיפות"}
+            {isAssembly ? "אסיפות" : "ישיבות"}
           </h1>
         </div>
         {editor && (
@@ -93,7 +93,7 @@ export default function Meetings({ section = "board" }: { section?: "board" | "c
             disabled={creating}
             className="shrink-0 bg-accent px-5 py-2 text-sm font-bold text-surface transition-colors hover:bg-accent-dark disabled:opacity-50"
           >
-            {isCommittee ? "+ ועדה חדשה" : "+ ישיבה חדשה"}
+            {isAssembly ? "+ אסיפה חדשה" : "+ ישיבה חדשה"}
           </button>
         )}
       </header>
@@ -157,9 +157,9 @@ export default function Meetings({ section = "board" }: { section?: "board" | "c
       {meetings && meetings.length === 0 && (
         <p className="text-ink-soft">
           {hasFilters
-            ? `לא נמצאו ${isCommittee ? "ועדות" : "ישיבות"} התואמות לסינון.`
-            : isCommittee
-              ? `אין עדיין ועדות. ${editor ? 'לחצו על "ועדה חדשה" כדי להתחיל.' : ""}`
+            ? `לא נמצאו ${isAssembly ? "אסיפות" : "ישיבות"} התואמות לסינון.`
+            : isAssembly
+              ? `אין עדיין אסיפות. ${editor ? 'לחצו על "אסיפה חדשה" כדי להתחיל.' : ""}`
               : `אין עדיין ישיבות. ${editor ? 'לחצו על "ישיבה חדשה" כדי להתחיל.' : ""}`}
         </p>
       )}

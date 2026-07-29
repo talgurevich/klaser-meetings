@@ -73,7 +73,7 @@ type NavDef = { to: string; label: string; iconKey: IconKey; adminOnly?: boolean
 const ALL_NAV: NavDef[] = [
   { to: "/home", label: "בית", iconKey: "home" },
   { to: "/meetings", label: "ישיבות", iconKey: "meetings" },
-  { to: "/committees", label: "ועדות", iconKey: "committees" },
+  { to: "/assemblies", label: "אסיפות", iconKey: "committees" },
   { to: "/topic-pool", label: "מאגר נושאים", iconKey: "topicPool" },
   { to: "/participants", label: "אלפון", iconKey: "participants" },
   { to: "/action-items", label: "משימות לביצוע", iconKey: "actionItems" },
