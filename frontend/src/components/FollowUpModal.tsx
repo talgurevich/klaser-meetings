@@ -42,7 +42,7 @@ export default function FollowUpModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <form
         onSubmit={handleSubmit}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg border border-line bg-white shadow-lg"
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden border border-ink bg-surface"
       >
         <div className="overflow-y-auto p-5">
           <h2 className="mb-1 font-display text-lg font-semibold">יצירת מעקב</h2>

@@ -45,7 +45,7 @@ export default function ApprovalPanel({
   }
 
   return (
-    <div className="rounded border border-line bg-white p-4">
+    <div className="rounded border border-line bg-surface p-4">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="text-sm font-semibold text-ink-soft">
           {title} ({approvals.length})

@@ -33,28 +33,33 @@ export default function TopicPool() {
 
   return (
     <div className="max-w-3xl">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold">מאגר נושאים</h1>
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">מאגר</div>
+          <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
+            מאגר נושאים
+          </h1>
+        </div>
         <button
           onClick={() => setAdding(true)}
-          className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark"
+          className="shrink-0 bg-accent px-5 py-2 text-sm font-bold text-surface transition-colors hover:bg-accent-dark"
         >
           + הצעה חדשה
         </button>
-      </div>
+      </header>
 
       {error && (
         <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       )}
 
-      {items === null && !error && <p className="text-ink-soft">טוען…</p>}
+      {items === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
       {items && items.length === 0 && <p className="text-ink-soft">אין נושאים במאגר.</p>}
 
       <div className="space-y-2">
         {items?.map((item) => (
           <div
             key={item.id}
-            className="flex items-start justify-between rounded border border-line bg-white px-4 py-3"
+            className="flex items-start justify-between rounded border border-line bg-surface px-4 py-3"
           >
             <div>
               <p className="font-medium">{item.title}</p>

@@ -82,7 +82,7 @@ export default function MeetingDetailsForm({
   }
 
   return (
-    <div className="mb-6 rounded border border-line bg-white p-4">
+    <div className="mb-6 rounded border border-line bg-surface p-4">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-ink-soft">פרטי ישיבה</h2>
         <div className="flex items-center gap-2">

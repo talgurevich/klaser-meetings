@@ -37,7 +37,7 @@ export default function Users() {
 
   if (!admin) {
     return (
-      <div className="rounded border border-line bg-white p-6 text-center text-sm text-ink-soft">
+      <div className="rounded border border-line bg-surface p-6 text-center text-sm text-ink-soft">
         עמוד זה זמין למנהלי הארגון בלבד.
       </div>
     );
@@ -106,9 +106,14 @@ export default function Users() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-6 font-display text-2xl font-bold">משתמשים</h1>
+      <header className="mb-8">
+        <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">ניהול</div>
+        <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
+          משתמשים
+        </h1>
+      </header>
 
-      <form onSubmit={invite} className="mb-8 rounded border border-line bg-white p-4">
+      <form onSubmit={invite} className="mb-8 rounded border border-line bg-surface p-4">
         <h2 className="mb-3 text-sm font-semibold text-ink-soft">הזמנת משתמש חדש</h2>
         <div className="flex flex-wrap items-end gap-3">
           <label className="flex-1 text-sm">
@@ -157,10 +162,10 @@ export default function Users() {
         </div>
       )}
 
-      {users === null && !error && <p className="text-ink-soft">טוען…</p>}
+      {users === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
 
       {users && (
-        <div className="overflow-hidden rounded border border-line bg-white">
+        <div className="overflow-hidden rounded border border-line bg-surface">
           <table className="w-full text-right text-sm">
             <thead className="bg-surface text-ink-soft">
               <tr>
@@ -183,7 +188,7 @@ export default function Users() {
                       value={u.role}
                       disabled={busy || u.id === currentUser?.id}
                       onChange={(e) => changeRole(u.id, e.target.value)}
-                      className="rounded border border-line-strong bg-white px-2 py-1 text-sm"
+                      className="rounded border border-line-strong bg-surface px-2 py-1 text-sm"
                     >
                       <option value="user">משתמש/ת</option>
                       <option value="admin">מנהל/ת</option>

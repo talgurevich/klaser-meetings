@@ -121,7 +121,7 @@ export default function InviteActions({
 
       {confirmingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-line bg-white p-5 text-center shadow-lg">
+          <div className="w-full max-w-sm border border-ink bg-surface p-5 text-center">
             <h2 className="mb-2 text-base font-semibold">פתיחת הישיבה</h2>
             <p className="mb-1 text-sm">
               אישרו הגעה: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> מוזמנים.

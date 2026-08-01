@@ -66,7 +66,7 @@ export default function ProtocolView() {
   }, [id]);
 
   if (error) return <p className="text-sm text-red-700">{error}</p>;
-  if (!meeting || !settings) return <p className="text-ink-soft">טוען…</p>;
+  if (!meeting || !settings) return <p className="text-sm text-ink-soft animate-pulse">טוען…</p>;
 
   const kindLabel = KIND_LABELS[meeting.kind];
   const dateHe = new Intl.DateTimeFormat("he-IL", {

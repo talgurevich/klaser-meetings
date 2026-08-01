@@ -94,7 +94,7 @@ export default function ContactModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <form
         onSubmit={submit}
-        className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-lg border border-line bg-white shadow-lg"
+        className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden border border-ink bg-surface"
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-3">
           <h2 className="text-base font-semibold">{contact ? "עריכת איש קשר" : "חבר חדש"}</h2>

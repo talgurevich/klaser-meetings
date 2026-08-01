@@ -78,18 +78,25 @@ export default function Meetings({ section = "board" }: { section?: "board" | "c
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold">{isCommittee ? "ועדות" : "ישיבות ואסיפות"}</h1>
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">
+            {isCommittee ? "ועדה" : "פגישה"}
+          </div>
+          <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
+            {isCommittee ? "ועדות" : "ישיבות ואסיפות"}
+          </h1>
+        </div>
         {editor && (
           <button
             onClick={createAndGo}
             disabled={creating}
-            className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
+            className="shrink-0 bg-accent px-5 py-2 text-sm font-bold text-surface transition-colors hover:bg-accent-dark disabled:opacity-50"
           >
             {isCommittee ? "+ ועדה חדשה" : "+ ישיבה חדשה"}
           </button>
         )}
-      </div>
+      </header>
 
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <label className="text-sm">
@@ -145,7 +152,7 @@ export default function Meetings({ section = "board" }: { section?: "board" | "c
         </div>
       )}
 
-      {meetings === null && !error && <p className="text-ink-soft">טוען…</p>}
+      {meetings === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
 
       {meetings && meetings.length === 0 && (
         <p className="text-ink-soft">
@@ -158,7 +165,7 @@ export default function Meetings({ section = "board" }: { section?: "board" | "c
       )}
 
       {meetings && meetings.length > 0 && (
-        <div className="overflow-hidden rounded border border-line bg-white">
+        <div className="overflow-hidden rounded border border-line bg-surface">
           <table className="w-full text-right text-sm">
             <thead className="bg-surface text-ink-soft">
               <tr>

@@ -65,32 +65,39 @@ export default function Participants() {
 
   return (
     <div className="max-w-5xl">
-      <div className="mb-2 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold">אלפון</h1>
-        {editor && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={busy}
-              className="rounded border border-line-strong px-3 py-2 text-sm hover:bg-line disabled:opacity-50"
-            >
-              ⬆ ייבוא CSV
-            </button>
-            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onImportFile} />
-            <button
-              onClick={() => setModal({ contact: null })}
-              className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark"
-            >
-              + חבר חדש
-            </button>
+      <header className="mb-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">קהילה</div>
+            <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
+              אלפון
+            </h1>
           </div>
-        )}
-      </div>
-      <p className="mb-6 text-sm text-ink-soft">
-        אנשי הקשר של הארגון. "חבר" הוא איש מהציבור הכללי — מקבל את סיכום הישיבה כשמפרסמים לציבור, ויכול
-        להיות מוזמן שאינו חבר ועד. "חבר ועד" מוזמן אוטומטית לכל פגישה, ונקבע לפי סימון ידני או התאמת
-        האימייל למשתמש מערכת קיים.
-      </p>
+          {editor && (
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={busy}
+                className="border-2 border-ink px-3 py-2 text-sm font-bold text-ink transition-colors hover:bg-ink hover:text-surface disabled:opacity-50"
+              >
+                ⬆ ייבוא CSV
+              </button>
+              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onImportFile} />
+              <button
+                onClick={() => setModal({ contact: null })}
+                className="bg-accent px-5 py-2 text-sm font-bold text-surface transition-colors hover:bg-accent-dark"
+              >
+                + חבר חדש
+              </button>
+            </div>
+          )}
+        </div>
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
+          אנשי הקשר של הארגון. "חבר" הוא איש מהציבור הכללי — מקבל את סיכום הישיבה כשמפרסמים לציבור, ויכול
+          להיות מוזמן שאינו חבר ועד. "חבר ועד" מוזמן אוטומטית לכל פגישה, ונקבע לפי סימון ידני או התאמת
+          האימייל למשתמש מערכת קיים.
+        </p>
+      </header>
 
       {importMsg && (
         <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
@@ -101,11 +108,11 @@ export default function Participants() {
         <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
       )}
 
-      {items === null && !error && <p className="text-ink-soft">טוען…</p>}
+      {items === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
       {items && items.length === 0 && <p className="text-ink-soft">האלפון ריק.</p>}
 
       {items && items.length > 0 && (
-        <div className="overflow-x-auto rounded border border-line bg-white">
+        <div className="overflow-x-auto rounded border border-line bg-surface">
           <table className="w-full text-right text-sm">
             <thead className="bg-surface text-ink-soft">
               <tr>

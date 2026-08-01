@@ -529,7 +529,7 @@ export default function MeetingDetail() {
     );
   }
 
-  if (!meeting) return <p className="text-ink-soft">טוען…</p>;
+  if (!meeting) return <p className="text-sm text-ink-soft animate-pulse">טוען…</p>;
 
   const sortedTopics = [...meeting.topics].sort((a, b) => a.order - b.order);
   const currentIdx = STATUS_ORDER.indexOf(meeting.status);
@@ -672,7 +672,7 @@ export default function MeetingDetail() {
           {sortedTopics.map((t, i) => (
             <div
               key={t.id}
-              className="flex items-center justify-between rounded border border-line bg-white px-4 py-3"
+              className="flex items-center justify-between rounded border border-line bg-surface px-4 py-3"
             >
               <div>
                 <p className="font-medium">
@@ -896,7 +896,7 @@ export default function MeetingDetail() {
         <button
           onClick={downloadProtocol}
           disabled={pdfBusy}
-          className="mb-6 block w-full rounded-lg border border-accent bg-white px-4 py-3 text-center text-sm font-semibold text-accent-dark hover:bg-line disabled:opacity-50"
+          className="mb-6 block w-full rounded-lg border border-accent bg-surface px-4 py-3 text-center text-sm font-semibold text-accent-dark hover:bg-line disabled:opacity-50"
         >
           {pdfBusy ? "מפיק…" : "📄 הפק PDF (פרוטוקול)"}
         </button>
@@ -929,7 +929,7 @@ export default function MeetingDetail() {
       )}
 
       {editor && (meeting.status === "pending_approval" || meeting.status === "approved") && (
-        <div className="mb-6 rounded border border-line bg-white p-4">
+        <div className="mb-6 rounded border border-line bg-surface p-4">
           <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
             <span aria-hidden>📨</span> אישור קבלת פרוטוקול (מוזמנים)
           </h3>
@@ -1003,7 +1003,7 @@ export default function MeetingDetail() {
 
       {finishEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-line bg-white p-5 text-center shadow-lg">
+          <div className="w-full max-w-sm rounded-lg border border-line bg-surface p-5 text-center shadow-lg">
             <h2 className="mb-2 text-base font-semibold">סיום עריכת הפרוטוקול</h2>
             <p className="mb-4 text-sm text-ink-soft">
               לשלוח את הפרוטוקול הערוך לאישור משתתפי הפגישה? הם יקבלו את הנוסח המעודכן במייל ויתבקשו לאשר

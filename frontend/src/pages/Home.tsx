@@ -120,31 +120,34 @@ export default function Home() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
+      <header className="mb-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">בית</div>
+            <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
+              שלום {user?.display_name || user?.email}
+            </h1>
+          </div>
           {editor && (
-            <>
+            <div className="flex shrink-0 gap-2">
               <button
                 onClick={() => createAndGo("meeting")}
                 disabled={busy}
-                className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
+                className="bg-accent px-5 py-2 text-sm font-bold text-surface transition-colors hover:bg-accent-dark disabled:opacity-50"
               >
                 + ישיבה חדשה
               </button>
               <button
                 onClick={() => createAndGo("assembly")}
                 disabled={busy}
-                className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
+                className="border-2 border-ink px-4 py-2 text-sm font-bold text-ink transition-colors hover:bg-ink hover:text-surface disabled:opacity-50"
               >
                 אסיפה חדשה
               </button>
-            </>
+            </div>
           )}
         </div>
-        <p className="font-display text-lg font-bold">
-          שלום {user?.display_name || user?.email} 👋
-        </p>
-      </div>
+      </header>
 
       {error && (
         <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -152,7 +155,7 @@ export default function Home() {
         </div>
       )}
 
-      {!data && !error && <p className="text-ink-soft">טוען…</p>}
+      {!data && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
 
       {data && (
         <>
@@ -178,7 +181,7 @@ export default function Home() {
           )}
 
           <h2 className="mb-3 font-display text-lg font-semibold">ישיבות עתידיות</h2>
-          <div className="mb-4 rounded border border-line bg-white p-8 text-center">
+          <div className="mb-4 rounded border border-line bg-surface p-8 text-center">
             {data.upcoming_meeting ? (
               <Link to={`/meetings/${data.upcoming_meeting.id}`} className="block hover:opacity-80">
                 <p className="font-medium">
@@ -196,7 +199,7 @@ export default function Home() {
             )}
           </div>
 
-          <div className="mb-6 rounded border border-line bg-white p-4">
+          <div className="mb-6 rounded border border-line bg-surface p-4">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-ink-soft">תאריכים שמורים</h2>
               {editor && !addingDate && (
@@ -310,7 +313,7 @@ export default function Home() {
           </div>
 
           {searchOpen && (
-            <div className="mb-6 rounded border border-line bg-white p-4">
+            <div className="mb-6 rounded border border-line bg-surface p-4">
               <form onSubmit={runSearch} className="mb-3 flex gap-2">
                 <input
                   type="text"
@@ -368,7 +371,7 @@ export default function Home() {
                 <Link
                   key={m.id}
                   to={`/meetings/${m.id}`}
-                  className="flex items-center justify-between rounded border border-line bg-white px-4 py-3 hover:bg-surface"
+                  className="flex items-center justify-between rounded border border-line bg-surface px-4 py-3 hover:bg-surface"
                 >
                   <span
                     className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[m.status]}`}

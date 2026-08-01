@@ -160,7 +160,7 @@ export default function MeetingRecorder({ meetingId }: { meetingId: string }) {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-white px-4 py-2 text-sm font-medium hover:bg-line disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm font-medium hover:bg-line disabled:opacity-50"
             >
               ⬆ העלה קובץ אודיו
             </button>

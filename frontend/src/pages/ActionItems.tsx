@@ -10,7 +10,7 @@ import { useIsEditor } from "../components/Layout";
 function ConfirmNotifyModal({ onSend, onSkip }: { onSend: () => void; onSkip: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm rounded-lg border border-line bg-white p-5 text-center shadow-lg">
+      <div className="w-full max-w-sm border border-ink bg-surface p-5 text-center">
         <p className="mb-4 text-sm">תרצה לעדכן את המשתתפים בפגישה על הפעולה?</p>
         <div className="flex justify-center gap-2">
           <button
@@ -114,7 +114,7 @@ export default function ActionItems() {
     return (
       <div
         className={`flex items-start justify-between gap-3 rounded border px-4 py-3 ${
-          item.action_item_done ? "border-line bg-surface" : "border-line bg-white"
+          item.action_item_done ? "border-line bg-surface opacity-60" : "border-line bg-surface"
         }`}
       >
         <label className="flex flex-1 items-start gap-3">
@@ -160,7 +160,12 @@ export default function ActionItems() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-6 font-display text-2xl font-bold">משימות לביצוע</h1>
+      <header className="mb-8">
+        <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">מעקב</div>
+        <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
+          משימות לביצוע
+        </h1>
+      </header>
 
       {error && (
         <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -168,7 +173,7 @@ export default function ActionItems() {
         </div>
       )}
 
-      {items === null && !error && <p className="text-ink-soft">טוען…</p>}
+      {items === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
 
       {items && items.length === 0 && <p className="text-ink-soft">אין עדיין משימות לביצוע.</p>}
 

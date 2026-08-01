@@ -183,7 +183,7 @@ export default function TopicRecorder({
             <button
               onClick={() => fileRef.current?.click()}
               disabled={busy}
-              className="rounded border border-line-strong bg-white px-2.5 py-1 text-xs hover:bg-line disabled:opacity-50"
+              className="rounded border border-line-strong bg-surface px-2.5 py-1 text-xs hover:bg-line disabled:opacity-50"
             >
               ⬆ העלה קובץ
             </button>

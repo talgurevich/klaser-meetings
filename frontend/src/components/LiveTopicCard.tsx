@@ -77,7 +77,7 @@ export default function LiveTopicCard({
   const overBudget = plannedSeconds !== null && displayElapsed > plannedSeconds;
 
   return (
-    <div className="rounded border border-line bg-white p-4">
+    <div className="rounded border border-line bg-surface p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -159,7 +159,7 @@ export default function LiveTopicCard({
             <button
               onClick={prevProtocol.onOpen}
               disabled={prevProtocol.busy}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-accent bg-white px-3 py-1.5 text-sm font-medium text-accent-dark hover:bg-line disabled:opacity-50"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-accent bg-surface px-3 py-1.5 text-sm font-medium text-accent-dark hover:bg-line disabled:opacity-50"
             >
               {prevProtocol.busy ? "טוען…" : prevProtocol.label}
             </button>

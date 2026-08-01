@@ -17,7 +17,7 @@ import { isAdmin } from "../lib/permissions";
 const WEEKDAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
 const INPUT_CLS = "w-full rounded border border-line-strong px-3 py-2 text-sm";
-const SECTION_CLS = "mb-4 rounded-lg border border-line bg-white p-5";
+const SECTION_CLS = "mb-4 rounded-lg border border-line bg-surface p-5";
 
 function SectionHeader({ icon, title }: { icon: string; title: string }) {
   return (
@@ -72,7 +72,7 @@ function ImageField({
         }}
       />
       {imageUrl ? (
-        <img src={imageUrl} alt="" className="h-14 w-14 rounded border border-line bg-white object-contain p-1" />
+        <img src={imageUrl} alt="" className="h-14 w-14 rounded border border-line bg-surface object-contain p-1" />
       ) : (
         <span className="text-xs text-ink-soft">{hint}</span>
       )}
@@ -488,7 +488,12 @@ export default function Settings() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-6 text-2xl font-bold">הגדרות מערכת</h1>
+      <header className="mb-8">
+        <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">תצורה</div>
+        <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
+          הגדרות מערכת
+        </h1>
+      </header>
 
       {error && (
         <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
@@ -928,7 +933,7 @@ export default function Settings() {
             <img
               src={mySignatureUrl}
               alt="החתימה שלי"
-              className="h-20 max-w-xs rounded border border-line bg-white object-contain p-2"
+              className="h-20 max-w-xs rounded border border-line bg-surface object-contain p-2"
             />
             <button
               onClick={async () => {

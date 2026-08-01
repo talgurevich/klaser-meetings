@@ -50,7 +50,7 @@ export default function PublishModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-line bg-white shadow-lg">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden border border-ink bg-surface">
         <div className="border-b border-line px-5 py-4">
           <h2 className="text-base font-semibold">פרסום לציבור</h2>
           <p className="mt-1 text-xs text-ink-soft">
@@ -96,7 +96,7 @@ export default function PublishModal({
                 <iframe
                   title="preview"
                   srcDoc={preview.html}
-                  className="h-80 w-full rounded border border-line bg-white"
+                  className="h-80 w-full rounded border border-line bg-surface"
                 />
               </div>
 

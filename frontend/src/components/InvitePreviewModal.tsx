@@ -32,7 +32,7 @@ export default function InvitePreviewModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 print:static print:bg-white print:p-0">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded border border-line bg-white p-6 print:max-h-none print:overflow-visible print:border-0 print:shadow-none">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border border-ink bg-surface p-6 print:max-h-none print:overflow-visible print:border-0 print:shadow-none">
         <div className="mb-4 flex items-center justify-between print:hidden">
           <button
             onClick={() => window.print()}

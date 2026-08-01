@@ -78,7 +78,7 @@ export default function Rsvp() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-6 text-ink">
-      <div className="w-full max-w-md rounded-lg border border-line bg-white p-8">
+      <div className="w-full max-w-md rounded-lg border border-line bg-surface p-8">
         <h1 className="text-center font-display text-2xl font-bold">אישור הגעה</h1>
 
         {load.kind === "loading" && (

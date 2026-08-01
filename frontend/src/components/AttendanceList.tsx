@@ -184,7 +184,7 @@ export default function AttendanceList({
   }
 
   return (
-    <div className="rounded border border-line bg-white p-4">
+    <div className="rounded border border-line bg-surface p-4">
       <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
         <span aria-hidden>👥</span> נוכחות: {totalChecked}/{totalCount}
       </h3>

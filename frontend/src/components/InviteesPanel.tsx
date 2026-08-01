@@ -105,7 +105,7 @@ export default function InviteesPanel({
   const confirmedCount = invites.filter((i) => i.status === "confirmed_attend").length;
 
   return (
-    <div className="mb-4 rounded border border-line bg-white p-4">
+    <div className="mb-4 rounded border border-line bg-surface p-4">
       <h3 className="mb-3 text-sm font-semibold text-ink-soft">מוזמנים ({invites.length})</h3>
 
       {error && <p className="mb-2 text-xs text-red-700">{error}</p>}
