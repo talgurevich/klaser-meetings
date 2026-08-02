@@ -102,6 +102,7 @@ export default function MeetingDetail() {
   // Post-lock, the whole agenda is edited behind a single toggle rather than
   // every topic card exposing its controls at once.
   const [meetingEditing, setMeetingEditing] = useState(false);
+  const [attendanceEditing, setAttendanceEditing] = useState(false);
   const [finishEditModal, setFinishEditModal] = useState(false);
 
   async function distributeApproval(reset = false) {
@@ -566,19 +567,38 @@ export default function MeetingDetail() {
     .join(" · ");
 
   // Attendance is shown while active and in every post-prep phase, and always
-  // sits ABOVE the agenda. During an active meeting it's editable; once locked
-  // it's read-only until the "ערוך ישיבה" toggle is on (same gate as topics).
+  // sits ABOVE the agenda. It's read-only by default the moment the meeting
+  // starts: during the live meeting its own "ערוך נוכחות" toggle opens it;
+  // once locked the shared "ערוך ישיבה" toggle governs it (same gate as topics).
+  const attendanceEditable = isActive ? editor && attendanceEditing : meetingSectionsEditable;
   const attendanceBlock = (isActive || !isPrep) && (
     <div className="mb-6">
       <AttendanceList
         meetingId={meeting.id}
         invites={meeting.invites}
         presentIds={meeting.attendees_present || []}
-        editable={meetingSectionsEditable}
+        editable={attendanceEditable}
         participantIds={meeting.participant_ids || []}
-        participantsEditable={meetingSectionsEditable}
+        participantsEditable={attendanceEditable}
         onChanged={load}
       />
+    </div>
+  );
+
+  // During the live meeting, attendance opens on its own toggle (the agenda
+  // stays directly editable — timers, closing topics, etc.).
+  const activeAttendanceToggle = isActive && editor && (
+    <div className="mb-2 flex justify-end">
+      <button
+        onClick={() => setAttendanceEditing((v) => !v)}
+        className={`rounded border px-3 py-1.5 text-sm font-medium ${
+          attendanceEditing
+            ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+            : "border-line-strong text-ink hover:bg-line"
+        }`}
+      >
+        {attendanceEditing ? "✓ סיום עריכת נוכחות" : "✏ ערוך נוכחות"}
+      </button>
     </div>
   );
 
@@ -655,7 +675,12 @@ export default function MeetingDetail() {
 
       {/* Active: attendance only (above the agenda). Post-lock: the single
           "ערוך ישיבה" toggle sits above both attendance and the agenda. */}
-      {isActive && attendanceBlock}
+      {isActive && (
+        <>
+          {activeAttendanceToggle}
+          {attendanceBlock}
+        </>
+      )}
       {!isActive && (
         <>
           {editMeetingToggle}
