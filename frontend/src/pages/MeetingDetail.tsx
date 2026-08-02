@@ -102,7 +102,6 @@ export default function MeetingDetail() {
   // Post-lock, the whole agenda is edited behind a single toggle rather than
   // every topic card exposing its controls at once.
   const [meetingEditing, setMeetingEditing] = useState(false);
-  const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [finishEditModal, setFinishEditModal] = useState(false);
 
   async function distributeApproval(reset = false) {
@@ -570,6 +569,9 @@ export default function MeetingDetail() {
   // sits ABOVE the agenda. During the live meeting it stays fully editable but
   // is collapsed by default (a compact bar you expand); once locked it's
   // read-only until the shared "ערוך ישיבה" toggle is on (same gate as topics).
+  // Attendance stays fully editable during the live meeting but is collapsed
+  // by default there (one box, header toggles the body — a visual minimize,
+  // not an edit lock). Once locked it's read-only until "ערוך ישיבה" is on.
   const attendanceEditable = isActive ? editor : meetingSectionsEditable;
   const attendanceBlock = (isActive || !isPrep) && (
     <div className="mb-6">
@@ -580,25 +582,9 @@ export default function MeetingDetail() {
         editable={attendanceEditable}
         participantIds={meeting.participant_ids || []}
         participantsEditable={attendanceEditable}
+        collapsible={isActive}
         onChanged={load}
       />
-    </div>
-  );
-
-  // Live meeting: attendance is minimized to a bar and expands on click. It
-  // stays editable once open — this is a visual collapse, not an edit lock.
-  const activeAttendance = isActive && (
-    <div className="mb-6">
-      <button
-        onClick={() => setAttendanceOpen((v) => !v)}
-        className="flex w-full items-center justify-between rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink-soft hover:bg-line"
-      >
-        <span className="flex items-center gap-1.5">
-          <span aria-hidden>👥</span> נוכחות
-        </span>
-        <span className="text-xs">{attendanceOpen ? "▾ הסתר" : "▸ הצג"}</span>
-      </button>
-      {attendanceOpen && <div className="mt-3">{attendanceBlock}</div>}
     </div>
   );
 
@@ -675,7 +661,7 @@ export default function MeetingDetail() {
 
       {/* Active: attendance only (above the agenda). Post-lock: the single
           "ערוך ישיבה" toggle sits above both attendance and the agenda. */}
-      {isActive && activeAttendance}
+      {isActive && attendanceBlock}
       {!isActive && (
         <>
           {editMeetingToggle}

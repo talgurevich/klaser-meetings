@@ -19,6 +19,7 @@ export default function AttendanceList({
   editable,
   participantIds,
   participantsEditable,
+  collapsible = false,
   onChanged,
 }: {
   meetingId: string;
@@ -27,11 +28,15 @@ export default function AttendanceList({
   editable: boolean;
   participantIds: string[];
   participantsEditable: boolean;
+  collapsible?: boolean;
   onChanged: () => void;
 }) {
   const [participants, setParticipants] = useState<Participant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // When collapsible (live meeting), the whole body hides behind the header
+  // bar and starts collapsed; otherwise it's always shown.
+  const [open, setOpen] = useState(false);
 
   const [addingOpen, setAddingOpen] = useState(false);
   const [newName, setNewName] = useState("");
@@ -183,23 +188,41 @@ export default function AttendanceList({
     );
   }
 
+  const showBody = !collapsible || open;
+
   return (
     <div className="rounded border border-line bg-surface p-4">
-      <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
-        <span aria-hidden>👥</span> נוכחות: {totalPresent}/{totalCount}
-      </h3>
+      {collapsible ? (
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center justify-between text-sm font-semibold text-ink-soft"
+        >
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden>👥</span> נוכחות: {totalPresent}/{totalCount}
+          </span>
+          <span className="text-xs font-normal">{open ? "▾ הסתר" : "▸ הצג"}</span>
+        </button>
+      ) : (
+        <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
+          <span aria-hidden>👥</span> נוכחות: {totalPresent}/{totalCount}
+        </h3>
+      )}
 
-      <p className="mb-2 text-xs font-semibold text-ink-soft">
-        מוזמנים לפגישה ({committeePresent}/{invites.length})
-      </p>
-      {grid(committeeCells)}
+      {showBody && (
+        <>
+          <p className="mb-2 mt-3 text-xs font-semibold text-ink-soft">
+            מוזמנים לפגישה ({committeePresent}/{invites.length})
+          </p>
+          {grid(committeeCells)}
 
-      <p className="mb-2 mt-4 text-xs font-semibold text-ink-soft">
-        נוכחים מהאלפון ({attachedExtra.length})
-      </p>
-      {grid(externalCells)}
+          <p className="mb-2 mt-4 text-xs font-semibold text-ink-soft">
+            נוכחים מהאלפון ({attachedExtra.length})
+          </p>
+          {grid(externalCells)}
+        </>
+      )}
 
-      {participantsEditable && (
+      {showBody && participantsEditable && (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
           <select
             value=""
@@ -227,7 +250,7 @@ export default function AttendanceList({
         </div>
       )}
 
-      {participantsEditable && addingOpen && (
+      {showBody && participantsEditable && addingOpen && (
         <form onSubmit={createAndAttach} className="mt-2 flex flex-wrap items-end gap-2">
           <input
             type="text"
