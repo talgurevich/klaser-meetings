@@ -172,8 +172,8 @@ def send_meeting_invite(
         {f'<p><strong>סדר יום:</strong></p><ol>{topics_html}</ol>' if topics else ''}
         <p>אנא אשר/י קבלת ההזמנה:</p>
         <p style="margin: 24px 0;">
-          <a href="{html.escape(rsvp_url_decline)}" class="btn btn-decline">מאשר/ת קבלה ולא אוכל להגיע</a>
           <a href="{html.escape(rsvp_url_attend)}" class="btn btn-attend">מאשר/ת ומגיע/ה</a>
+          <a href="{html.escape(rsvp_url_decline)}" class="btn btn-decline">מאשר/ת קבלה ולא אוכל להגיע</a>
         </p>
     """
 

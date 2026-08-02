@@ -832,30 +832,16 @@ def remove_participant_from_meeting(
 # ─────────────────────────────────────────────────────────────────────────
 
 
-def _committee_email_set(tenant_id: UUID) -> set[str]:
-    """Lowercased emails of the tenant's identity users — an אלפון contact
-    whose email matches one is a committee member ('עורך'). Best-effort:
-    empty if the roster can't be fetched (no service token)."""
-    try:
-        return {
-            (u.get("email") or "").strip().lower()
-            for u in identity_service.list_users(str(tenant_id))
-            if u.get("email")
-        }
-    except Exception:  # noqa: BLE001 — roster is best-effort here
-        return set()
-
-
 def _invite_committee(db: Session, meeting: Meeting, tenant_id: UUID) -> None:
-    """Committee members — אלפון contacts flagged 'עורך' (edit_permission
-    set, or an email matching a system user) — are auto-invited to every
-    meeting. Skips contacts without an email and anyone already invited."""
+    """Committee members — אלפון contacts explicitly flagged 'חבר ועד'
+    (Participant.edit_permission) — are auto-invited to every meeting. This
+    is a pure אלפון flag: being an identity/system user is unrelated. Skips
+    contacts without an email and anyone already invited."""
     contacts = (
         db.execute(select(Participant).where(Participant.tenant_id == tenant_id)).scalars().all()
     )
     if not contacts:
         return
-    system_emails = _committee_email_set(tenant_id)
     existing = {
         (i.invitee_kind, str(i.invitee_id))
         for i in db.execute(
@@ -865,8 +851,7 @@ def _invite_committee(db: Session, meeting: Meeting, tenant_id: UUID) -> None:
     for p in contacts:
         if not p.email:
             continue
-        is_committee = p.edit_permission or p.email.strip().lower() in system_emails
-        if not is_committee or ("participant", str(p.id)) in existing:
+        if not p.edit_permission or ("participant", str(p.id)) in existing:
             continue
         db.add(
             MeetingInvite(

@@ -49,7 +49,6 @@ export default function ContactModal({
   const [joinDate, setJoinDate] = useState(contact?.join_date ?? "");
   const [member, setMember] = useState(contact ? contact.public_send : true);
   const [editorFlag, setEditorFlag] = useState(contact ? contact.edit_permission : false);
-  const systemUser = contact?.is_system_user ?? false;
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -185,10 +184,10 @@ export default function ContactModal({
             </label>
             <label
               className="flex items-center gap-2 text-sm"
-              title={systemUser ? "חבר ועד לפי התאמת אימייל — מוזמן אוטומטית לכל פגישה" : "חבר ועד — מוזמן אוטומטית לכל פגישה"}
+              title="חבר ועד — מוזמן אוטומטית לכל פגישה"
             >
-              <span className="text-ink-soft">חבר ועד {systemUser && <span className="text-xs">(לפי אימייל)</span>}</span>
-              <Toggle checked={systemUser || editorFlag} disabled={systemUser} onChange={setEditorFlag} />
+              <span className="text-ink-soft">חבר ועד</span>
+              <Toggle checked={editorFlag} onChange={setEditorFlag} />
             </label>
           </div>
 

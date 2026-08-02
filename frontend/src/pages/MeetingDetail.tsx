@@ -585,6 +585,7 @@ export default function MeetingDetail() {
     <div className="mb-6">
       <AttendanceList
         meetingId={meeting.id}
+        invites={meeting.invites}
         presentIds={meeting.attendees_present || []}
         editable={editor}
         participantIds={meeting.participant_ids || []}

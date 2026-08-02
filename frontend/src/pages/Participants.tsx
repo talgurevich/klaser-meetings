@@ -135,7 +135,7 @@ export default function Participants() {
                   <td className="px-3 py-2">{p.roles.length ? p.roles.join(", ") : "—"}</td>
                   <td className="px-3 py-2" dir="ltr">{fmtDate(p.join_date)}</td>
                   <td className="px-3 py-2 text-center">{yesNo(p.public_send)}</td>
-                  <td className="px-3 py-2 text-center">{yesNo(p.is_system_user || p.edit_permission)}</td>
+                  <td className="px-3 py-2 text-center">{yesNo(p.edit_permission)}</td>
                   {editor && (
                     <td className="px-3 py-2 text-left">
                       <div className="flex justify-end gap-2 whitespace-nowrap">

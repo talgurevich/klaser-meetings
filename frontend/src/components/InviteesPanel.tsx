@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { api, apiErrorMessage, type Member, type MeetingInvite, type Participant } from "../lib/api";
+import { api, apiErrorMessage, type MeetingInvite, type Participant } from "../lib/api";
 
 const RSVP_LABELS: Record<MeetingInvite["status"], string> = {
   pending: "ממתין",
@@ -39,26 +39,22 @@ export default function InviteesPanel({
   actions?: ReactNode;
   onChanged: () => void;
 }) {
-  const [members, setMembers] = useState<Member[] | null>(null);
   const [participants, setParticipants] = useState<Participant[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // The picker is always visible when editable — no "+ הוסף מוזמנים"
-  // toggle to click through first — so fetch the candidate lists as soon
-  // as that's true, not gated behind a picker-open flag anymore.
+  // Invitees come only from the אלפון now — being an identity/system user is
+  // unrelated to meeting invites. Committee members (flagged 'חבר ועד') are
+  // auto-invited on create, so they show up as invitees already.
   useEffect(() => {
     if (!editable) return;
-    api.listMembers().then(setMembers).catch(() => setMembers([]));
     api.listParticipants().then(setParticipants).catch(() => setParticipants([]));
   }, [editable]);
 
-  const invitedMemberIds = new Set(invites.filter((i) => i.invitee_kind === "member").map((i) => i.invitee_id));
   const invitedParticipantIds = new Set(
     invites.filter((i) => i.invitee_kind === "participant").map((i) => i.invitee_id)
   );
-  const availableMembers = (members || []).filter((m) => !invitedMemberIds.has(m.id));
   const availableParticipants = (participants || []).filter((p) => !invitedParticipantIds.has(p.id));
 
   function toggleSelected(key: string) {
@@ -112,27 +108,13 @@ export default function InviteesPanel({
 
       {editable && (
         <div className="mb-3 rounded border border-line bg-surface p-3">
-          <p className="mb-2 text-xs font-medium text-ink-soft">הוסף מוזמנים</p>
-          {!members || !participants ? (
+          <p className="mb-2 text-xs font-medium text-ink-soft">הוסף מוזמנים מהאלפון</p>
+          {!participants ? (
             <p className="text-sm text-ink-soft">טוען…</p>
-          ) : availableMembers.length === 0 && availableParticipants.length === 0 ? (
-            <p className="text-sm text-ink-soft">כל החברים והמשתתפים כבר מוזמנים.</p>
+          ) : availableParticipants.length === 0 ? (
+            <p className="text-sm text-ink-soft">כל אנשי האלפון כבר מוזמנים.</p>
           ) : (
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
-              {availableMembers.map((m) => {
-                const key = `member:${m.id}`;
-                return (
-                  <label key={key} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-line">
-                    <input
-                      type="checkbox"
-                      checked={selected.has(key)}
-                      onChange={() => toggleSelected(key)}
-                      className="rounded"
-                    />
-                    <span>{m.display_name || m.email}</span>
-                  </label>
-                );
-              })}
               {availableParticipants.map((p) => {
                 const key = `participant:${p.id}`;
                 return (
@@ -145,7 +127,9 @@ export default function InviteesPanel({
                     />
                     <span>
                       {p.full_name}
-                      <span className="mr-1 rounded bg-line px-1 py-0.5 text-[10px] text-ink-soft">משתתף/ת</span>
+                      {p.edit_permission && (
+                        <span className="mr-1 rounded bg-line px-1 py-0.5 text-[10px] text-ink-soft">חבר ועד</span>
+                      )}
                     </span>
                   </label>
                 );

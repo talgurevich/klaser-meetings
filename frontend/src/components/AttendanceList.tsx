@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, apiErrorMessage, type Member, type Participant } from "../lib/api";
+import { api, apiErrorMessage, type MeetingInvite, type Participant } from "../lib/api";
 
 const NAME_MAX_LENGTH = 16;
 
@@ -7,8 +7,14 @@ function truncateName(name: string): string {
   return name.length > NAME_MAX_LENGTH ? `${name.slice(0, NAME_MAX_LENGTH)}…` : name;
 }
 
+/** Meeting attendance. "מוזמנים לפגישה" lists only the committee members
+ * actually invited to THIS meeting (from meeting.invites), each with a
+ * present checkbox. "נוכחים מהאלפון" lists the אלפון contacts attached to
+ * the meeting, with a picker to add more from the directory (or create a
+ * brand-new contact). */
 export default function AttendanceList({
   meetingId,
+  invites,
   presentIds,
   editable,
   participantIds,
@@ -16,13 +22,13 @@ export default function AttendanceList({
   onChanged,
 }: {
   meetingId: string;
+  invites: MeetingInvite[];
   presentIds: string[];
   editable: boolean;
   participantIds: string[];
   participantsEditable: boolean;
   onChanged: () => void;
 }) {
-  const [members, setMembers] = useState<Member[] | null>(null);
   const [participants, setParticipants] = useState<Participant[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -41,10 +47,6 @@ export default function AttendanceList({
   }
 
   useEffect(() => {
-    api
-      .listMembers()
-      .then(setMembers)
-      .catch((err) => setError(apiErrorMessage(err)));
     loadParticipants();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -53,11 +55,8 @@ export default function AttendanceList({
     setBusyId(memberId);
     setError(null);
     try {
-      if (present) {
-        await api.markAttendeeAbsent(meetingId, memberId);
-      } else {
-        await api.markAttendeePresent(meetingId, memberId);
-      }
+      if (present) await api.markAttendeeAbsent(meetingId, memberId);
+      else await api.markAttendeePresent(meetingId, memberId);
       onChanged();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -70,11 +69,8 @@ export default function AttendanceList({
     setBusyId(participantId);
     setError(null);
     try {
-      if (attached) {
-        await api.removeParticipantFromMeeting(meetingId, participantId);
-      } else {
-        await api.addParticipantToMeeting(meetingId, participantId);
-      }
+      if (attached) await api.removeParticipantFromMeeting(meetingId, participantId);
+      else await api.addParticipantToMeeting(meetingId, participantId);
       onChanged();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -108,74 +104,78 @@ export default function AttendanceList({
     }
   }
 
-  if (error) {
-    return <p className="text-sm text-red-700">{error}</p>;
-  }
-  if (!members || !participants) {
-    return <p className="text-sm text-ink-soft">טוען נוכחות…</p>;
-  }
+  if (error) return <p className="text-sm text-red-700">{error}</p>;
+  if (!participants) return <p className="text-sm text-ink-soft">טוען נוכחות…</p>;
 
   const presentSet = new Set(presentIds);
   const attachedSet = new Set(participantIds);
+  const invitedParticipantIds = new Set(
+    invites.filter((i) => i.invitee_kind === "participant").map((i) => i.invitee_id),
+  );
 
-  // Members and directory Participants are two different id-spaces, but for
-  // the purposes of the attendance grid they're just "people who might be
-  // here" — merged into one list so the header count and chip grid match
-  // the single "נוכחות: X/Y" the active-meeting screen shows.
-  type Row = { key: string; id: string; name: string; checked: boolean; rowEditable: boolean; onToggle: () => void };
+  type Cell = { id: string; name: string; checked: boolean; onToggle: () => void; rowEditable: boolean };
 
-  const memberRows: Row[] = members.map((m) => {
-    const present = presentSet.has(m.id);
+  // "מוזמנים לפגישה" = every invitee. Present-marking differs by kind:
+  // committee/אלפון invitees are participant-kind (present ⇔ attached), and
+  // legacy member invitees use attendees_present.
+  const isInvitePresent = (i: MeetingInvite) =>
+    i.invitee_kind === "member" ? presentSet.has(i.invitee_id) : attachedSet.has(i.invitee_id);
+
+  const committeeCells: Cell[] = invites.map((i) => {
+    const present = isInvitePresent(i);
     return {
-      key: `m:${m.id}`,
-      id: m.id,
-      name: m.display_name || m.email,
+      id: i.invitee_id,
+      name: i.display_name || i.email,
       checked: present,
       rowEditable: editable,
-      onToggle: () => toggle(m.id, present),
+      onToggle: () =>
+        i.invitee_kind === "member"
+          ? toggle(i.invitee_id, present)
+          : toggleParticipant(i.invitee_id, present),
     };
   });
+  const committeePresent = invites.filter(isInvitePresent).length;
 
-  const participantRows: Row[] = participants.map((p) => {
-    const attached = attachedSet.has(p.id);
-    return {
-      key: `p:${p.id}`,
-      id: p.id,
-      name: p.full_name,
-      checked: attached,
-      rowEditable: participantsEditable,
-      onToggle: () => toggleParticipant(p.id, attached),
-    };
-  });
+  // "נוכחים מהאלפון" = attached אלפון contacts who were NOT invitees (added
+  // ad-hoc during the meeting); the picker offers everyone else.
+  const attachedExtra = participants.filter(
+    (p) => attachedSet.has(p.id) && !invitedParticipantIds.has(p.id),
+  );
+  const unattached = participants.filter(
+    (p) => !attachedSet.has(p.id) && !invitedParticipantIds.has(p.id),
+  );
 
-  const totalChecked = presentIds.length + participantIds.length;
-  const totalCount = members.length + participants.length;
+  const totalPresent = committeePresent + attachedExtra.length;
+  const totalCount = invites.length + attachedExtra.length;
 
-  function grid(rows: Row[]) {
-    if (rows.length === 0) {
-      return <p className="mb-2 text-sm text-ink-soft">—</p>;
-    }
+  const externalCells: Cell[] = attachedExtra.map((p) => ({
+    id: p.id,
+    name: p.full_name,
+    checked: true,
+    rowEditable: participantsEditable,
+    onToggle: () => toggleParticipant(p.id, true),
+  }));
+
+  function grid(cells: Cell[]) {
+    if (cells.length === 0) return <p className="mb-2 text-sm text-ink-soft">—</p>;
     return (
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-        {rows.map((row) => (
+        {cells.map((c) => (
           <label
-            key={row.key}
+            key={c.id}
             className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-              row.checked ? "border-accent bg-accent/5" : "border-line"
-            } ${row.rowEditable ? "cursor-pointer hover:bg-surface" : ""}`}
+              c.checked ? "border-accent bg-accent/5" : "border-line"
+            } ${c.rowEditable ? "cursor-pointer hover:bg-surface" : ""}`}
           >
             <input
               type="checkbox"
-              checked={row.checked}
-              disabled={!row.rowEditable || busyId === row.id}
-              onChange={row.onToggle}
+              checked={c.checked}
+              disabled={!c.rowEditable || busyId === c.id}
+              onChange={c.onToggle}
               className="shrink-0 rounded"
             />
-            <span
-              title={row.name}
-              className={`min-w-0 truncate ${row.checked ? "text-ink" : "text-ink-soft"}`}
-            >
-              {truncateName(row.name)}
+            <span title={c.name} className={`min-w-0 truncate ${c.checked ? "text-ink" : "text-ink-soft"}`}>
+              {truncateName(c.name)}
             </span>
           </label>
         ))}
@@ -186,73 +186,90 @@ export default function AttendanceList({
   return (
     <div className="rounded border border-line bg-surface p-4">
       <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
-        <span aria-hidden>👥</span> נוכחות: {totalChecked}/{totalCount}
+        <span aria-hidden>👥</span> נוכחות: {totalPresent}/{totalCount}
       </h3>
 
       <p className="mb-2 text-xs font-semibold text-ink-soft">
-        מוזמנים לפגישה ({presentIds.length}/{members.length})
+        מוזמנים לפגישה ({committeePresent}/{invites.length})
       </p>
-      {grid(memberRows)}
+      {grid(committeeCells)}
 
       <p className="mb-2 mt-4 text-xs font-semibold text-ink-soft">
-        מוזמנים חיצוניים ({participantIds.length}/{participants.length})
+        נוכחים מהאלפון ({attachedExtra.length})
       </p>
-      {grid(participantRows)}
+      {grid(externalCells)}
 
-      <div className="mt-4 border-t border-line pt-3">
-        {participantsEditable && !addingOpen && (
-          <button
-            onClick={() => setAddingOpen(true)}
-            className="mt-2 text-xs text-accent-dark hover:underline"
+      {participantsEditable && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+          <select
+            value=""
+            disabled={unattached.length === 0}
+            onChange={(e) => {
+              if (e.target.value) toggleParticipant(e.target.value, false);
+            }}
+            className="rounded border border-line-strong px-2 py-1 text-sm disabled:opacity-50"
           >
-            + הוסף משתתף/ת חדש/ה
-          </button>
-        )}
+            <option value="">
+              {unattached.length === 0 ? "כל האלפון כבר נוסף" : "+ הוסף מהאלפון…"}
+            </option>
+            {unattached.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.full_name}
+              </option>
+            ))}
+          </select>
 
-        {participantsEditable && addingOpen && (
-          <form onSubmit={createAndAttach} className="mt-2 flex flex-wrap items-end gap-2">
-            <input
-              type="text"
-              placeholder="שם מלא"
-              required
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="rounded border border-line-strong px-2 py-1 text-sm"
-            />
-            <input
-              type="tel"
-              placeholder="טלפון (אופציונלי)"
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              className="rounded border border-line-strong px-2 py-1 text-sm"
-              dir="ltr"
-            />
-            <input
-              type="email"
-              placeholder="אימייל (אופציונלי)"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className="rounded border border-line-strong px-2 py-1 text-sm"
-              dir="ltr"
-            />
-            <button
-              type="submit"
-              disabled={addBusy || !newName.trim()}
-              className="rounded bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-dark disabled:opacity-50"
-            >
-              הוסף וצרף
+          {!addingOpen && (
+            <button onClick={() => setAddingOpen(true)} className="text-xs text-accent-dark hover:underline">
+              + איש קשר חדש
             </button>
-            <button
-              type="button"
-              onClick={() => setAddingOpen(false)}
-              disabled={addBusy}
-              className="text-xs text-ink-soft hover:underline"
-            >
-              ביטול
-            </button>
-          </form>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+
+      {participantsEditable && addingOpen && (
+        <form onSubmit={createAndAttach} className="mt-2 flex flex-wrap items-end gap-2">
+          <input
+            type="text"
+            placeholder="שם מלא"
+            required
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            className="rounded border border-line-strong px-2 py-1 text-sm"
+          />
+          <input
+            type="tel"
+            placeholder="טלפון (אופציונלי)"
+            value={newPhone}
+            onChange={(e) => setNewPhone(e.target.value)}
+            className="rounded border border-line-strong px-2 py-1 text-sm"
+            dir="ltr"
+          />
+          <input
+            type="email"
+            placeholder="אימייל (אופציונלי)"
+            value={newEmail}
+            onChange={(e) => setNewEmail(e.target.value)}
+            className="rounded border border-line-strong px-2 py-1 text-sm"
+            dir="ltr"
+          />
+          <button
+            type="submit"
+            disabled={addBusy || !newName.trim()}
+            className="rounded bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-dark disabled:opacity-50"
+          >
+            הוסף וצרף
+          </button>
+          <button
+            type="button"
+            onClick={() => setAddingOpen(false)}
+            disabled={addBusy}
+            className="text-xs text-ink-soft hover:underline"
+          >
+            ביטול
+          </button>
+        </form>
+      )}
     </div>
   );
 }
