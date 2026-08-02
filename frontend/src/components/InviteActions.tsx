@@ -30,9 +30,9 @@ export default function InviteActions({
   const hasInvitees = meeting.invites.length > 0;
   const confirmedCount = meeting.invites.filter((i) => i.status === "confirmed_attend").length;
   const total = meeting.invites.length;
-  const majorityConfirmed = total > 0 && confirmedCount * 2 > total;
+  // "רוב" = half or more (≥50%), so exactly half counts too.
+  const majorityConfirmed = total > 0 && confirmedCount * 2 >= total;
   const isInvited = meeting.status === "invited_internal" || meeting.status === "invited_public";
-  const everyoneConfirmed = total > 0 && confirmedCount === total;
 
   function openMeeting() {
     setConfirmingOpen(false);
@@ -40,9 +40,9 @@ export default function InviteActions({
   }
 
   function requestOpen() {
-    // Everyone confirmed (or no invitees) — open straight away; otherwise
-    // ask for confirmation showing how many have confirmed.
-    if (total === 0 || everyoneConfirmed) openMeeting();
+    // A majority confirmed (or no invitees) — open straight away; otherwise
+    // ask for confirmation before opening without the committee majority.
+    if (total === 0 || majorityConfirmed) openMeeting();
     else setConfirmingOpen(true);
   }
 
@@ -79,7 +79,7 @@ export default function InviteActions({
             title={hasInvitees ? undefined : "יש להוסיף מוזמנים תחילה"}
             className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
-            ✈ שלח לחברי ועד
+            ✈ שלח לחברי הועד לאישור הפגישה
           </button>
         )}
 
@@ -90,6 +90,16 @@ export default function InviteActions({
             className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             ✈ שלח שוב לחברי ועד
+          </button>
+        )}
+
+        {isInvited && (
+          <button
+            onClick={() => run(() => api.distributeAlfonInvite(meeting.id))}
+            disabled={busy}
+            className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          >
+            ✉ {meeting.invite_sent_public_at ? "הפץ שוב הזמנה לאלפון" : "הפץ הזמנה לאלפון"}
           </button>
         )}
 
@@ -108,6 +118,7 @@ export default function InviteActions({
         <p className="mt-2 text-xs text-ink-soft">
           אישרו הגעה: {confirmedCount} מתוך {total} מוזמנים
           {!majorityConfirmed && " · אפשר לפתוח את הישיבה גם ללא רוב אישורים"}
+          {meeting.invite_sent_public_at && " · ✓ הזמנה הופצה לאלפון"}
         </p>
       )}
 
@@ -127,7 +138,7 @@ export default function InviteActions({
               אישרו הגעה: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> מוזמנים.
             </p>
             <p className="mb-4 text-sm text-ink-soft">
-              עדיין לא כל המוזמנים אישרו הגעה. לפתוח את הישיבה בכל זאת?
+              לא כל חברי הועד אישרו, האם לפתוח את הפגישה בכל זאת?
             </p>
             <div className="flex justify-center gap-2">
               <button

@@ -7,6 +7,7 @@ no auth state of its own; `user.tenant_id` / `user.user_id` are plain UUIDs
 sourced from klaser-identity on every request (see identity-cutover.md).
 """
 import datetime as dt
+import html
 from urllib.parse import quote
 from uuid import UUID
 
@@ -1079,6 +1080,98 @@ def send_public_invites(
         db.refresh(meeting)
 
     _send_pending_invites(db, meeting, user)
+    db.refresh(meeting)
+    out = MeetingOut.model_validate(meeting)
+    out.topics = [TopicOut.model_validate(t) for t in _visible_topics(meeting, user)]
+    return out
+
+
+@router.post("/{meeting_id}/distribute-alfon-invite", response_model=MeetingOut)
+def distribute_alfon_invite(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> MeetingOut:
+    """Email a simplified invitation — informational only, no RSVP and no
+    receipt confirmation — to every אלפון contact with an email address.
+    Available once the committee invitation has been sent (no need to wait for
+    the committee to confirm)."""
+    tenant_id = UUID(user.tenant_id)
+    meeting = _get_meeting_or_404(db, meeting_id, tenant_id)
+
+    if meeting.status not in ("invited_internal", "invited_public"):
+        raise HTTPException(
+            status_code=409,
+            detail="יש לשלוח תחילה הזמנה לחברי הועד לפני הפצה לאלפון.",
+        )
+
+    parts = (
+        db.execute(select(Participant).where(Participant.tenant_id == tenant_id)).scalars().all()
+    )
+    seen: set[str] = set()
+    recipients: list[tuple[str, str]] = []
+    for p in parts:
+        email = (p.email or "").strip()
+        if email and email.lower() not in seen:
+            seen.add(email.lower())
+            recipients.append((p.full_name, email))
+    if not recipients:
+        raise HTTPException(status_code=400, detail="אין באלפון אנשי קשר עם כתובת אימייל.")
+
+    try:
+        pdf = build_invite_pdf(db, meeting, user.tenant_name or "")
+        attachments = (
+            mail.Attachment(
+                filename=f"הזמנה {meeting.number}.pdf" if meeting.number else "הזמנה.pdf",
+                content=pdf,
+            ),
+        )
+    except Exception:  # noqa: BLE001 — a PDF failure must not block the send
+        attachments = ()
+
+    kind_he = mail._KIND_LABELS.get(meeting.kind, meeting.kind)
+    num = f" מס׳ {meeting.number}" if meeting.number else ""
+    org = user.tenant_name or ""
+    date_s = meeting.date.strftime("%d/%m/%Y")
+    time_s = meeting.time_start.strftime("%H:%M") if meeting.time_start else ""
+    if meeting.time_end:
+        end = meeting.time_end.strftime("%H:%M")
+        time_s = f"{time_s}–{end}" if time_s else end
+    topics = [t for t in sorted(meeting.topics, key=lambda t: t.order) if not t.is_private]
+    where = " · ".join(x for x in [date_s, time_s, meeting.location or ""] if x)
+    agenda_html = "".join(f"<li>{html.escape(t.title)}</li>" for t in topics)
+
+    def esc(s: str | None) -> str:
+        return html.escape(s or "")
+
+    for name, email in recipients:
+        body_html = mail._wrap_html(
+            f"<h1>הזמנה ל{esc(kind_he)}{esc(num)}</h1>"
+            f"<p>שלום {esc(name)},</p>"
+            f"<p>מוזמנים להשתתף ב{esc(kind_he)}{esc(num)}"
+            + (f" שתתקיים ב-{esc(where)}." if where else ".")
+            + "</p>"
+            + (f"<p><strong>סדר יום:</strong></p><ol>{agenda_html}</ol>" if agenda_html else "")
+            + "<p>מצורפת הזמנה מפורטת. נשמח לראותכם.</p>",
+            f"{org} · Klaser",
+        )
+        body_text = (
+            f"הזמנה ל{kind_he}{num}\n\n"
+            f"שלום {name},\n"
+            f"מוזמנים להשתתף ב{kind_he}{num}" + (f" ({where})" if where else "") + ".\n"
+            + ("\nסדר יום:\n" + "\n".join(f"- {t.title}" for t in topics) if topics else "")
+            + f"\n\n— {org}"
+        )
+        mail.send_prebuilt(
+            to_email=email,
+            subject=f"הזמנה ל{kind_he}{num}",
+            html_body=body_html,
+            text_body=body_text,
+            attachments=attachments,
+        )
+
+    meeting.invite_sent_public_at = dt.datetime.now(dt.timezone.utc)
+    db.commit()
     db.refresh(meeting)
     out = MeetingOut.model_validate(meeting)
     out.topics = [TopicOut.model_validate(t) for t in _visible_topics(meeting, user)]

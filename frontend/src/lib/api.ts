@@ -588,6 +588,8 @@ export const api = {
     request<PublishPreview>(`/api/meetings/${id}/publish-preview`),
   publishMeeting: (id: string) =>
     request<Meeting>(`/api/meetings/${id}/publish`, { method: "POST" }),
+  distributeAlfonInvite: (id: string) =>
+    request<Meeting>(`/api/meetings/${id}/distribute-alfon-invite`, { method: "POST" }),
   getAttendance: (id: string) => request<string[]>(`/api/meetings/${id}/attendance`),
   getPreviousMeeting: (id: string) =>
     request<PreviousMeeting | null>(`/api/meetings/${id}/previous`),
