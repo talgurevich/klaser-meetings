@@ -441,6 +441,10 @@ export type TenantSettings = {
   recurring_topic_first_duration: number | null;
   recurring_topic_last_title: string | null;
   recurring_topic_last_duration: number | null;
+  assembly_recurring_topic_first_title: string | null;
+  assembly_recurring_topic_first_duration: number | null;
+  assembly_recurring_topic_last_title: string | null;
+  assembly_recurring_topic_last_duration: number | null;
   role_titles: string[];
   signatories: Signatory[];
 };

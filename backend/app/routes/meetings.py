@@ -84,27 +84,40 @@ def _seed_recurring_topics(db: Session, meeting: Meeting, tenant_id: UUID) -> in
     if tenant_settings is None:
         return 0
 
+    # Assemblies (kind='assembly') use their own recurring-topic config;
+    # everything else falls back to the ישיבה set.
+    if meeting.kind == "assembly":
+        first_title = tenant_settings.assembly_recurring_topic_first_title
+        first_duration = tenant_settings.assembly_recurring_topic_first_duration
+        last_title = tenant_settings.assembly_recurring_topic_last_title
+        last_duration = tenant_settings.assembly_recurring_topic_last_duration
+    else:
+        first_title = tenant_settings.recurring_topic_first_title
+        first_duration = tenant_settings.recurring_topic_first_duration
+        last_title = tenant_settings.recurring_topic_last_title
+        last_duration = tenant_settings.recurring_topic_last_duration
+
     leading = 0
-    if tenant_settings.recurring_topic_first_title:
+    if first_title:
         db.add(
             Topic(
                 tenant_id=tenant_id,
                 meeting_id=meeting.id,
                 order=leading,
-                title=tenant_settings.recurring_topic_first_title,
-                duration_minutes=tenant_settings.recurring_topic_first_duration,
+                title=first_title,
+                duration_minutes=first_duration,
                 is_default_first=True,
             )
         )
         leading += 1
-    if tenant_settings.recurring_topic_last_title:
+    if last_title:
         db.add(
             Topic(
                 tenant_id=tenant_id,
                 meeting_id=meeting.id,
                 order=_DEFAULT_LAST_TOPIC_ORDER,
-                title=tenant_settings.recurring_topic_last_title,
-                duration_minutes=tenant_settings.recurring_topic_last_duration,
+                title=last_title,
+                duration_minutes=last_duration,
                 is_default_last=True,
             )
         )

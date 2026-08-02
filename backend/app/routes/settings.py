@@ -108,6 +108,10 @@ def _to_out(row: TenantSettings) -> TenantSettingsOut:
         recurring_topic_first_duration=row.recurring_topic_first_duration,
         recurring_topic_last_title=row.recurring_topic_last_title,
         recurring_topic_last_duration=row.recurring_topic_last_duration,
+        assembly_recurring_topic_first_title=row.assembly_recurring_topic_first_title,
+        assembly_recurring_topic_first_duration=row.assembly_recurring_topic_first_duration,
+        assembly_recurring_topic_last_title=row.assembly_recurring_topic_last_title,
+        assembly_recurring_topic_last_duration=row.assembly_recurring_topic_last_duration,
         role_titles=row.role_titles or [],
         signatories=[
             SignatoryOut(

@@ -435,6 +435,10 @@ export default function Settings() {
   const [firstTopicDuration, setFirstTopicDuration] = useState("");
   const [lastTopicTitle, setLastTopicTitle] = useState("");
   const [lastTopicDuration, setLastTopicDuration] = useState("");
+  const [aFirstTopicTitle, setAFirstTopicTitle] = useState("");
+  const [aFirstTopicDuration, setAFirstTopicDuration] = useState("");
+  const [aLastTopicTitle, setALastTopicTitle] = useState("");
+  const [aLastTopicDuration, setALastTopicDuration] = useState("");
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -460,6 +464,10 @@ export default function Settings() {
       setFirstTopicDuration(settings.recurring_topic_first_duration?.toString() || "");
       setLastTopicTitle(settings.recurring_topic_last_title || "");
       setLastTopicDuration(settings.recurring_topic_last_duration?.toString() || "");
+      setAFirstTopicTitle(settings.assembly_recurring_topic_first_title || "");
+      setAFirstTopicDuration(settings.assembly_recurring_topic_first_duration?.toString() || "");
+      setALastTopicTitle(settings.assembly_recurring_topic_last_title || "");
+      setALastTopicDuration(settings.assembly_recurring_topic_last_duration?.toString() || "");
       initialized.current = true;
     }
   }, [settings]);
@@ -917,6 +925,74 @@ export default function Settings() {
             disabled={editDisabled}
             onChange={(e) => setLastTopicTitle(e.target.value)}
             onBlur={() => saveField({ recurring_topic_last_title: lastTopicTitle || null })}
+            className={`${INPUT_CLS} flex-1`}
+          />
+        </div>
+      </div>
+
+      {/* נושאים קבועים בכל אסיפה */}
+      <div className={SECTION_CLS}>
+        <SectionHeader icon="📋" title="נושאים קבועים בכל אסיפה" />
+        <p className="mb-4 text-xs text-ink-soft">
+          שני הנושאים האלו נוספים אוטומטית בכל אסיפה חדשה. נושאים חדשים שתוסיפו ייכנסו בין שניהם.
+        </p>
+
+        <label className="mb-1 block text-xs font-medium text-ink-soft">נושא ראשון</label>
+        <div className="mb-4 flex gap-2">
+          <div className="w-24">
+            <input
+              type="number"
+              min={0}
+              value={aFirstTopicDuration}
+              disabled={editDisabled}
+              onChange={(e) => setAFirstTopicDuration(e.target.value)}
+              onBlur={() =>
+                saveField({
+                  assembly_recurring_topic_first_duration: aFirstTopicDuration
+                    ? Number(aFirstTopicDuration)
+                    : null,
+                })
+              }
+              placeholder="דקות"
+              className={INPUT_CLS}
+            />
+          </div>
+          <input
+            type="text"
+            value={aFirstTopicTitle}
+            disabled={editDisabled}
+            onChange={(e) => setAFirstTopicTitle(e.target.value)}
+            onBlur={() => saveField({ assembly_recurring_topic_first_title: aFirstTopicTitle || null })}
+            className={`${INPUT_CLS} flex-1`}
+          />
+        </div>
+
+        <label className="mb-1 block text-xs font-medium text-ink-soft">נושא אחרון</label>
+        <div className="flex gap-2">
+          <div className="w-24">
+            <input
+              type="number"
+              min={0}
+              value={aLastTopicDuration}
+              disabled={editDisabled}
+              onChange={(e) => setALastTopicDuration(e.target.value)}
+              onBlur={() =>
+                saveField({
+                  assembly_recurring_topic_last_duration: aLastTopicDuration
+                    ? Number(aLastTopicDuration)
+                    : null,
+                })
+              }
+              placeholder="דקות"
+              className={INPUT_CLS}
+            />
+          </div>
+          <input
+            type="text"
+            value={aLastTopicTitle}
+            disabled={editDisabled}
+            onChange={(e) => setALastTopicTitle(e.target.value)}
+            onBlur={() => saveField({ assembly_recurring_topic_last_title: aLastTopicTitle || null })}
             className={`${INPUT_CLS} flex-1`}
           />
         </div>

@@ -550,6 +550,10 @@ class TenantSettingsUpdate(BaseModel):
     recurring_topic_first_duration: int | None = None
     recurring_topic_last_title: str | None = None
     recurring_topic_last_duration: int | None = None
+    assembly_recurring_topic_first_title: str | None = None
+    assembly_recurring_topic_first_duration: int | None = None
+    assembly_recurring_topic_last_title: str | None = None
+    assembly_recurring_topic_last_duration: int | None = None
     role_titles: list[str] | None = None
 
 
@@ -570,6 +574,10 @@ class TenantSettingsOut(BaseModel):
     recurring_topic_first_duration: int | None
     recurring_topic_last_title: str | None
     recurring_topic_last_duration: int | None
+    assembly_recurring_topic_first_title: str | None
+    assembly_recurring_topic_first_duration: int | None
+    assembly_recurring_topic_last_title: str | None
+    assembly_recurring_topic_last_duration: int | None
     role_titles: list[str] = Field(default_factory=list)
     signatories: list[SignatoryOut] = Field(default_factory=list)
 

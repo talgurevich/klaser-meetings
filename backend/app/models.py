@@ -469,11 +469,18 @@ class TenantSettings(Base):
 
     # The two pinned topics auto-added to every new meeting (Topic.
     # is_default_first / is_default_last) — see create_meeting. Either can
-    # be left unset (title=None) to skip seeding that one.
+    # be left unset (title=None) to skip seeding that one. The recurring_topic_*
+    # fields apply to ישיבות (kind='meeting'); assembly_recurring_topic_* are
+    # the parallel set for אסיפות (kind='assembly').
     recurring_topic_first_title: Mapped[str | None] = mapped_column(String)
     recurring_topic_first_duration: Mapped[int | None] = mapped_column(Integer)
     recurring_topic_last_title: Mapped[str | None] = mapped_column(String)
     recurring_topic_last_duration: Mapped[int | None] = mapped_column(Integer)
+
+    assembly_recurring_topic_first_title: Mapped[str | None] = mapped_column(String)
+    assembly_recurring_topic_first_duration: Mapped[int | None] = mapped_column(Integer)
+    assembly_recurring_topic_last_title: Mapped[str | None] = mapped_column(String)
+    assembly_recurring_topic_last_duration: Mapped[int | None] = mapped_column(Integer)
 
     # Org-defined role/position types ("בעלי תפקיד") — a plain list of
     # strings offered as the תפקיד dropdown in the אלפון. Admin-managed.
