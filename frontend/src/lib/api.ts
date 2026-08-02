@@ -630,6 +630,11 @@ export const api = {
     if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));
     return r.blob();
   },
+  getInvitePdf: async (id: string): Promise<Blob> => {
+    const r = await fetch(`${BASE}/api/meetings/${id}/invite.pdf`, { credentials: "include" });
+    if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));
+    return r.blob();
+  },
 
   // ─── Meeting recordings ───────────────────────────────────────────────
   listRecordings: (meetingId: string) =>

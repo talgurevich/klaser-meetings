@@ -732,6 +732,25 @@ def meeting_protocol_pdf(
     )
 
 
+@router.get("/{meeting_id}/invite.pdf")
+def meeting_invite_pdf(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> Response:
+    """The invitation as a server-generated PDF — the exact attachment the
+    invite emails carry, exposed so the invite preview can show it before
+    anything is sent."""
+    meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    pdf = build_invite_pdf(db, meeting, user.tenant_name or "")
+    filename = f"invite-{meeting.number or meeting_id}.pdf"
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
+
+
 @router.post("/{meeting_id}/internal-approval", response_model=MeetingOut)
 def add_internal_approval(
     meeting_id: UUID,

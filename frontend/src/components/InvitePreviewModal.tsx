@@ -17,12 +17,29 @@ export default function InvitePreviewModal({
 }) {
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   useEffect(() => {
     api
       .previewInvite(meetingId)
       .then(setPreview)
       .catch((err) => setError(apiErrorMessage(err)));
+  }, [meetingId]);
+
+  // The actual PDF that will be attached to the invitation email, shown so
+  // the sender sees exactly what goes out. Object URL revoked on unmount.
+  useEffect(() => {
+    let url: string | null = null;
+    api
+      .getInvitePdf(meetingId)
+      .then((blob) => {
+        url = URL.createObjectURL(blob);
+        setPdfUrl(url);
+      })
+      .catch(() => setPdfUrl(null));
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
   }, [meetingId]);
 
   const timeRange =
@@ -109,6 +126,19 @@ export default function InvitePreviewModal({
               <p className="mt-4 border-t border-line pt-2 text-xs text-ink-soft">
                 {preview.tenant_name} · Klaser
               </p>
+            </div>
+
+            <div className="mt-4 print:hidden">
+              <p className="mb-1 text-sm font-medium">מסמך ההזמנה (PDF שיצורף למייל)</p>
+              {pdfUrl ? (
+                <iframe
+                  title="invite-pdf"
+                  src={pdfUrl}
+                  className="h-96 w-full rounded border border-line bg-white"
+                />
+              ) : (
+                <p className="text-xs text-ink-soft">טוען PDF…</p>
+              )}
             </div>
           </>
         )}

@@ -18,6 +18,7 @@ export default function PublishModal({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +32,22 @@ export default function PublishModal({
       });
     return () => {
       cancelled = true;
+    };
+  }, [meetingId]);
+
+  // The protocol PDF that will be attached to the summary email, shown so the
+  // sender sees the attachment before publishing. Object URL revoked on unmount.
+  useEffect(() => {
+    let url: string | null = null;
+    api
+      .getProtocolPdf(meetingId)
+      .then((blob) => {
+        url = URL.createObjectURL(blob);
+        setPdfUrl(url);
+      })
+      .catch(() => setPdfUrl(null));
+    return () => {
+      if (url) URL.revokeObjectURL(url);
     };
   }, [meetingId]);
 
@@ -98,6 +115,19 @@ export default function PublishModal({
                   srcDoc={preview.html}
                   className="h-80 w-full rounded border border-line bg-surface"
                 />
+              </div>
+
+              <div className="mt-4">
+                <p className="mb-1 text-sm font-medium">מסמך הפרוטוקול (PDF שיצורף)</p>
+                {pdfUrl ? (
+                  <iframe
+                    title="protocol-pdf"
+                    src={pdfUrl}
+                    className="h-80 w-full rounded border border-line bg-white"
+                  />
+                ) : (
+                  <p className="text-xs text-ink-soft">טוען PDF…</p>
+                )}
               </div>
 
               {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
