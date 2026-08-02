@@ -101,7 +101,7 @@ export default function MeetingDetail() {
   const [receiptBusy, setReceiptBusy] = useState(false);
   // Post-lock, the whole agenda is edited behind a single toggle rather than
   // every topic card exposing its controls at once.
-  const [agendaEditing, setAgendaEditing] = useState(false);
+  const [meetingEditing, setMeetingEditing] = useState(false);
   const [finishEditModal, setFinishEditModal] = useState(false);
 
   async function distributeApproval(reset = false) {
@@ -532,9 +532,11 @@ export default function MeetingDetail() {
   const isPrep = PREP_STATUSES.includes(meeting.status);
   const isActive = meeting.status === "active";
   // Locked-but-editable phases (after the meeting ends, before archive):
-  // topics are read-only until the single "ערוך סדר יום" toggle is on.
+  // attendance AND the agenda are read-only until the single "ערוך ישיבה"
+  // toggle is on. That one toggle governs both.
   const isLockedEditable = editor && !isActive && !isPrep && meeting.status !== "archived";
-  const topicsEditable = isActive ? editor : isLockedEditable && agendaEditing;
+  const meetingSectionsEditable = isActive ? editor : isLockedEditable && meetingEditing;
+  const topicsEditable = meetingSectionsEditable;
   const usedPoolIds = new Set(meeting.topics.map((t) => t.source_pool_id).filter(Boolean));
   const availablePoolItems = poolItems.filter((p) => !usedPoolIds.has(p.id));
   // Locking only requires that every topic has been *resolved* somehow —
@@ -563,20 +565,45 @@ export default function MeetingDetail() {
     .filter(Boolean)
     .join(" · ");
 
-  // Attendance is shown while active and in every post-prep phase. During an
-  // active meeting it sits ABOVE the agenda (mark who's here first); in the
-  // later read-only phases it stays below.
+  // Attendance is shown while active and in every post-prep phase, and always
+  // sits ABOVE the agenda. During an active meeting it's editable; once locked
+  // it's read-only until the "ערוך ישיבה" toggle is on (same gate as topics).
   const attendanceBlock = (isActive || !isPrep) && (
     <div className="mb-6">
       <AttendanceList
         meetingId={meeting.id}
         invites={meeting.invites}
         presentIds={meeting.attendees_present || []}
-        editable={editor}
+        editable={meetingSectionsEditable}
         participantIds={meeting.participant_ids || []}
-        participantsEditable={editor}
+        participantsEditable={meetingSectionsEditable}
         onChanged={load}
       />
+    </div>
+  );
+
+  // The single "ערוך ישיבה" toggle for the locked-but-editable phases —
+  // governs both attendance and the agenda, and sits above both.
+  const editMeetingToggle = isLockedEditable && (
+    <div className="mb-3 flex justify-end">
+      <button
+        onClick={() => {
+          if (!meetingEditing) {
+            setMeetingEditing(true);
+          } else if (meeting.status === "pending_approval" || meeting.status === "approved") {
+            setFinishEditModal(true);
+          } else {
+            setMeetingEditing(false);
+          }
+        }}
+        className={`rounded border px-3 py-1.5 text-sm font-medium ${
+          meetingEditing
+            ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+            : "border-line-strong text-ink hover:bg-line"
+        }`}
+      >
+        {meetingEditing ? "✓ סיום עריכה" : "✏ ערוך ישיבה"}
+      </button>
     </div>
   );
 
@@ -626,30 +653,18 @@ export default function MeetingDetail() {
         />
       )}
 
+      {/* Active: attendance only (above the agenda). Post-lock: the single
+          "ערוך ישיבה" toggle sits above both attendance and the agenda. */}
       {isActive && attendanceBlock}
+      {!isActive && (
+        <>
+          {editMeetingToggle}
+          {attendanceBlock}
+        </>
+      )}
 
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="font-display text-lg font-semibold">סדר יום</h2>
-        {isLockedEditable && (
-          <button
-            onClick={() => {
-              if (!agendaEditing) {
-                setAgendaEditing(true);
-              } else if (meeting.status === "pending_approval" || meeting.status === "approved") {
-                setFinishEditModal(true);
-              } else {
-                setAgendaEditing(false);
-              }
-            }}
-            className={`rounded border px-3 py-1.5 text-sm font-medium ${
-              agendaEditing
-                ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                : "border-line-strong text-ink hover:bg-line"
-            }`}
-          >
-            {agendaEditing ? "✓ סיום עריכה" : "✏ ערוך סדר יום"}
-          </button>
-        )}
       </div>
 
       {isPrep ? (
@@ -843,12 +858,12 @@ export default function MeetingDetail() {
         <div className="mb-6">
           <button
             onClick={() => changeStatus("approved")}
-            disabled={busy || agendaEditing || !receipt || !receipt.threshold_met}
+            disabled={busy || meetingEditing || !receipt || !receipt.threshold_met}
             className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
           >
             העבר לסטטוס: אושר
           </button>
-          {agendaEditing ? (
+          {meetingEditing ? (
             <p className="mt-1 text-center text-xs text-ink-soft">
               יש לסיים את עריכת סדר היום לפני מעבר לסטטוס אושר
             </p>
@@ -901,8 +916,6 @@ export default function MeetingDetail() {
           {pdfBusy ? "מפיק…" : "📄 הפק PDF (פרוטוקול)"}
         </button>
       )}
-
-      {!isActive && attendanceBlock}
 
       {editor && meeting.status === "pending_approval" && (
         <div className="mb-6 rounded border border-line bg-surface p-4">
@@ -989,7 +1002,7 @@ export default function MeetingDetail() {
               <button
                 onClick={() => {
                   setFinishEditModal(false);
-                  setAgendaEditing(false);
+                  setMeetingEditing(false);
                 }}
                 disabled={receiptBusy}
                 className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
@@ -1000,7 +1013,7 @@ export default function MeetingDetail() {
                 onClick={async () => {
                   await distributeApproval(true);
                   setFinishEditModal(false);
-                  setAgendaEditing(false);
+                  setMeetingEditing(false);
                 }}
                 disabled={receiptBusy}
                 className="rounded bg-accent-dark px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
