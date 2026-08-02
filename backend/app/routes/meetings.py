@@ -353,6 +353,23 @@ def _check_status_transition(db: Session, meeting: Meeting, new_status: str) -> 
             )
 
 
+def _revert_to_pending_on_protocol_edit(meeting: Meeting) -> None:
+    """Editing the agenda/protocol after the meeting was already approved or
+    published sends it back through the whole approval cycle: revert to
+    pending_approval and clear every committee confirmation, so the *changed*
+    protocol has to be re-distributed to the committee and re-approved (≥50%)
+    before it can move to 'אושר' and be published to the public again.
+
+    published_at is deliberately kept: it's how build_publish_summary /
+    build_protocol_pdf know a re-publish is a revision, so the public email
+    goes out titled 'חל שינוי בפרוטוקול הפגישה'. Editing during draft/active/
+    pending_approval is untouched (nothing to revert yet)."""
+    if meeting.status in ("approved", "published"):
+        meeting.status = "pending_approval"
+        for inv in meeting.invites:
+            inv.protocol_receipt_confirmed_at = None
+
+
 def _committee_invites(db: Session, meeting: Meeting) -> list[MeetingInvite]:
     """The meeting's invitees who are committee members — אלפון contacts
     flagged 'חבר ועד' (Participant.edit_permission). Used for the protocol
@@ -1226,6 +1243,7 @@ def add_topic(
     )
     db.add(topic)
     _invite_topic_guests(db, meeting, tenant_id, body.invited_guests)
+    _revert_to_pending_on_protocol_edit(meeting)
     db.commit()
     db.refresh(topic)
     return topic
@@ -1256,6 +1274,7 @@ def update_topic(
     for field, value in updates.items():
         setattr(topic, field, value)
 
+    _revert_to_pending_on_protocol_edit(topic.meeting)
     db.commit()
     db.refresh(topic)
     return topic
@@ -1275,7 +1294,9 @@ def delete_topic(
     if topic is None:
         raise HTTPException(status_code=404, detail="הנושא לא נמצא")
     _release_pool_topic(db, tenant_id, topic.source_pool_id)
+    meeting = topic.meeting
     db.delete(topic)
+    _revert_to_pending_on_protocol_edit(meeting)
     db.commit()
 
 
@@ -1296,6 +1317,7 @@ def reorder_topics(
     for item in body:
         by_id[item.id].order = item.order
 
+    _revert_to_pending_on_protocol_edit(meeting)
     db.commit()
     return sorted(by_id.values(), key=lambda t: t.order)
 
@@ -1316,6 +1338,7 @@ def defer_topic(
         raise HTTPException(status_code=404, detail="הנושא לא נמצא")
 
     defer_topic_to_next_meeting(db, topic=topic)
+    _revert_to_pending_on_protocol_edit(meeting)
     db.commit()
     db.refresh(topic)
     return topic
@@ -1346,6 +1369,7 @@ def undo_defer(
             detail="אי אפשר לבטל את הדחייה — הנושא כבר נדון בישיבה שאליה נדחה",
         ) from e
 
+    _revert_to_pending_on_protocol_edit(meeting)
     db.commit()
     db.refresh(topic)
     return topic

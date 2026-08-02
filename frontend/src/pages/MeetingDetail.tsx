@@ -235,12 +235,16 @@ export default function MeetingDetail() {
       .catch(() => setPrevMeeting(null));
   }, [id, meeting?.status]);
 
-  // Protocol-receipt gate progress — only relevant once locked.
+  // Protocol-receipt gate progress — only relevant once locked. Cleared to
+  // null on every status change before the refetch so a stale "threshold met"
+  // from a previous phase can't briefly re-enable the approve button after an
+  // edit sends the meeting back to pending_approval.
   useEffect(() => {
     if (!id || (meeting?.status !== "pending_approval" && meeting?.status !== "approved")) {
       setReceipt(null);
       return;
     }
+    setReceipt(null);
     api
       .getProtocolReceiptStatus(id)
       .then(setReceipt)
@@ -839,12 +843,12 @@ export default function MeetingDetail() {
         <div className="mb-6">
           <button
             onClick={() => changeStatus("approved")}
-            disabled={busy || (receipt !== null && !receipt.threshold_met)}
+            disabled={busy || !receipt || !receipt.threshold_met}
             className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
           >
             העבר לסטטוס: אושר
           </button>
-          {receipt !== null && !receipt.threshold_met && (
+          {(!receipt || !receipt.threshold_met) && (
             <p className="mt-1 text-center text-xs text-ink-soft">
               נדרש שלפחות מחצית מחברי הועד יאשרו את הפרוטוקול לפני מעבר לסטטוס אושר
             </p>

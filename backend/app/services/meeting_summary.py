@@ -217,8 +217,19 @@ def build_publish_summary(db: Session, meeting: Meeting, tenant_name: str) -> Pu
 
     recipients, without = resolve_recipients(db, meeting)
 
+    # A re-publish (the protocol was edited after it had already been published
+    # once, so it went back through the approval cycle) goes out as a change
+    # notice rather than a fresh summary. published_at is set the first time and
+    # kept across reverts, so its presence here means "already published once".
+    revised = meeting.published_at is not None
+    subject = (
+        f"חל שינוי בפרוטוקול הפגישה{number_suffix}"
+        if revised
+        else f"סיכום {kind_he}{number_suffix} — {date_s}"
+    )
+
     return PublishSummary(
-        subject=f"סיכום {kind_he}{number_suffix} — {date_s}",
+        subject=subject,
         html=_wrap_html(html_body, f"{tenant_name} · Klaser"),
         text=text_body,
         recipients=recipients,
