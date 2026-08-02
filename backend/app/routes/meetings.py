@@ -336,68 +336,67 @@ def get_meeting(
     return out
 
 
-def _check_status_transition(meeting: Meeting, new_status: str) -> None:
-    """Governance guard, enforced server-side (never trust the client to
-    have honestly disabled a button) — see app/services/permissions.py for
-    the analogous reasoning on editor-vs-viewer:
-
-      - pending_approval -> approved requires at least one internal
-        approval recorded (internal_approvals).
-      - approved -> published requires at least one protocol approval
-        recorded (protocol_approvals).
-
-    No configurable quorum yet (e.g. "majority of the committee") — that
-    needs a per-tenant settings concept Meetings doesn't have. One
-    recorded approval is the floor, not a real quorum check. Tighten this
-    once that exists.
-    """
+def _check_status_transition(db: Session, meeting: Meeting, new_status: str) -> None:
+    """Governance guard, enforced server-side. Moving a locked meeting to
+    'אושר' (pending_approval -> approved) requires that a majority of the
+    committee members invited to the meeting have approved the distributed
+    protocol. Nothing gates approved -> published beyond that."""
     if meeting.status == "pending_approval" and new_status == "approved":
-        if not meeting.internal_approvals:
-            raise HTTPException(
-                status_code=409,
-                detail="נדרש לפחות אישור פנימי אחד לפני מעבר לסטטוס 'אושר'",
-            )
-    if meeting.status == "approved" and new_status == "published":
-        if not meeting.protocol_approvals:
-            raise HTTPException(
-                status_code=409,
-                detail="נדרש לפחות אישור פרוטוקול אחד לפני פרסום",
-            )
-        # Extra gate: at least half the invitees must have confirmed receipt
-        # of the distributed protocol before it can go public.
-        if not _receipt_threshold_met(meeting):
-            total, confirmed = _protocol_receipt_counts(meeting)
+        if not _receipt_threshold_met(db, meeting):
+            total, confirmed = _protocol_receipt_counts(db, meeting)
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    f"נדרש שלפחות מחצית מהמוזמנים יאשרו קבלת הפרוטוקול לפני פרסום לציבור "
-                    f"(אושרו {confirmed} מתוך {total})."
+                    f"נדרש שלפחות מחצית מחברי הועד יאשרו את הפרוטוקול לפני מעבר לסטטוס 'אושר' "
+                    f"(אישרו {confirmed} מתוך {total})."
                 ),
             )
 
 
-def _protocol_receipt_counts(meeting: Meeting) -> tuple[int, int]:
-    """(total_invitees_with_email, how_many_confirmed_receipt)."""
-    invites = [i for i in meeting.invites if (i.email or "").strip()]
+def _committee_invites(db: Session, meeting: Meeting) -> list[MeetingInvite]:
+    """The meeting's invitees who are committee members — אלפון contacts
+    flagged 'חבר ועד' (Participant.edit_permission). Used for the protocol
+    receipt-approval distribution + gate (all invited committee members,
+    regardless of whether they attended)."""
+    pids = [i.invitee_id for i in meeting.invites if i.invitee_kind == "participant"]
+    if not pids:
+        return []
+    committee = {
+        p.id
+        for p in db.execute(
+            select(Participant).where(
+                Participant.id.in_(pids),
+                Participant.tenant_id == meeting.tenant_id,
+                Participant.edit_permission.is_(True),
+            )
+        ).scalars()
+    }
+    return [
+        i for i in meeting.invites if i.invitee_kind == "participant" and i.invitee_id in committee
+    ]
+
+
+def _protocol_receipt_counts(db: Session, meeting: Meeting) -> tuple[int, int]:
+    """(committee_invitees_with_email, how_many_confirmed_receipt)."""
+    invites = [i for i in _committee_invites(db, meeting) if (i.email or "").strip()]
     confirmed = sum(1 for i in invites if i.protocol_receipt_confirmed_at is not None)
     return len(invites), confirmed
 
 
-def _receipt_threshold_met(meeting: Meeting) -> bool:
-    """True once ≥50% of invitees have confirmed receipt. No invitees ⇒ met
-    (nothing to gate on)."""
-    total, confirmed = _protocol_receipt_counts(meeting)
+def _receipt_threshold_met(db: Session, meeting: Meeting) -> bool:
+    """True once ≥50% of committee invitees have confirmed receipt. None ⇒ met."""
+    total, confirmed = _protocol_receipt_counts(db, meeting)
     return total == 0 or confirmed * 2 >= total
 
 
-def _receipt_status_out(meeting: Meeting) -> "ProtocolReceiptStatus":
-    total, confirmed = _protocol_receipt_counts(meeting)
+def _receipt_status_out(db: Session, meeting: Meeting) -> "ProtocolReceiptStatus":
+    total, confirmed = _protocol_receipt_counts(db, meeting)
     return ProtocolReceiptStatus(
         sent=meeting.protocol_approval_sent_at is not None,
         sent_at=meeting.protocol_approval_sent_at,
         total=total,
         confirmed=confirmed,
-        threshold_met=_receipt_threshold_met(meeting),
+        threshold_met=_receipt_threshold_met(db, meeting),
     )
 
 
@@ -415,7 +414,7 @@ def update_meeting(
     is_transition = bool(new_status) and new_status != meeting.status
 
     if is_transition:
-        _check_status_transition(meeting, new_status)
+        _check_status_transition(db, meeting, new_status)
 
     # Apply plain field updates (including a manually-set `number`, see
     # MeetingUpdate's docstring) before the status-transition side effects
@@ -485,7 +484,7 @@ def publish_meeting(
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
     if meeting.status != "approved":
         raise HTTPException(status_code=409, detail="ניתן לפרסם רק ישיבה שאושרה.")
-    _check_status_transition(meeting, "published")  # enforces protocol approval
+    _check_status_transition(db, meeting, "published")  # enforces protocol approval
 
     summary = build_publish_summary(db, meeting, user.tenant_name or "")
     # Attach the meeting protocol PDF to the summary email.
@@ -556,7 +555,7 @@ def protocol_receipt_status(
     """Progress of the protocol-receipt gate — how many invitees confirmed
     receipt, and whether the ≥50% threshold is met."""
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
-    return _receipt_status_out(meeting)
+    return _receipt_status_out(db, meeting)
 
 
 @router.post("/{meeting_id}/distribute-protocol-approval", response_model=ProtocolReceiptStatus)
@@ -566,9 +565,10 @@ def distribute_protocol_approval(
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
 ) -> ProtocolReceiptStatus:
-    """Email every invitee the protocol (PDF) plus a link to confirm receipt.
+    """Email the protocol (PDF) + a receipt-confirm link to every committee
+    member invited to the meeting (all of them, not only those who attended).
     Only after the meeting is locked (pending_approval/approved). Confirmations
-    accrue toward the ≥50% gate that unlocks public publish.
+    accrue toward the ≥50%-of-committee gate that unlocks public publish.
 
     `reset=True` (used when re-sending an *edited* protocol) clears every prior
     receipt confirmation first — the confirmations were for the old version, so
@@ -580,8 +580,9 @@ def distribute_protocol_approval(
             detail="ניתן להפיץ את הפרוטוקול לאישור רק לאחר נעילת הישיבה.",
         )
 
+    committee_invites = _committee_invites(db, meeting)
     if reset:
-        for inv in meeting.invites:
+        for inv in committee_invites:
             inv.protocol_receipt_confirmed_at = None
 
     frontend = settings.primary_frontend_url.rstrip("/")
@@ -599,7 +600,7 @@ def distribute_protocol_approval(
     kind_he = mail._KIND_LABELS.get(meeting.kind, meeting.kind)
     num = f" מס׳ {meeting.number}" if meeting.number else ""
     org = user.tenant_name or ""
-    for inv in meeting.invites:
+    for inv in committee_invites:
         email = (inv.email or "").strip()
         if not email:
             continue
@@ -632,7 +633,7 @@ def distribute_protocol_approval(
     # Also email any follow-up owners not yet notified (e.g. tasks assigned
     # while editing the protocol post-lock). Idempotent per task.
     notify_action_owners(db, meeting, user.tenant_name or "")
-    return _receipt_status_out(meeting)
+    return _receipt_status_out(db, meeting)
 
 
 @router.get("/{meeting_id}/attendance", response_model=list[str])

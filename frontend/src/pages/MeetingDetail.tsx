@@ -19,11 +19,9 @@ import {
   TOPIC_POOL_STATUS_LABELS,
 } from "../lib/meetingLabels";
 import { useIsEditor } from "../components/Layout";
-import { useAuth } from "../lib/auth";
 import AttendanceList from "../components/AttendanceList";
 import LiveTopicCard from "../components/LiveTopicCard";
 import CloseTopicModal, { type CloseTopicValues } from "../components/CloseTopicModal";
-import ApprovalPanel from "../components/ApprovalPanel";
 import MeetingDetailsForm from "../components/MeetingDetailsForm";
 import InviteesPanel from "../components/InviteesPanel";
 import InviteActions from "../components/InviteActions";
@@ -81,8 +79,6 @@ function TopicDurationInput({
 export default function MeetingDetail() {
   const { id } = useParams<{ id: string }>();
   const editor = useIsEditor();
-  const { state: authState } = useAuth();
-  const currentUserId = authState.kind === "signed_in" ? authState.user.id : undefined;
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newTopicTitle, setNewTopicTitle] = useState("");
@@ -369,17 +365,6 @@ export default function MeetingDetail() {
     }
   }
 
-  async function approveInternal() {
-    if (!id) return;
-    await api.addInternalApproval(id);
-    load();
-  }
-
-  async function approveProtocol() {
-    if (!id) return;
-    await api.addProtocolApproval(id);
-    load();
-  }
 
   // Persists whatever's accumulated on the running timer for `topic` (if
   // it's the one currently being timed) and clears the running state.
@@ -546,10 +531,6 @@ export default function MeetingDetail() {
   // topics are read-only until the single "ערוך סדר יום" toggle is on.
   const isLockedEditable = editor && !isActive && !isPrep && meeting.status !== "archived";
   const topicsEditable = isActive ? editor : isLockedEditable && agendaEditing;
-  const pendingApprovalIdx = STATUS_ORDER.indexOf("pending_approval");
-  const approvedIdx = STATUS_ORDER.indexOf("approved");
-  const showInternalApproval = currentIdx >= pendingApprovalIdx;
-  const showProtocolApproval = currentIdx >= approvedIdx;
   const usedPoolIds = new Set(meeting.topics.map((t) => t.source_pool_id).filter(Boolean));
   const availablePoolItems = poolItems.filter((p) => !usedPoolIds.has(p.id));
   // Locking only requires that every topic has been *resolved* somehow —
@@ -854,31 +835,30 @@ export default function MeetingDetail() {
             </p>
           )}
         </div>
+      ) : editor && meeting.status === "pending_approval" ? (
+        <div className="mb-6">
+          <button
+            onClick={() => changeStatus("approved")}
+            disabled={busy || (receipt !== null && !receipt.threshold_met)}
+            className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
+          >
+            העבר לסטטוס: אושר
+          </button>
+          {receipt !== null && !receipt.threshold_met && (
+            <p className="mt-1 text-center text-xs text-ink-soft">
+              נדרש שלפחות מחצית מחברי הועד יאשרו את הפרוטוקול לפני מעבר לסטטוס אושר
+            </p>
+          )}
+        </div>
       ) : editor && meeting.status === "approved" ? (
         <div className="mb-6">
           <button
             onClick={() => setPublishing(true)}
-            disabled={
-              busy ||
-              (meeting.protocol_approvals || []).length === 0 ||
-              (receipt !== null && !receipt.threshold_met)
-            }
+            disabled={busy}
             className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
           >
             פרסם לציבור והעבר לפורסם
           </button>
-          {(meeting.protocol_approvals || []).length === 0 ? (
-            <p className="mt-1 text-center text-xs text-ink-soft">
-              נדרש לפחות אישור פרוטוקול אחד לפני הפרסום
-            </p>
-          ) : (
-            receipt !== null &&
-            !receipt.threshold_met && (
-              <p className="mt-1 text-center text-xs text-ink-soft">
-                נדרש שלפחות מחצית מהמוזמנים יאשרו קבלת הפרוטוקול לפני פרסום לציבור
-              </p>
-            )
-          )}
         </div>
       ) : (
         editor &&
@@ -905,38 +885,14 @@ export default function MeetingDetail() {
 
       {!isActive && attendanceBlock}
 
-      {showInternalApproval && (
-        <div className="mb-4">
-          <ApprovalPanel
-            title="אישורים פנימיים"
-            approvals={meeting.internal_approvals || []}
-            currentUserId={currentUserId}
-            canApprove={meeting.status === "pending_approval"}
-            onApprove={approveInternal}
-          />
-        </div>
-      )}
-
-      {showProtocolApproval && (
-        <div className="mb-6">
-          <ApprovalPanel
-            title="אישורי פרוטוקול"
-            approvals={meeting.protocol_approvals || []}
-            currentUserId={currentUserId}
-            canApprove={meeting.status === "approved"}
-            onApprove={approveProtocol}
-          />
-        </div>
-      )}
-
-      {editor && (meeting.status === "pending_approval" || meeting.status === "approved") && (
+      {editor && meeting.status === "pending_approval" && (
         <div className="mb-6 rounded border border-line bg-surface p-4">
           <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
-            <span aria-hidden>📨</span> אישור קבלת פרוטוקול (מוזמנים)
+            <span aria-hidden>📨</span> אישור הפרוטוקול (חברי ועד)
           </h3>
           <p className="mb-3 text-xs text-ink-soft">
-            הפצת הפרוטוקול למוזמנים לאישור קבלה. יש צורך שלפחות מחצית מהמוזמנים יאשרו קבלה לפני פרסום
-            לציבור.
+            הפצת הפרוטוקול לכל חברי הועד שהוזמנו לפגישה, לאישור. יש צורך שלפחות מחצית מחברי הועד יאשרו
+            את הפרוטוקול לפני מעבר לסטטוס אושר.
           </p>
 
           {receipt && receipt.total > 0 && (
@@ -957,7 +913,7 @@ export default function MeetingDetail() {
             </div>
           )}
           {receipt && receipt.total === 0 && (
-            <p className="mb-3 text-xs text-ink-soft">אין מוזמנים עם כתובת אימייל להפצה.</p>
+            <p className="mb-3 text-xs text-ink-soft">אין חברי ועד מוזמנים עם כתובת אימייל להפצה.</p>
           )}
 
           <button
@@ -968,8 +924,8 @@ export default function MeetingDetail() {
             {receiptBusy
               ? "שולח…"
               : receipt?.sent
-                ? "📨 הפץ שוב לאישור"
-                : "📨 הפץ פרוטוקול לאישור"}
+                ? "📨 הפץ שוב לאישור חברי הועד"
+                : "📨 הפץ פרוטוקול לאישור חברי הועד"}
           </button>
         </div>
       )}
