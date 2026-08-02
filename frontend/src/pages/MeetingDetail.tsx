@@ -843,15 +843,21 @@ export default function MeetingDetail() {
         <div className="mb-6">
           <button
             onClick={() => changeStatus("approved")}
-            disabled={busy || !receipt || !receipt.threshold_met}
+            disabled={busy || agendaEditing || !receipt || !receipt.threshold_met}
             className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
           >
             העבר לסטטוס: אושר
           </button>
-          {(!receipt || !receipt.threshold_met) && (
+          {agendaEditing ? (
             <p className="mt-1 text-center text-xs text-ink-soft">
-              נדרש שלפחות מחצית מחברי הועד יאשרו את הפרוטוקול לפני מעבר לסטטוס אושר
+              יש לסיים את עריכת סדר היום לפני מעבר לסטטוס אושר
             </p>
+          ) : (
+            (!receipt || !receipt.threshold_met) && (
+              <p className="mt-1 text-center text-xs text-ink-soft">
+                נדרש שלפחות מחצית מחברי הועד יאשרו את הפרוטוקול לפני מעבר לסטטוס אושר
+              </p>
+            )
           )}
         </div>
       ) : editor && meeting.status === "approved" ? (
