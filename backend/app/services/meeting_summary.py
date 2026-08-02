@@ -103,6 +103,32 @@ def _attendance(db: Session, meeting: Meeting) -> list[str]:
     return names
 
 
+def build_protocol_snapshot(db: Session, meeting: Meeting) -> dict:
+    """Frozen protocol content for a ProtocolVersion — mirrors what the
+    protocol page shows (details, attendance, non-private topics with their
+    decisions/actions). Deliberately excludes the tenant's live logo/
+    signatures/stamp: those are current-render chrome, not versioned content.
+    Compared by equality to dedupe reminder re-sends, so key order is stable."""
+    topics = sorted((t for t in meeting.topics if not t.is_private), key=lambda t: t.order)
+    return {
+        "number": meeting.number,
+        "date": meeting.date.isoformat(),
+        "time_start": meeting.time_start.strftime("%H:%M") if meeting.time_start else None,
+        "time_end": meeting.time_end.strftime("%H:%M") if meeting.time_end else None,
+        "location": meeting.location,
+        "attendance": attendance_names(db, meeting),
+        "topics": [
+            {
+                "title": t.title,
+                "decision_text": t.decision_text,
+                "action_item": t.action_item,
+                "duration_minutes": t.duration_minutes,
+            }
+            for t in topics
+        ],
+    }
+
+
 def resolve_recipients(db: Session, meeting: Meeting) -> tuple[list[Recipient], list[str]]:
     """Publish-to-public recipients: the meeting's invitees plus every
     contact in the tenant's אלפון flagged for public sending

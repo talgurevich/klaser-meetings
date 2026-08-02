@@ -257,6 +257,34 @@ class MeetingRecording(Base):
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# ProtocolVersion — an immutable snapshot of a meeting's protocol content,
+# captured each time the protocol is distributed to the committee for
+# approval. A new row is only recorded when the content actually differs from
+# the latest one, so plain reminder re-sends don't inflate the count. Version
+# 1 is the first distributed protocol; every edit that gets re-distributed
+# bumps the number by one. Powers the "גרסאות" history on the protocol page.
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class ProtocolVersion(Base):
+    __tablename__ = "protocol_versions"
+    __table_args__ = (
+        UniqueConstraint("meeting_id", "version_number", name="uq_protocol_versions_number"),
+    )
+
+    id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), index=True, nullable=False)
+    meeting_id: Mapped[UUID] = mapped_column(
+        SQLUUID(as_uuid=True), ForeignKey("meetings.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    version_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Frozen protocol content — see build_protocol_snapshot(). Rendered as-is
+    # in the version history, independent of later edits to the live meeting.
+    content: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # MeetingInvite — one invited person + their RSVP, for a specific meeting.
 #
 # Supersedes the old plan of reusing the plain `attendees_invited` /

@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { api, apiErrorMessage, type Meeting, type TenantSettings } from "../lib/api";
+import {
+  api,
+  apiErrorMessage,
+  type Meeting,
+  type ProtocolSnapshot,
+  type ProtocolVersion,
+  type TenantSettings,
+} from "../lib/api";
 import { KIND_LABELS } from "../lib/meetingLabels";
 
 const PRINT_CSS = `
@@ -41,10 +48,104 @@ const PRINT_CSS = `
 .protocol .sig-name { font-size: 12px; color: #525252; }
 .protocol .foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 34px;
   padding-top: 14px; border-top: 1px solid #e7e5e4; font-size: 11px; color: #737373; }
+.versions { direction: rtl; margin-top: 40px; border-top: 2px solid #171717; padding-top: 16px; }
+.versions h2 { font-size: 16px; font-weight: 800; margin: 0 0 12px; }
+.versions details { border: 1px solid #d6d3d1; border-radius: 6px; margin-bottom: 8px; background: #fff; }
+.versions summary { cursor: pointer; padding: 10px 14px; font-weight: 700; font-size: 14px;
+  list-style: none; }
+.versions summary::-webkit-details-marker { display: none; }
+.versions summary::before { content: "▸ "; color: #737373; }
+.versions details[open] summary::before { content: "▾ "; }
+.versions .vmeta { font-weight: 400; color: #737373; font-size: 12px; }
+.versions .vbody { padding: 6px 14px 14px; }
 `;
 
 function hm(t: string | null): string {
   return t ? t.slice(0, 5) : "";
+}
+
+function fmtSnapshotDate(d: string): string {
+  return new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "long", year: "numeric" }).format(
+    new Date(`${d}T00:00:00`),
+  );
+}
+
+function fmtVersionStamp(iso: string): string {
+  return new Intl.DateTimeFormat("he-IL", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(iso));
+}
+
+/** Renders one frozen protocol snapshot — the same layout as the live
+ * protocol above, so each version reads identically to how it was issued. */
+function SnapshotBody({ content }: { content: ProtocolSnapshot }) {
+  const time = [content.time_start, content.time_end].filter(Boolean).join(" – ");
+  return (
+    <div className="vbody protocol">
+      <div className="box">
+        <div className="row">
+          <div>
+            <div className="lbl">מספר ישיבה</div>
+            <div className="val">{content.number || "—"}</div>
+          </div>
+          <div style={{ textAlign: "left" }}>
+            <div className="lbl">תאריך</div>
+            <div className="val">{fmtSnapshotDate(content.date)}</div>
+            {time && <div className="val">{time}</div>}
+          </div>
+        </div>
+        {content.location && (
+          <div className="row">
+            <div>
+              <div className="lbl">מקום</div>
+              <div className="val">{content.location}</div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="section-title">נוכחים ({content.attendance.length})</div>
+      {content.attendance.length === 0 ? (
+        <p className="sub">לא נרשמה נוכחות.</p>
+      ) : (
+        <ul>
+          {content.attendance.map((n, i) => (
+            <li className="att" key={i}>
+              {n}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="section-title">סדר יום ופרוטוקול</div>
+      <table>
+        <thead>
+          <tr>
+            <th style={{ width: 40 }}>#</th>
+            <th>נושא</th>
+            <th style={{ width: 70 }}>זמן</th>
+          </tr>
+        </thead>
+        <tbody>
+          {content.topics.map((t, i) => (
+            <tr key={i}>
+              <td>{i + 1}</td>
+              <td>
+                <div className="topic-title">{t.title}</div>
+                {t.decision_text && <div className="decision">החלטה: {t.decision_text}</div>}
+                {t.action_item && <div className="decision">משימה: {t.action_item}</div>}
+              </td>
+              <td>{t.duration_minutes ? `${t.duration_minutes} ד׳` : ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 export default function ProtocolView() {
@@ -52,6 +153,7 @@ export default function ProtocolView() {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [settings, setSettings] = useState<TenantSettings | null>(null);
   const [attendance, setAttendance] = useState<string[]>([]);
+  const [versions, setVersions] = useState<ProtocolVersion[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -63,6 +165,10 @@ export default function ProtocolView() {
         setAttendance(a);
       })
       .catch((err) => setError(apiErrorMessage(err)));
+    api
+      .getProtocolVersions(id)
+      .then(setVersions)
+      .catch(() => setVersions([]));
   }, [id]);
 
   if (error) return <p className="text-sm text-red-700">{error}</p>;
@@ -214,6 +320,24 @@ export default function ProtocolView() {
           <div>תאריך הפקה: {printDate}</div>
         </div>
       </div>
+
+      {/* Version history — shown once the protocol was edited after its first
+          distribution (v1). Newest first, collapsed. Excluded from print so
+          the printed PDF stays the clean current protocol. */}
+      {versions.length >= 2 && (
+        <div className="versions no-print">
+          <h2>גרסאות הפרוטוקול</h2>
+          {[...versions].reverse().map((v) => (
+            <details key={v.version_number}>
+              <summary>
+                גרסה {v.version_number}
+                <span className="vmeta"> · הופצה לאישור ב-{fmtVersionStamp(v.created_at)}</span>
+              </summary>
+              <SnapshotBody content={v.content} />
+            </details>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

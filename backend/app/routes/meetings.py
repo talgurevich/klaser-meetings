@@ -22,6 +22,7 @@ from app.models import (
     MeetingInvite,
     MeetingRecording,
     Participant,
+    ProtocolVersion,
     TenantSettings,
     Topic,
     TopicPool,
@@ -38,6 +39,7 @@ from app.schemas import (
     MeetingUpdate,
     PreviousMeetingOut,
     ProtocolReceiptStatus,
+    ProtocolVersionOut,
     PublishPreviewOut,
     PublishRecipient,
     TopicCreate,
@@ -56,6 +58,7 @@ from app.services.identity import IdentityUser, identity_service, require_entitl
 from app.services.invite_pdf import build_invite_pdf
 from app.services.meeting_summary import (
     attendance_names,
+    build_protocol_snapshot,
     build_publish_summary,
     notify_action_owners,
 )
@@ -417,6 +420,30 @@ def _receipt_status_out(db: Session, meeting: Meeting) -> "ProtocolReceiptStatus
     )
 
 
+def _record_protocol_version(db: Session, meeting: Meeting) -> None:
+    """Snapshot the current protocol content as the next version, when the
+    protocol is distributed to the committee for approval. Deduped by content:
+    a plain reminder re-send (identical protocol) records nothing, so version
+    numbers only advance on actual edits. Version 1 = first distribution."""
+    snapshot = build_protocol_snapshot(db, meeting)
+    latest = db.execute(
+        select(ProtocolVersion)
+        .where(ProtocolVersion.meeting_id == meeting.id)
+        .order_by(ProtocolVersion.version_number.desc())
+    ).scalars().first()
+    if latest is not None and latest.content == snapshot:
+        return
+    next_number = (latest.version_number + 1) if latest is not None else 1
+    db.add(
+        ProtocolVersion(
+            tenant_id=meeting.tenant_id,
+            meeting_id=meeting.id,
+            version_number=next_number,
+            content=snapshot,
+        )
+    )
+
+
 @router.patch("/{meeting_id}", response_model=MeetingOut)
 def update_meeting(
     meeting_id: UUID,
@@ -644,6 +671,7 @@ def distribute_protocol_approval(
         )
 
     meeting.protocol_approval_sent_at = dt.datetime.now(dt.timezone.utc)
+    _record_protocol_version(db, meeting)
     db.commit()
     db.refresh(meeting)
 
@@ -664,6 +692,26 @@ def meeting_attendance(
     printable protocol page's attendance section."""
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
     return attendance_names(db, meeting)
+
+
+@router.get("/{meeting_id}/protocol-versions", response_model=list[ProtocolVersionOut])
+def protocol_versions(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> list[ProtocolVersion]:
+    """The protocol's version history — one immutable snapshot per distinct
+    content distributed to the committee for approval, oldest first. Empty
+    until the first distribution; the protocol page shows the 'גרסאות' section
+    once there's more than one (i.e. the protocol was edited after v1)."""
+    meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    return list(
+        db.execute(
+            select(ProtocolVersion)
+            .where(ProtocolVersion.meeting_id == meeting.id)
+            .order_by(ProtocolVersion.version_number.asc())
+        ).scalars()
+    )
 
 
 @router.get("/{meeting_id}/protocol.pdf")

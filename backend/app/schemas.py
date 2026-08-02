@@ -178,6 +178,18 @@ class ProtocolReceiptStatus(BaseModel):
     threshold_met: bool
 
 
+class ProtocolVersionOut(BaseModel):
+    """One frozen protocol snapshot in the version history. `content` mirrors
+    build_protocol_snapshot() — details, attendance, and topics for that
+    version, rendered as-is on the protocol page."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    version_number: int
+    created_at: dt.datetime
+    content: dict
+
+
 class MeetingInviteOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

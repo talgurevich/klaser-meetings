@@ -476,6 +476,29 @@ export type ProtocolReceiptStatus = {
   threshold_met: boolean;
 };
 
+export type ProtocolSnapshotTopic = {
+  title: string;
+  decision_text: string | null;
+  action_item: string | null;
+  duration_minutes: number | null;
+};
+
+export type ProtocolSnapshot = {
+  number: string | null;
+  date: string;
+  time_start: string | null;
+  time_end: string | null;
+  location: string | null;
+  attendance: string[];
+  topics: ProtocolSnapshotTopic[];
+};
+
+export type ProtocolVersion = {
+  version_number: number;
+  created_at: string;
+  content: ProtocolSnapshot;
+};
+
 // ─── Endpoints ─────────────────────────────────────────────────────────
 export const api = {
   // Auth — every call below goes to the identity service (auth.klaser.co.il)
@@ -595,6 +618,8 @@ export const api = {
     request<PreviousMeeting | null>(`/api/meetings/${id}/previous`),
   getProtocolReceiptStatus: (id: string) =>
     request<ProtocolReceiptStatus>(`/api/meetings/${id}/protocol-receipt-status`),
+  getProtocolVersions: (id: string) =>
+    request<ProtocolVersion[]>(`/api/meetings/${id}/protocol-versions`),
   distributeProtocolApproval: (id: string, reset = false) =>
     request<ProtocolReceiptStatus>(
       `/api/meetings/${id}/distribute-protocol-approval${reset ? "?reset=true" : ""}`,
