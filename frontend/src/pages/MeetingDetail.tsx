@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   api,
   apiErrorMessage,
@@ -881,6 +881,15 @@ export default function MeetingDetail() {
             העבר לסטטוס: {STATUS_LABELS[nextStatus]}
           </button>
         )
+      )}
+
+      {!isPrep && !isActive && (
+        <Link
+          to={`/meetings/${meeting.id}/protocol`}
+          className="mb-3 block w-full rounded-lg border border-accent bg-surface px-4 py-3 text-center text-sm font-semibold text-accent-dark hover:bg-line"
+        >
+          📄 צפה בפרוטוקול (כולל גרסאות)
+        </Link>
       )}
 
       {(meeting.status === "published" || meeting.status === "archived") && (
