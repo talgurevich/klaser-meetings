@@ -101,7 +101,7 @@ export default function InviteActions({
             title={hasInvitees ? undefined : "יש להוסיף מוזמנים תחילה"}
             className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
-            ✈ שלח לחברי הועד לאישור הפגישה
+            ✈ שלח לחברי הועד לאישור {meeting.kind === "assembly" ? "האסיפה" : "הפגישה"}
           </button>
         )}
 

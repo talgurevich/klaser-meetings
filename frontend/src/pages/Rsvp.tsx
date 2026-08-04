@@ -8,10 +8,17 @@ type LoadState =
   | { kind: "invalid"; message: string }
   | { kind: "ready"; meeting: RsvpMeeting };
 
+// Assemblies (אסיפה) are approved, not attendance-RSVP'd — same two choices
+// and underlying statuses, different wording.
 const STATUS_LABELS: Record<RsvpMeeting["status"], string> = {
   pending: "טרם השבת/ה",
   confirmed_attend: "אישרת הגעה",
   confirmed_absent: "אישרת קבלה, ללא הגעה",
+};
+const ASSEMBLY_STATUS_LABELS: Record<RsvpMeeting["status"], string> = {
+  pending: "טרם השבת/ה",
+  confirmed_attend: "אישרת את האסיפה",
+  confirmed_absent: "לא אישרת את האסיפה",
 };
 
 /** Public, no-login RSVP page — reached from a link in the invitation
@@ -76,10 +83,15 @@ export default function Rsvp() {
     }
   }
 
+  const isAssembly = load.kind === "ready" && load.meeting.meeting_kind === "assembly";
+  const statusLabels = isAssembly ? ASSEMBLY_STATUS_LABELS : STATUS_LABELS;
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-6 text-ink">
       <div className="w-full max-w-md rounded-lg border border-line bg-surface p-8">
-        <h1 className="text-center font-display text-2xl font-bold">אישור הגעה</h1>
+        <h1 className="text-center font-display text-2xl font-bold">
+          {isAssembly ? "אישור אסיפה" : "אישור הגעה"}
+        </h1>
 
         {load.kind === "loading" && (
           <p className="mt-8 text-center text-sm text-ink-soft">טוען…</p>
@@ -126,7 +138,7 @@ export default function Rsvp() {
             )}
 
             <p className="mt-6 text-center text-sm font-medium">
-              סטטוס נוכחי: {STATUS_LABELS[load.meeting.status]}
+              סטטוס נוכחי: {statusLabels[load.meeting.status]}
             </p>
 
             <div className="mt-3 flex justify-center gap-3">
@@ -135,14 +147,14 @@ export default function Rsvp() {
                 disabled={busy}
                 className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
-                מאשר/ת קבלה ולא אוכל להגיע
+                {isAssembly ? "לא מאשר/ת" : "מאשר/ת קבלה ולא אוכל להגיע"}
               </button>
               <button
                 onClick={() => respond("confirmed_attend")}
                 disabled={busy}
                 className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
-                מאשר/ת ומגיע/ה
+                {isAssembly ? "מאשר/ת את האסיפה" : "מאשר/ת ומגיע/ה"}
               </button>
             </div>
 

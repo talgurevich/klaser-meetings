@@ -569,9 +569,10 @@ export default function MeetingDetail() {
   // sits ABOVE the agenda. During the live meeting it stays fully editable but
   // is collapsed by default (a compact bar you expand); once locked it's
   // read-only until the shared "ערוך ישיבה" toggle is on (same gate as topics).
-  // Attendance stays fully editable during the live meeting but is collapsed
-  // by default there (one box, header toggles the body — a visual minimize,
-  // not an edit lock). Once locked it's read-only until "ערוך ישיבה" is on.
+  // While the meeting is active, attendance is shown open (expanded) and
+  // editable — it's the live thing being marked. Once locked it collapses to a
+  // header bar you expand on demand (one box), and stays read-only until the
+  // "ערוך ישיבה" toggle is on.
   const attendanceEditable = isActive ? editor : meetingSectionsEditable;
   const attendanceBlock = (isActive || !isPrep) && (
     <div className="mb-6">
@@ -582,7 +583,7 @@ export default function MeetingDetail() {
         editable={attendanceEditable}
         participantIds={meeting.participant_ids || []}
         participantsEditable={attendanceEditable}
-        collapsible={isActive}
+        collapsible={!isActive}
         onChanged={load}
       />
     </div>

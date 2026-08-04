@@ -159,6 +159,28 @@ def send_meeting_invite(
     number_suffix = f" מספר {meeting_number}" if meeting_number else ""
     time_range = f"{time_start}–{time_end}" if time_start and time_end else (time_start or "")
 
+    # An assembly (אסיפה) isn't an attendance RSVP for committee members — it's
+    # a request to *approve holding it*. Same two-choice mechanism and the same
+    # confirmed_attend/absent statuses underneath (so the ≥50% committee gate is
+    # unchanged), only the wording changes: approve / don't approve.
+    is_assembly = meeting_kind == "assembly"
+    if is_assembly:
+        subject = f"הזמנה לאישור אסיפה{number_suffix} — {meeting_date}"
+        intro = f"מוזמן/ת לאשר את האסיפה{number_suffix}"
+        ask = "אנא אשר/י את קיום האסיפה:"
+        attend_label = "מאשר/ת את האסיפה"
+        decline_label = "לא מאשר/ת"
+        attend_text_label = "לאישור האסיפה"
+        decline_text_label = "לא מאשר/ת את האסיפה"
+    else:
+        subject = f"הזמנה ל{kind_he}{number_suffix} — {meeting_date}"
+        intro = f"מוזמן/ת ל{kind_he}{number_suffix}"
+        ask = "אנא אשר/י קבלת ההזמנה:"
+        attend_label = "מאשר/ת ומגיע/ה"
+        decline_label = "מאשר/ת קבלה ולא אוכל להגיע"
+        attend_text_label = "לאישור הגעה"
+        decline_text_label = "לאישור קבלה ללא הגעה"
+
     topics_html = "".join(
         f"<li>{html.escape(t)}{f' — {d} דקות' if d else ''}</li>" for t, d in topics
     )
@@ -166,32 +188,32 @@ def send_meeting_invite(
 
     html_body = f"""
         <h1>שלום {html.escape(recipient_name)},</h1>
-        <p>מוזמן/ת ל{kind_he}{html.escape(number_suffix)}</p>
+        <p>{html.escape(intro)}</p>
         <p><strong>תאריך:</strong> {html.escape(meeting_date)}{f' | <strong>שעה:</strong> {html.escape(time_range)}' if time_range else ''}</p>
         {f'<p><strong>מקום:</strong> {html.escape(location)}</p>' if location else ''}
         {f'<p><strong>סדר יום:</strong></p><ol>{topics_html}</ol>' if topics else ''}
-        <p>אנא אשר/י קבלת ההזמנה:</p>
+        <p>{html.escape(ask)}</p>
         <p style="margin: 24px 0;">
-          <a href="{html.escape(rsvp_url_attend)}" class="btn btn-attend">מאשר/ת ומגיע/ה</a>
-          <a href="{html.escape(rsvp_url_decline)}" class="btn btn-decline">מאשר/ת קבלה ולא אוכל להגיע</a>
+          <a href="{html.escape(rsvp_url_attend)}" class="btn btn-attend">{html.escape(attend_label)}</a>
+          <a href="{html.escape(rsvp_url_decline)}" class="btn btn-decline">{html.escape(decline_label)}</a>
         </p>
     """
 
     text_body = (
         f"שלום {recipient_name},\n\n"
-        f"מוזמן/ת ל{kind_he}{number_suffix}\n"
+        f"{intro}\n"
         f"תאריך: {meeting_date}" + (f" | שעה: {time_range}\n" if time_range else "\n")
         + (f"מקום: {location}\n" if location else "")
         + (f"\nסדר יום:\n{topics_text}\n" if topics else "")
-        + f"\nלאישור הגעה: {rsvp_url_attend}\n"
-        f"לאישור קבלה ללא הגעה: {rsvp_url_decline}\n\n"
+        + f"\n{attend_text_label}: {rsvp_url_attend}\n"
+        f"{decline_text_label}: {rsvp_url_decline}\n\n"
         f"— {tenant_name}"
     )
 
     _send(
         Message(
             to=to_email,
-            subject=f"הזמנה ל{kind_he}{number_suffix} — {meeting_date}",
+            subject=subject,
             html_body=_wrap_html(html_body, f"{tenant_name} · Klaser"),
             text_body=text_body,
             attachments=(Attachment(filename=invite_pdf_filename, content=invite_pdf),) if invite_pdf else (),
