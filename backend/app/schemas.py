@@ -81,6 +81,9 @@ class TopicOut(BaseModel):
     status: str
     deferred_to_meeting_id: UUID | None
     deferred_from_topic_id: UUID | None
+    sent_to_assembly_at: dt.datetime | None
+    sent_to_assembly_meeting_id: UUID | None
+    from_committee_meeting: bool
     decision_text: str | None
     action_item: str | None
     action_item_done: bool

@@ -72,6 +72,49 @@ def pull_deferred_topics(db: Session, *, new_meeting: Meeting, start_order: int)
     return created
 
 
+def pull_committee_topics_for_assembly(
+    db: Session, *, assembly: Meeting, start_order: int
+) -> list[Topic]:
+    """When a new assembly is created, place a fresh copy of every committee-
+    meeting topic queued via "שלח לאסיפה" (sent_to_assembly_at set, not yet
+    placed) at the top of its agenda — marked from_committee_meeting for the
+    "הועבר מפגישת הועד" badge — and point each source at this assembly. Ordered
+    by when they were sent, so the queue keeps its order. Returns the copies."""
+    pending = (
+        db.execute(
+            select(Topic)
+            .where(
+                Topic.tenant_id == assembly.tenant_id,
+                Topic.sent_to_assembly_at.is_not(None),
+                Topic.sent_to_assembly_meeting_id.is_(None),
+            )
+            .order_by(Topic.sent_to_assembly_at.asc())
+        )
+        .scalars()
+        .all()
+    )
+    created: list[Topic] = []
+    order = start_order
+    for src in pending:
+        copy = Topic(
+            tenant_id=assembly.tenant_id,
+            meeting_id=assembly.id,
+            order=order,
+            title=src.title,
+            description=src.description,
+            duration_minutes=src.duration_minutes,
+            is_private=src.is_private,
+            invited_guests=src.invited_guests,
+            from_committee_meeting=True,
+        )
+        db.add(copy)
+        order += 1
+        src.sent_to_assembly_meeting_id = assembly.id
+        created.append(copy)
+    db.flush()
+    return created
+
+
 class UndoDeferBlockedError(Exception):
     """Raised when the pulled copy has already been acted on — reverting
     would silently discard real discussion, so the caller should turn this

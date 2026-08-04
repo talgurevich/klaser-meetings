@@ -51,6 +51,7 @@ from app.services import mail
 from app.services.defer_topic import (
     UndoDeferBlockedError,
     defer_topic_to_next_meeting,
+    pull_committee_topics_for_assembly,
     pull_deferred_topics,
     undo_defer_topic,
 )
@@ -269,13 +270,23 @@ def create_meeting(
 
     leading_topics = _seed_recurring_topics(db, meeting, tenant_id)
 
+    # A new assembly opens with the committee-meeting topics escalated to it
+    # via "שלח לאסיפה" — placed first (right after any recurring first topic),
+    # badged "הועבר מפגישת הועד". Committee meetings never pull these.
+    transferred = (
+        pull_committee_topics_for_assembly(db, assembly=meeting, start_order=leading_topics)
+        if meeting.kind == "assembly"
+        else []
+    )
+    offset = leading_topics + len(transferred)
+
     for i, t in enumerate(body.topics):
         _claim_pool_topic(db, tenant_id, t.source_pool_id)
         db.add(
             Topic(
                 tenant_id=meeting.tenant_id,
                 meeting_id=meeting.id,
-                order=t.order if t.order is not None else i + leading_topics,
+                order=t.order if t.order is not None else i + offset,
                 title=t.title,
                 description=t.description,
                 duration_minutes=t.duration_minutes,
@@ -288,7 +299,7 @@ def create_meeting(
     # Carry over topics deferred from earlier meetings of this kind, and
     # re-invite each carried topic's אלפון guests.
     deferred = pull_deferred_topics(
-        db, new_meeting=meeting, start_order=leading_topics + len(body.topics)
+        db, new_meeting=meeting, start_order=offset + len(body.topics)
     )
     for copy in deferred:
         _invite_topic_guests(db, meeting, tenant_id, copy.invited_guests)
@@ -1437,6 +1448,62 @@ def undo_defer(
         ) from e
 
     _revert_to_pending_on_protocol_edit(meeting)
+    db.commit()
+    db.refresh(topic)
+    return topic
+
+
+@router.post("/{meeting_id}/topics/{topic_id}/send-to-assembly", response_model=TopicOut)
+def send_topic_to_assembly(
+    meeting_id: UUID,
+    topic_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> Topic:
+    """Escalate a committee-meeting topic to the assembly's agenda. If a draft
+    assembly already exists it's added there immediately; otherwise the topic
+    is queued and pulled onto the next assembly created (see create_meeting's
+    pull_committee_topics_for_assembly). The source topic is untouched apart
+    from the sent markers — it stays in this meeting."""
+    tenant_id = UUID(user.tenant_id)
+    meeting = _get_meeting_or_404(db, meeting_id, tenant_id)
+    if meeting.kind == "assembly":
+        raise HTTPException(status_code=400, detail="לא ניתן לשלוח נושא מאסיפה לאסיפה.")
+    topic = next((t for t in meeting.topics if t.id == topic_id), None)
+    if topic is None:
+        raise HTTPException(status_code=404, detail="הנושא לא נמצא")
+    if topic.sent_to_assembly_at is not None:
+        raise HTTPException(status_code=409, detail="הנושא כבר נשלח לאסיפה.")
+
+    topic.sent_to_assembly_at = dt.datetime.now(dt.timezone.utc)
+
+    # The next assembly = the earliest-dated draft assembly, if one exists.
+    draft_assembly = db.execute(
+        select(Meeting)
+        .where(
+            Meeting.tenant_id == tenant_id,
+            Meeting.kind == "assembly",
+            Meeting.status == "draft",
+        )
+        .order_by(Meeting.date.asc(), Meeting.created_at.asc())
+    ).scalars().first()
+
+    if draft_assembly is not None:
+        db.add(
+            Topic(
+                tenant_id=tenant_id,
+                meeting_id=draft_assembly.id,
+                order=len(draft_assembly.topics),
+                title=topic.title,
+                description=topic.description,
+                duration_minutes=topic.duration_minutes,
+                is_private=topic.is_private,
+                invited_guests=topic.invited_guests,
+                from_committee_meeting=True,
+            )
+        )
+        topic.sent_to_assembly_meeting_id = draft_assembly.id
+
     db.commit()
     db.refresh(topic)
     return topic

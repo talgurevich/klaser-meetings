@@ -491,6 +491,20 @@ export default function MeetingDetail() {
     }
   }
 
+  async function sendTopicToAssemblyNow(topic: Topic) {
+    if (!id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.sendTopicToAssembly(id, topic.id);
+      load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function submitClose(values: CloseTopicValues) {
     if (!id || !closingTopic) return;
     setBusy(true);
@@ -691,6 +705,11 @@ export default function MeetingDetail() {
                   {t.source_pool_id && (
                     <span className="mr-2 rounded bg-line px-1.5 py-0.5 text-xs text-ink-soft">ממאגר</span>
                   )}
+                  {t.from_committee_meeting && (
+                    <span className="mr-2 rounded bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700">
+                      הועבר מפגישת הועד
+                    </span>
+                  )}
                 </p>
                 {editor ? (
                   <TopicDurationInput
@@ -771,6 +790,15 @@ export default function MeetingDetail() {
                       }`,
                       busy: prevPdfBusy,
                       onOpen: showPreviousProtocol,
+                    }
+                  : null
+              }
+              sendToAssembly={
+                editor && meeting.kind !== "assembly"
+                  ? {
+                      sent: t.sent_to_assembly_at !== null,
+                      busy,
+                      onSend: () => sendTopicToAssemblyNow(t),
                     }
                   : null
               }

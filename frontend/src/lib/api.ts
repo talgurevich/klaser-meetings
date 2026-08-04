@@ -149,6 +149,9 @@ export type Topic = {
   status: TopicStatus;
   deferred_to_meeting_id: string | null;
   deferred_from_topic_id: string | null;
+  sent_to_assembly_at: string | null;
+  sent_to_assembly_meeting_id: string | null;
+  from_committee_meeting: boolean;
   decision_text: string | null;
   action_item: string | null;
   action_item_owner: string | null;
@@ -724,6 +727,10 @@ export const api = {
     request<Topic>(`/api/meetings/${meetingId}/topics/${topicId}/defer`, { method: "POST" }),
   undoDeferTopic: (meetingId: string, topicId: string) =>
     request<Topic>(`/api/meetings/${meetingId}/topics/${topicId}/undo-defer`, { method: "POST" }),
+  sendTopicToAssembly: (meetingId: string, topicId: string) =>
+    request<Topic>(`/api/meetings/${meetingId}/topics/${topicId}/send-to-assembly`, {
+      method: "POST",
+    }),
 
   // ─── Approvals ───────────────────────────────────────────────────────
   addInternalApproval: (meetingId: string) =>

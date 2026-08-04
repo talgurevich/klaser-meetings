@@ -26,6 +26,7 @@ export default function LiveTopicCard({
   onCancel,
   onEdit,
   prevProtocol,
+  sendToAssembly,
   meetingId,
   recordings,
   canRecord,
@@ -47,6 +48,7 @@ export default function LiveTopicCard({
   onCancel: () => void;
   onEdit: () => void;
   prevProtocol?: { label: string; busy: boolean; onOpen: () => void } | null;
+  sendToAssembly?: { sent: boolean; busy: boolean; onSend: () => void } | null;
   meetingId: string;
   recordings: MeetingRecording[];
   canRecord: boolean;
@@ -91,6 +93,11 @@ export default function LiveTopicCard({
             </span>
             {topic.is_private && (
               <span className="rounded bg-line px-1.5 py-0.5 text-xs text-ink-soft">פרטי</span>
+            )}
+            {topic.from_committee_meeting && (
+              <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-700">
+                הועבר מפגישת הועד
+              </span>
             )}
           </div>
         </div>
@@ -247,6 +254,24 @@ export default function LiveTopicCard({
               >
                 ✕ בטל נושא
               </button>
+            </div>
+          )}
+
+          {sendToAssembly && (
+            <div className="mt-3">
+              {sendToAssembly.sent ? (
+                <span className="inline-flex items-center gap-1 rounded border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
+                  ✓ נשלח לאסיפה
+                </span>
+              ) : (
+                <button
+                  onClick={sendToAssembly.onSend}
+                  disabled={sendToAssembly.busy}
+                  className="rounded border border-indigo-300 px-3 py-1.5 text-sm text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+                >
+                  → שלח לאסיפה
+                </button>
+              )}
             </div>
           )}
 

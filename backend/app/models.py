@@ -205,6 +205,20 @@ class Topic(Base):
 
     is_default_first: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     is_default_last: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
+    # "שלח לאסיפה" — a committee-meeting topic escalated to the next assembly.
+    # sent_to_assembly_at marks it queued (source-side); sent_to_assembly_meeting_id
+    # is the assembly it landed in (null = still waiting for the next assembly to
+    # be created). from_committee_meeting is set on the COPY placed in the
+    # assembly, so it can be badged "הועבר מפגישת הועד".
+    sent_to_assembly_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    sent_to_assembly_meeting_id: Mapped[UUID | None] = mapped_column(
+        SQLUUID(as_uuid=True), ForeignKey("meetings.id", ondelete="SET NULL")
+    )
+    from_committee_meeting: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
+
     approval_status: Mapped[str | None] = mapped_column(String)
     topic_notes: Mapped[str | None] = mapped_column(Text)
     invited_guests: Mapped[list | None] = mapped_column(JSON)  # list[str] external names
