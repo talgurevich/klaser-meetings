@@ -564,6 +564,10 @@ export default function MeetingDetail() {
   const hasResolvedTopic = meeting.topics.some((t) =>
     ["done", "skipped", "deferred", "cancelled"].includes(t.status)
   );
+  // Topic condition for locking: assemblies never require it; a meeting with
+  // no agenda topics at all can lock (edge case); a meeting WITH topics still
+  // needs at least one handled.
+  const topicsReadyToLock = isAssembly || meeting.topics.length === 0 || hasResolvedTopic;
   // At least one attendee (member marked present, or Participant attached
   // while active — see AttendanceList's merged "נוכחות" grid) must be
   // recorded before the meeting can be locked. Otherwise a protocol could
@@ -888,16 +892,16 @@ export default function MeetingDetail() {
         <div className="mb-6">
           <button
             onClick={() => nextStatus && changeStatus(nextStatus)}
-            disabled={busy || !hasResolvedTopic || !hasAttendance}
+            disabled={busy || !topicsReadyToLock || !hasAttendance}
             className="w-full rounded-lg bg-rose-600 px-4 py-3 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
           >
             🔒 נעל ישיבה
           </button>
-          {(!hasResolvedTopic || !hasAttendance) && (
+          {(!topicsReadyToLock || !hasAttendance) && (
             <p className="mt-1 text-center text-xs text-ink-soft">
-              {!hasResolvedTopic && !hasAttendance
+              {!topicsReadyToLock && !hasAttendance
                 ? "נדרש לסמן נוכחות ולסיים את הטיפול בנושא אחד לפחות"
-                : !hasResolvedTopic
+                : !topicsReadyToLock
                   ? "נדרש לסיים את הטיפול בנושא אחד לפחות (סגירה, דילוג, דחייה או ביטול)"
                   : "נדרש לסמן נוכחות של לפחות מוזמן אחד"}
             </p>
