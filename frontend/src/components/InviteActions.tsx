@@ -46,6 +46,10 @@ export default function InviteActions({
   // "רוב" = half or more (≥50%), so exactly half counts too.
   const majorityConfirmed = total > 0 && confirmedCount * 2 >= total;
   const isInvited = meeting.status === "invited_internal" || meeting.status === "invited_public";
+  // Assemblies don't need to wait for the committee before the public אלפון
+  // invitation goes out — it can be distributed straight from draft.
+  const isAssembly = meeting.kind === "assembly";
+  const canDistributeAlfon = isInvited || (isAssembly && meeting.status === "draft");
 
   function openMeeting() {
     setConfirmingOpen(false);
@@ -115,7 +119,7 @@ export default function InviteActions({
           </button>
         )}
 
-        {isInvited && (
+        {canDistributeAlfon && (
           <button
             onClick={() => run(() => api.distributeAlfonInvite(meeting.id))}
             disabled={busy}
