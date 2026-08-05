@@ -546,6 +546,9 @@ export default function MeetingDetail() {
   const nextStatus = currentIdx === -1 ? undefined : STATUS_ORDER[currentIdx + 1];
   const isPrep = PREP_STATUSES.includes(meeting.status);
   const isActive = meeting.status === "active";
+  // Assemblies (אסיפה) don't track attendance — invitations/approval still
+  // apply, but there's no present-marking, and they lock without it.
+  const isAssembly = meeting.kind === "assembly";
   // Locked-but-editable phases (after the meeting ends, before archive):
   // attendance AND the agenda are read-only until the single "ערוך ישיבה"
   // toggle is on. That one toggle governs both.
@@ -565,8 +568,11 @@ export default function MeetingDetail() {
   // while active — see AttendanceList's merged "נוכחות" grid) must be
   // recorded before the meeting can be locked. Otherwise a protocol could
   // get published with literally no one on record as having attended.
+  // Assemblies don't require attendance to lock (there's no present-marking).
   const hasAttendance =
-    (meeting.attendees_present?.length || 0) > 0 || (meeting.participant_ids?.length || 0) > 0;
+    isAssembly ||
+    (meeting.attendees_present?.length || 0) > 0 ||
+    (meeting.participant_ids?.length || 0) > 0;
   const showActiveDetailsForm = isActive && editor && editingActiveDetails;
 
   const timeHM = meeting.time_start ? meeting.time_start.slice(0, 5) : "";
@@ -589,7 +595,7 @@ export default function MeetingDetail() {
   // header bar you expand on demand (one box), and stays read-only until the
   // "ערוך ישיבה" toggle is on.
   const attendanceEditable = isActive ? editor : meetingSectionsEditable;
-  const attendanceBlock = (isActive || !isPrep) && (
+  const attendanceBlock = !isAssembly && (isActive || !isPrep) && (
     <div className="mb-6">
       <AttendanceList
         meetingId={meeting.id}
