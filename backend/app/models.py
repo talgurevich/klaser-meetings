@@ -271,6 +271,32 @@ class MeetingRecording(Base):
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# MeetingDocument — an arbitrary file attached to a meeting/assembly (agendas,
+# background material, attachments). Added during setup and at any stage up to
+# publication; view-only once published/archived. Bytes live on the row like
+# MeetingRecording (fine at this scale; move to object storage later).
+# ─────────────────────────────────────────────────────────────────────────
+
+
+class MeetingDocument(Base):
+    __tablename__ = "meeting_documents"
+
+    id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    tenant_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), index=True, nullable=False)
+    meeting_id: Mapped[UUID] = mapped_column(
+        SQLUUID(as_uuid=True), ForeignKey("meetings.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    uploaded_by_user_id: Mapped[UUID] = mapped_column(SQLUUID(as_uuid=True), nullable=False)
+
+    filename: Mapped[str] = mapped_column(String, nullable=False)
+    content_type: Mapped[str] = mapped_column(String, nullable=False, default="application/octet-stream")
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # ProtocolVersion — an immutable snapshot of a meeting's protocol content,
 # captured each time the protocol is distributed to the committee for
 # approval. A new row is only recorded when the content actually differs from

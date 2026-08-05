@@ -23,6 +23,7 @@ import AttendanceList from "../components/AttendanceList";
 import LiveTopicCard from "../components/LiveTopicCard";
 import CloseTopicModal, { type CloseTopicValues } from "../components/CloseTopicModal";
 import MeetingDetailsForm from "../components/MeetingDetailsForm";
+import DocumentsPanel from "../components/DocumentsPanel";
 import InviteesPanel from "../components/InviteesPanel";
 import InviteActions from "../components/InviteActions";
 import PublishModal from "../components/PublishModal";
@@ -673,6 +674,13 @@ export default function MeetingDetail() {
           }}
         />
       )}
+
+      {/* Documents — available at every stage; addable up to publication,
+          view-only once published/archived. */}
+      <DocumentsPanel
+        meetingId={meeting.id}
+        canEdit={editor && meeting.status !== "published" && meeting.status !== "archived"}
+      />
 
       {/* Active: attendance only (above the agenda). Post-lock: the single
           "ערוך ישיבה" toggle sits above both attendance and the agenda. */}

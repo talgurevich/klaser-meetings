@@ -19,6 +19,7 @@ from app.config import settings
 from app.db import get_db
 from app.models import (
     Meeting,
+    MeetingDocument,
     MeetingInvite,
     MeetingRecording,
     Participant,
@@ -32,6 +33,7 @@ from app.schemas import (
     InvitePreviewOut,
     InvitePreviewTopic,
     MeetingCreate,
+    MeetingDocumentOut,
     MeetingInviteOut,
     MeetingListItem,
     MeetingOut,
@@ -1640,5 +1642,136 @@ def delete_recording(
     if rec is None:
         raise HTTPException(status_code=404, detail="ההקלטה לא נמצאה")
     db.delete(rec)
+    db.commit()
+    return Response(status_code=204)
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Meeting documents — arbitrary files attached to a meeting/assembly. Added
+# during setup and at any stage up to publication; view-only once published or
+# archived. Bytes are stored on the row (like recordings) and stream from the
+# /download endpoint.
+# ─────────────────────────────────────────────────────────────────────────
+
+_MAX_DOCUMENT_BYTES = 25 * 1024 * 1024  # 25 MB
+
+
+def _documents_locked(meeting: Meeting) -> bool:
+    """Once published (or archived), documents are view-only."""
+    return meeting.status in ("published", "archived")
+
+
+@router.get("/{meeting_id}/documents", response_model=list[MeetingDocumentOut])
+def list_documents(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> list[MeetingDocument]:
+    """Attached-document metadata for a meeting, newest first (no bytes)."""
+    tenant_id = UUID(user.tenant_id)
+    _get_meeting_or_404(db, meeting_id, tenant_id)
+    return list(
+        db.execute(
+            select(MeetingDocument)
+            .where(
+                MeetingDocument.meeting_id == meeting_id,
+                MeetingDocument.tenant_id == tenant_id,
+            )
+            .order_by(MeetingDocument.created_at.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+
+@router.post("/{meeting_id}/documents", response_model=MeetingDocumentOut)
+def upload_document(
+    meeting_id: UUID,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> MeetingDocument:
+    """Attach a file to the meeting. Allowed at every stage up to publication;
+    blocked once published/archived (documents become view-only then)."""
+    tenant_id = UUID(user.tenant_id)
+    meeting = _get_meeting_or_404(db, meeting_id, tenant_id)
+    if _documents_locked(meeting):
+        raise HTTPException(
+            status_code=409, detail="לא ניתן להוסיף מסמכים לאחר הפרסום — ניתן רק לצפות."
+        )
+
+    data = file.file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="הקובץ ריק.")
+    if len(data) > _MAX_DOCUMENT_BYTES:
+        raise HTTPException(status_code=413, detail="הקובץ גדול מדי (מעל 25MB).")
+
+    doc = MeetingDocument(
+        tenant_id=tenant_id,
+        meeting_id=meeting_id,
+        uploaded_by_user_id=UUID(user.user_id),
+        filename=file.filename or "document",
+        content_type=file.content_type or "application/octet-stream",
+        size_bytes=len(data),
+        data=data,
+    )
+    db.add(doc)
+    db.commit()
+    db.refresh(doc)
+    return doc
+
+
+@router.get("/{meeting_id}/documents/{document_id}/download")
+def download_document(
+    meeting_id: UUID,
+    document_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_entitlement("meetings")),
+) -> Response:
+    """Stream a document's bytes for viewing / download (any stage)."""
+    tenant_id = UUID(user.tenant_id)
+    doc = db.execute(
+        select(MeetingDocument).where(
+            MeetingDocument.id == document_id,
+            MeetingDocument.meeting_id == meeting_id,
+            MeetingDocument.tenant_id == tenant_id,
+        )
+    ).scalar_one_or_none()
+    if doc is None:
+        raise HTTPException(status_code=404, detail="המסמך לא נמצא")
+    # Latin-1-safe Content-Disposition — ASCII fallback + RFC 5987 filename*
+    # for the real (possibly Hebrew) name.
+    disposition = f"inline; filename=\"document\"; filename*=UTF-8''{quote(doc.filename)}"
+    return Response(
+        content=doc.data,
+        media_type=doc.content_type,
+        headers={"Content-Disposition": disposition},
+    )
+
+
+@router.delete("/{meeting_id}/documents/{document_id}", status_code=204)
+def delete_document(
+    meeting_id: UUID,
+    document_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> Response:
+    """Remove an attached document. Blocked once published/archived."""
+    tenant_id = UUID(user.tenant_id)
+    meeting = _get_meeting_or_404(db, meeting_id, tenant_id)
+    if _documents_locked(meeting):
+        raise HTTPException(
+            status_code=409, detail="לא ניתן למחוק מסמכים לאחר הפרסום — ניתן רק לצפות."
+        )
+    doc = db.execute(
+        select(MeetingDocument).where(
+            MeetingDocument.id == document_id,
+            MeetingDocument.meeting_id == meeting_id,
+            MeetingDocument.tenant_id == tenant_id,
+        )
+    ).scalar_one_or_none()
+    if doc is None:
+        raise HTTPException(status_code=404, detail="המסמך לא נמצא")
+    db.delete(doc)
     db.commit()
     return Response(status_code=204)

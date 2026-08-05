@@ -391,6 +391,15 @@ export type MeetingRecording = {
   created_at: string;
 };
 
+export type MeetingDocument = {
+  id: string;
+  meeting_id: string;
+  filename: string;
+  content_type: string;
+  size_bytes: number;
+  created_at: string;
+};
+
 export type PreviousMeeting = {
   id: string;
   kind: MeetingKind;
@@ -675,6 +684,30 @@ export const api = {
   },
   deleteRecording: (meetingId: string, recordingId: string) =>
     request<void>(`/api/meetings/${meetingId}/recordings/${recordingId}`, { method: "DELETE" }),
+
+  // ─── Meeting documents ────────────────────────────────────────────────
+  listDocuments: (meetingId: string) =>
+    request<MeetingDocument[]>(`/api/meetings/${meetingId}/documents`),
+  uploadDocument: async (meetingId: string, file: File): Promise<MeetingDocument> => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    const r = await fetch(`${BASE}/api/meetings/${meetingId}/documents`, {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));
+    return r.json();
+  },
+  getDocumentBlob: async (meetingId: string, documentId: string): Promise<Blob> => {
+    const r = await fetch(`${BASE}/api/meetings/${meetingId}/documents/${documentId}/download`, {
+      credentials: "include",
+    });
+    if (!r.ok) throw new ApiError(r.status, await r.text().catch(() => ""));
+    return r.blob();
+  },
+  deleteDocument: (meetingId: string, documentId: string) =>
+    request<void>(`/api/meetings/${meetingId}/documents/${documentId}`, { method: "DELETE" }),
 
   addTopic: (meetingId: string, body: TopicCreateInput) =>
     request<Topic>(`/api/meetings/${meetingId}/topics`, {

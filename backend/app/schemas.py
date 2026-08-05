@@ -181,6 +181,20 @@ class ProtocolReceiptStatus(BaseModel):
     threshold_met: bool
 
 
+class MeetingDocumentOut(BaseModel):
+    """Attached-file metadata — never carries the bytes (those stream from the
+    /download endpoint)."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    meeting_id: UUID
+    filename: str
+    content_type: str
+    size_bytes: int
+    created_at: dt.datetime
+
+
 class ProtocolVersionOut(BaseModel):
     """One frozen protocol snapshot in the version history. `content` mirrors
     build_protocol_snapshot() — details, attendance, and topics for that
