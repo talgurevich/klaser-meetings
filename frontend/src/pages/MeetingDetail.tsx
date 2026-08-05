@@ -911,7 +911,7 @@ export default function MeetingDetail() {
         <div className="mb-6">
           <button
             onClick={() => changeStatus("approved")}
-            disabled={busy || meetingEditing || !receipt || !receipt.threshold_met}
+            disabled={busy || meetingEditing || (!isAssembly && (!receipt || !receipt.threshold_met))}
             className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
           >
             העבר לסטטוס: אושר
@@ -921,6 +921,7 @@ export default function MeetingDetail() {
               יש לסיים את עריכת סדר היום לפני מעבר לסטטוס אושר
             </p>
           ) : (
+            !isAssembly &&
             (!receipt || !receipt.threshold_met) && (
               <p className="mt-1 text-center text-xs text-ink-soft">
                 נדרש שלפחות מחצית מחברי הועד יאשרו את הפרוטוקול לפני מעבר לסטטוס אושר
@@ -970,7 +971,7 @@ export default function MeetingDetail() {
         </button>
       )}
 
-      {editor && meeting.status === "pending_approval" && (
+      {editor && !isAssembly && meeting.status === "pending_approval" && (
         <div className="mb-6 rounded border border-line bg-surface p-4">
           <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
             <span aria-hidden>📨</span> אישור הפרוטוקול (חברי ועד)

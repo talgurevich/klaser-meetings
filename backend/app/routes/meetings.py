@@ -356,7 +356,11 @@ def _check_status_transition(db: Session, meeting: Meeting, new_status: str) -> 
     """Governance guard, enforced server-side. Moving a locked meeting to
     'אושר' (pending_approval -> approved) requires that a majority of the
     committee members invited to the meeting have approved the distributed
-    protocol. Nothing gates approved -> published beyond that."""
+    protocol. Nothing gates approved -> published beyond that. Assemblies are
+    exempt: publishing an assembly to the public doesn't wait for committee
+    approval of the protocol."""
+    if meeting.kind == "assembly":
+        return
     if meeting.status == "pending_approval" and new_status == "approved":
         if not _receipt_threshold_met(db, meeting):
             total, confirmed = _protocol_receipt_counts(db, meeting)
@@ -1177,17 +1181,12 @@ def distribute_alfon_invite(
 ) -> MeetingOut:
     """Email a simplified invitation — informational only, no RSVP and no
     receipt confirmation — to every אלפון contact with an email address.
-    For meetings this is available once the committee invitation has been sent
-    (no need to wait for the committee to confirm). Assemblies don't need to
-    wait for the committee at all — the public אלפון invitation can go out
-    straight from draft."""
+    Available once the committee invitation has been sent (no need to wait for
+    the committee to confirm)."""
     tenant_id = UUID(user.tenant_id)
     meeting = _get_meeting_or_404(db, meeting_id, tenant_id)
 
-    allowed = ("invited_internal", "invited_public")
-    if meeting.kind == "assembly":
-        allowed = ("draft", *allowed)
-    if meeting.status not in allowed:
+    if meeting.status not in ("invited_internal", "invited_public"):
         raise HTTPException(
             status_code=409,
             detail="יש לשלוח תחילה הזמנה לחברי הועד לפני הפצה לאלפון.",
