@@ -390,6 +390,14 @@ def _revert_to_pending_on_protocol_edit(meeting: Meeting) -> None:
             inv.protocol_receipt_confirmed_at = None
 
 
+def _assert_agenda_editable(meeting: Meeting) -> None:
+    """A published (or archived) assembly is final — no more agenda edits.
+    Meetings stay editable post-publish on purpose: an edit re-opens the
+    approval cycle and records a new protocol version."""
+    if meeting.kind == "assembly" and meeting.status in ("published", "archived"):
+        raise HTTPException(status_code=409, detail="לא ניתן לערוך אסיפה שפורסמה.")
+
+
 def _committee_invites(db: Session, meeting: Meeting) -> list[MeetingInvite]:
     """The meeting's invitees who are committee members — אלפון contacts
     flagged 'חבר ועד' (Participant.edit_permission). Used for the protocol
@@ -498,6 +506,15 @@ def update_meeting(
                 )
             if meeting.published_at is None:
                 meeting.published_at = now
+        # Snapshot the protocol as a version whenever it's finalised or
+        # published — deduped by content, so re-approving/re-publishing an
+        # unchanged protocol adds nothing, while every real change (which
+        # re-opens the cycle via _revert_to_pending_on_protocol_edit) records a
+        # new version. Covers assemblies too, which never distribute to the
+        # committee. Meeting distribution also records a version (see
+        # distribute_protocol_approval); dedup keeps it to one.
+        if new_status in ("approved", "published"):
+            _record_protocol_version(db, meeting)
 
     db.commit()
     db.refresh(meeting)
@@ -571,6 +588,7 @@ def publish_meeting(
         meeting.number = generate_meeting_number(meeting.date)
     if meeting.published_at is None:
         meeting.published_at = now
+    _record_protocol_version(db, meeting)
     db.commit()
     db.refresh(meeting)
 
@@ -1311,6 +1329,7 @@ def add_topic(
     user: IdentityUser = Depends(require_editor()),
 ) -> Topic:
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    _assert_agenda_editable(meeting)
     tenant_id = UUID(user.tenant_id)
     _claim_pool_topic(db, tenant_id, body.source_pool_id)
     next_order = body.order if body.order is not None else len(meeting.topics)
@@ -1348,6 +1367,7 @@ def update_topic(
     ).scalar_one_or_none()
     if topic is None:
         raise HTTPException(status_code=404, detail="הנושא לא נמצא")
+    _assert_agenda_editable(topic.meeting)
 
     updates = body.model_dump(exclude_unset=True)
     # If the follow-up owner changes, clear the notified flag so the new owner
@@ -1377,6 +1397,7 @@ def delete_topic(
     ).scalar_one_or_none()
     if topic is None:
         raise HTTPException(status_code=404, detail="הנושא לא נמצא")
+    _assert_agenda_editable(topic.meeting)
     _release_pool_topic(db, tenant_id, topic.source_pool_id)
     meeting = topic.meeting
     db.delete(topic)
@@ -1392,6 +1413,7 @@ def reorder_topics(
     user: IdentityUser = Depends(require_editor()),
 ) -> list[Topic]:
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    _assert_agenda_editable(meeting)
     by_id = {t.id: t for t in meeting.topics}
 
     missing = [str(item.id) for item in body if item.id not in by_id]
@@ -1417,6 +1439,7 @@ def defer_topic(
     of the same kind (see create_meeting's pull_deferred_topics). The topic
     is marked status="deferred"; no future meeting is required."""
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    _assert_agenda_editable(meeting)
     topic = next((t for t in meeting.topics if t.id == topic_id), None)
     if topic is None:
         raise HTTPException(status_code=404, detail="הנושא לא נמצא")
@@ -1439,6 +1462,7 @@ def undo_defer(
     as it hasn't been touched there yet) and restores the source topic to
     "pending". See app/services/defer_topic.py's undo_defer_topic."""
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    _assert_agenda_editable(meeting)
     topic = next((t for t in meeting.topics if t.id == topic_id), None)
     if topic is None:
         raise HTTPException(status_code=404, detail="הנושא לא נמצא")

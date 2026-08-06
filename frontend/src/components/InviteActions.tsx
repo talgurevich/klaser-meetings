@@ -27,6 +27,7 @@ export default function InviteActions({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [confirmingOpen, setConfirmingOpen] = useState(false);
   const [alfonReminderOpen, setAlfonReminderOpen] = useState(false);
+  const [alfonMajorityOpen, setAlfonMajorityOpen] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
 
   useEffect(() => {
@@ -46,10 +47,28 @@ export default function InviteActions({
   // "רוב" = half or more (≥50%), so exactly half counts too.
   const majorityConfirmed = total > 0 && confirmedCount * 2 >= total;
   const isInvited = meeting.status === "invited_internal" || meeting.status === "invited_public";
+  const isAssembly = meeting.kind === "assembly";
+  const kindNoun = isAssembly ? "האסיפה" : "הפגישה";
+  const approvedVerb = isAssembly ? "אישרו את האסיפה" : "אישרו הגעה";
 
   function openMeeting() {
     setConfirmingOpen(false);
     run(() => api.updateMeeting(meeting.id, { status: "active" }));
+  }
+
+  function distributeAlfon() {
+    setAlfonMajorityOpen(false);
+    return run(() => api.distributeAlfonInvite(meeting.id));
+  }
+
+  function requestDistributeAlfon() {
+    // For assemblies, warn before distributing to the public אלפון if the
+    // committee majority hasn't approved yet — the organiser can still proceed.
+    if (isAssembly && total > 0 && !majorityConfirmed) {
+      setAlfonMajorityOpen(true);
+      return;
+    }
+    distributeAlfon();
   }
 
   function proceedOpen() {
@@ -117,7 +136,7 @@ export default function InviteActions({
 
         {isInvited && (
           <button
-            onClick={() => run(() => api.distributeAlfonInvite(meeting.id))}
+            onClick={requestDistributeAlfon}
             disabled={busy}
             className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
@@ -131,15 +150,15 @@ export default function InviteActions({
             disabled={busy}
             className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
-            → פתח ישיבה
+            → פתח {isAssembly ? "אסיפה" : "ישיבה"}
           </button>
         )}
       </div>
 
       {isInvited && (
         <p className="mt-2 text-xs text-ink-soft">
-          אישרו הגעה: {confirmedCount} מתוך {total} חברי ועד
-          {!majorityConfirmed && " · אפשר לפתוח את הישיבה גם ללא רוב אישורים"}
+          {approvedVerb}: {confirmedCount} מתוך {total} חברי ועד
+          {!majorityConfirmed && ` · אפשר לפתוח את ${kindNoun} גם ללא רוב אישורים`}
           {meeting.invite_sent_public_at && " · ✓ הזמנה הופצה לאלפון"}
         </p>
       )}
@@ -155,12 +174,12 @@ export default function InviteActions({
       {confirmingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-sm border border-ink bg-surface p-5 text-center">
-            <h2 className="mb-2 text-base font-semibold">פתיחת הישיבה</h2>
+            <h2 className="mb-2 text-base font-semibold">פתיחת {isAssembly ? "האסיפה" : "הישיבה"}</h2>
             <p className="mb-1 text-sm">
-              אישרו הגעה: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> חברי ועד.
+              {approvedVerb}: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> חברי ועד.
             </p>
             <p className="mb-4 text-sm text-ink-soft">
-              לא כל חברי הועד אישרו, האם לפתוח את הפגישה בכל זאת?
+              לא כל חברי הועד אישרו, האם לפתוח את {kindNoun} בכל זאת?
             </p>
             <div className="flex justify-center gap-2">
               <button
@@ -187,7 +206,7 @@ export default function InviteActions({
           <div className="w-full max-w-sm border border-ink bg-surface p-5 text-center">
             <h2 className="mb-2 text-base font-semibold">הזמנה לאלפון לא נשלחה</h2>
             <p className="mb-4 text-sm text-ink-soft">
-              עדיין לא הופצה הזמנה לאלפון. לשלוח עכשיו, או להמשיך ולפתוח את הישיבה בכל זאת?
+              עדיין לא הופצה הזמנה לאלפון. לשלוח עכשיו, או להמשיך ולפתוח את {kindNoun} בכל זאת?
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               <button
@@ -216,6 +235,36 @@ export default function InviteActions({
                 className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
               >
                 פתח בכל זאת
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {alfonMajorityOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm border border-ink bg-surface p-5 text-center">
+            <h2 className="mb-2 text-base font-semibold">הפצה לאלפון</h2>
+            <p className="mb-1 text-sm">
+              {approvedVerb}: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> חברי ועד.
+            </p>
+            <p className="mb-4 text-sm text-ink-soft">
+              לא כל חברי הועד אישרו את האסיפה. האם להפיץ הזמנה לאלפון בכל זאת?
+            </p>
+            <div className="flex justify-center gap-2">
+              <button
+                onClick={() => setAlfonMajorityOpen(false)}
+                disabled={busy}
+                className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
+              >
+                ביטול
+              </button>
+              <button
+                onClick={distributeAlfon}
+                disabled={busy}
+                className="rounded bg-accent-dark px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              >
+                {busy ? "שולח…" : "✉ הפץ בכל זאת"}
               </button>
             </div>
           </div>

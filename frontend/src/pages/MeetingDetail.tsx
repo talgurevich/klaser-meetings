@@ -551,8 +551,15 @@ export default function MeetingDetail() {
   const isAssembly = meeting.kind === "assembly";
   // Locked-but-editable phases (after the meeting ends, before archive):
   // attendance AND the agenda are read-only until the single "ערוך ישיבה"
-  // toggle is on. That one toggle governs both.
-  const isLockedEditable = editor && !isActive && !isPrep && meeting.status !== "archived";
+  // toggle is on. That one toggle governs both. A published assembly is fully
+  // final — no more editing (meetings can still be edited post-publish, which
+  // re-opens the approval cycle and records a new protocol version).
+  const isLockedEditable =
+    editor &&
+    !isActive &&
+    !isPrep &&
+    meeting.status !== "archived" &&
+    !(isAssembly && meeting.status === "published");
   const meetingSectionsEditable = isActive ? editor : isLockedEditable && meetingEditing;
   const topicsEditable = meetingSectionsEditable;
   const usedPoolIds = new Set(meeting.topics.map((t) => t.source_pool_id).filter(Boolean));
@@ -634,7 +641,7 @@ export default function MeetingDetail() {
             : "border-line-strong text-ink hover:bg-line"
         }`}
       >
-        {meetingEditing ? "✓ סיום עריכה" : "✏ ערוך ישיבה"}
+        {meetingEditing ? "✓ סיום עריכה" : `✏ ערוך ${isAssembly ? "אסיפה" : "ישיבה"}`}
       </button>
     </div>
   );
