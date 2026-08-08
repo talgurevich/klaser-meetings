@@ -56,7 +56,7 @@ export default function ProtocolReceipt() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-6 text-ink">
       <div className="w-full max-w-md rounded-lg border border-line bg-surface p-8">
-        <h1 className="text-center font-display text-2xl font-bold">אישור קבלת פרוטוקול</h1>
+        <h1 className="text-center font-rubik text-2xl font-bold text-ink">אישור קבלת פרוטוקול</h1>
 
         {load.kind === "loading" && <p className="mt-8 text-center text-sm text-ink-soft">טוען…</p>}
 
@@ -77,23 +77,23 @@ export default function ProtocolReceipt() {
             </p>
             <p className="mt-2 text-center text-sm">{load.meeting.meeting_date}</p>
 
-            <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-center">
-              <p className="text-sm font-semibold text-emerald-800">✓ אישור הקבלה נקלט</p>
-              <p className="mt-1 text-xs text-emerald-700">תודה — אישרת שקיבלת את הפרוטוקול.</p>
+            <div className="mt-8 rounded-lg border border-success/30 bg-success-soft p-4 text-center">
+              <p className="font-rubik text-sm font-bold text-success">✓ אישור הקבלה נקלט</p>
+              <p className="mt-1 font-rubik text-xs text-success">תודה — אישרת שקיבלת את הפרוטוקול.</p>
             </div>
 
             {!load.meeting.protocol_receipt_confirmed && (
               <button
                 onClick={confirmAgain}
                 disabled={busy}
-                className="mt-4 w-full rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="mt-4 w-full rounded-md bg-success px-4 py-3 font-rubik text-sm font-bold text-white transition hover:brightness-95 disabled:opacity-50"
               >
                 אישור קבלת הפרוטוקול
               </button>
             )}
 
             {error && (
-              <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-center text-sm text-red-700">
+              <div className="mt-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-center text-sm text-danger">
                 {error}
               </div>
             )}

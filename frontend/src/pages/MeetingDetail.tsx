@@ -13,9 +13,9 @@ import {
 } from "../lib/api";
 import {
   KIND_LABELS,
-  STATUS_COLORS,
   STATUS_LABELS,
   STATUS_ORDER,
+  STATUS_VARIANTS,
   TOPIC_POOL_STATUS_LABELS,
 } from "../lib/meetingLabels";
 import { useIsEditor } from "../components/Layout";
@@ -29,6 +29,19 @@ import InviteesPanel from "../components/InviteesPanel";
 import InviteActions from "../components/InviteActions";
 import PublishModal from "../components/PublishModal";
 import StatusStepper from "../components/StatusStepper";
+import {
+  DownloadIcon,
+  DsButton,
+  DsCard,
+  DsInput,
+  DsSelect,
+  DsTag,
+  PencilIcon,
+  SectionHeader,
+  SendIcon,
+  StatusPill,
+  TrashIcon,
+} from "../components/klaser-ds";
 
 const PREP_STATUSES: MeetingStatus[] = ["draft", "invited_internal", "invited_public"];
 
@@ -59,7 +72,7 @@ function TopicDurationInput({
   }
 
   return (
-    <label className="mt-1 flex items-center gap-1 text-xs text-ink-soft">
+    <label className="mt-2 flex items-center gap-2 font-rubik text-xs text-ink-soft">
       <input
         type="number"
         min={1}
@@ -71,7 +84,7 @@ function TopicDurationInput({
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
         }}
         placeholder="—"
-        className="w-14 rounded border border-line-strong px-1.5 py-0.5 text-center"
+        className="w-16 rounded-md border border-line bg-white px-2 py-1 text-center font-rubik text-xs text-ink outline-none transition focus:border-turquoise focus:ring-2 focus:ring-turquoise/20 disabled:bg-line/40"
       />
       דק׳ לדיון
     </label>
@@ -523,13 +536,13 @@ export default function MeetingDetail() {
 
   if (error && !meeting) {
     return (
-      <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      <div className="rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
         {error}
       </div>
     );
   }
 
-  if (!meeting) return <p className="text-sm text-ink-soft animate-pulse">טוען…</p>;
+  if (!meeting) return <p className="animate-pulse text-sm text-ink-soft">טוען…</p>;
 
   const sortedTopics = [...meeting.topics].sort((a, b) => a.order - b.order);
   const currentIdx = STATUS_ORDER.indexOf(meeting.status);
@@ -596,24 +609,29 @@ export default function MeetingDetail() {
 
   return (
     <div className="max-w-3xl">
-      <div className="mb-1 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <h1 className={`font-display font-bold ${isActive ? "text-lg" : "text-2xl"}`}>
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1
+            className={`font-rubik font-bold text-ink ${isActive ? "text-lg" : "text-2xl"}`}
+          >
             {isActive
               ? detailLine
               : `${meeting.title || KIND_LABELS[meeting.kind]}${meeting.number ? ` ${meeting.number}` : ""}`}
           </h1>
-          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[meeting.status]}`}>
+          <StatusPill variant={STATUS_VARIANTS[meeting.status]}>
             {STATUS_LABELS[meeting.status]}
-          </span>
+          </StatusPill>
         </div>
         {isActive && editor && (
-          <button
+          <DsButton
+            variant="secondary"
+            size="compact"
+            className="shrink-0 border"
             onClick={() => setEditingActiveDetails((v) => !v)}
-            className="rounded border border-line-strong px-3 py-1.5 text-sm hover:bg-line"
+            icon={editingActiveDetails ? undefined : <PencilIcon />}
           >
-            {editingActiveDetails ? "→ חזרה" : "✏ ערוך פרטים"}
-          </button>
+            {editingActiveDetails ? "חזרה" : "ערוך פרטים"}
+          </DsButton>
         )}
       </div>
 
@@ -624,7 +642,7 @@ export default function MeetingDetail() {
       )}
 
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
           {error}
         </div>
       )}
@@ -642,8 +660,10 @@ export default function MeetingDetail() {
 
       {isActive && attendanceBlock}
 
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="font-display text-lg font-semibold">סדר יום</h2>
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <SectionHeader className="mb-0">סדר יום</SectionHeader>
+        </div>
         {isLockedEditable && (
           <button
             onClick={() => {
@@ -655,34 +675,32 @@ export default function MeetingDetail() {
                 setAgendaEditing(false);
               }
             }}
-            className={`rounded border px-3 py-1.5 text-sm font-medium ${
+            className={`inline-flex shrink-0 items-center gap-2 rounded-md border px-4 font-rubik text-sm font-bold transition h-10 ${
               agendaEditing
-                ? "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-                : "border-line-strong text-ink hover:bg-line"
+                ? "border-success bg-success/10 text-success hover:bg-success/15"
+                : "border-2 border-turquoise bg-white text-turquoise hover:bg-turquoise hover:text-white"
             }`}
           >
-            {agendaEditing ? "✓ סיום עריכה" : "✏ ערוך סדר יום"}
+            <span>{agendaEditing ? "סיום עריכה" : "ערוך סדר יום"}</span>
+            <PencilIcon />
           </button>
         )}
       </div>
 
       {isPrep ? (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {sortedTopics.length === 0 && <p className="text-sm text-ink-soft">אין עדיין נושאים.</p>}
           {sortedTopics.map((t, i) => (
-            <div
+            <DsCard
               key={t.id}
-              className="flex items-center justify-between rounded border border-line bg-surface px-4 py-3"
+              interactive={false}
+              className="flex items-center justify-between gap-4 px-4 py-3"
             >
               <div>
-                <p className="font-medium">
-                  {t.title}
-                  {t.is_private && (
-                    <span className="mr-2 rounded bg-line px-1.5 py-0.5 text-xs text-ink-soft">פרטי</span>
-                  )}
-                  {t.source_pool_id && (
-                    <span className="mr-2 rounded bg-line px-1.5 py-0.5 text-xs text-ink-soft">ממאגר</span>
-                  )}
+                <p className="flex flex-wrap items-center gap-2 font-medium">
+                  <span>{t.title}</span>
+                  {t.is_private && <DsTag>פרטי</DsTag>}
+                  {t.source_pool_id && <DsTag>ממאגר</DsTag>}
                 </p>
                 {editor ? (
                   <TopicDurationInput
@@ -691,17 +709,17 @@ export default function MeetingDetail() {
                     onSave={(minutes) => setTopicDuration(t.id, minutes)}
                   />
                 ) : (
-                  <p className="text-xs text-ink-soft">
+                  <p className="mt-1 font-rubik text-xs text-ink-soft">
                     {t.duration_minutes ? `${t.duration_minutes} דק׳` : "ללא משך מתוכנן"}
                   </p>
                 )}
               </div>
               {editor && (
-                <div className="flex items-center gap-1">
+                <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={() => move(t.id, -1)}
                     disabled={busy || i === 0}
-                    className="rounded px-2 py-1 text-ink-soft hover:bg-line disabled:opacity-30"
+                    className="rounded-md px-2 py-1 text-ink-soft transition hover:bg-turquoise/10 hover:text-turquoise disabled:opacity-30"
                     aria-label="הזז למעלה"
                   >
                     ↑
@@ -709,7 +727,7 @@ export default function MeetingDetail() {
                   <button
                     onClick={() => move(t.id, 1)}
                     disabled={busy || i === sortedTopics.length - 1}
-                    className="rounded px-2 py-1 text-ink-soft hover:bg-line disabled:opacity-30"
+                    className="rounded-md px-2 py-1 text-ink-soft transition hover:bg-turquoise/10 hover:text-turquoise disabled:opacity-30"
                     aria-label="הזז למטה"
                   >
                     ↓
@@ -717,18 +735,18 @@ export default function MeetingDetail() {
                   <button
                     onClick={() => removeTopic(t.id)}
                     disabled={busy}
-                    className="rounded px-2 py-1 text-ink-soft hover:bg-line"
+                    className="rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-30"
                     aria-label="מחק נושא"
                   >
-                    ✕
+                    <TrashIcon />
                   </button>
                 </div>
               )}
-            </div>
+            </DsCard>
           ))}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           {sortedTopics.length === 0 && <p className="text-sm text-ink-soft">אין נושאים.</p>}
           {sortedTopics.map((t, i) => (
             <LiveTopicCard
@@ -758,7 +776,7 @@ export default function MeetingDetail() {
               prevProtocol={
                 prevMeeting && (t.is_default_first || /פרוט/.test(t.title))
                   ? {
-                      label: `📄 הצג פרוטוקול ${
+                      label: `הצג פרוטוקול ${
                         prevMeeting.number ? `מס׳ ${prevMeeting.number}` : "ישיבה קודמת"
                       }`,
                       busy: prevPdfBusy,
@@ -776,49 +794,50 @@ export default function MeetingDetail() {
       )}
 
       {isPrep && editor && (
-        <div className="mt-4 mb-6 space-y-2">
+        <div className="mb-8 mt-4 flex flex-col gap-2">
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={newTopicTitle}
-              onChange={(e) => setNewTopicTitle(e.target.value)}
-              placeholder="נושא חדש"
-              className="flex-1 rounded border border-line-strong px-3 py-2 text-sm"
-            />
-            <input
-              type="number"
-              min={1}
-              value={newTopicDuration}
-              onChange={(e) => setNewTopicDuration(e.target.value)}
-              placeholder="דק׳ לדיון"
-              title="משך זמן מתוכנן לדיון (דקות, אופציונלי)"
-              className="w-24 rounded border border-line-strong px-2 py-2 text-sm"
-            />
-            <button
+            <div className="flex-1">
+              <DsInput
+                value={newTopicTitle}
+                onChange={setNewTopicTitle}
+                placeholder="נושא חדש"
+              />
+            </div>
+            <div className="w-28">
+              <DsInput
+                type="number"
+                min={1}
+                value={newTopicDuration}
+                onChange={setNewTopicDuration}
+                placeholder="דק׳ לדיון"
+              />
+            </div>
+            <DsButton
+              size="compact"
               onClick={addTopic}
               disabled={busy || !newTopicTitle.trim()}
-              className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
             >
               הוסף
-            </button>
+            </DsButton>
           </div>
           {availablePoolItems.length > 0 && (
-            <select
-              value=""
-              disabled={busy}
-              onChange={(e) => {
-                if (e.target.value) addTopicFromPool(e.target.value);
-              }}
-              className="rounded border border-line-strong px-2 py-1 text-sm"
-            >
-              <option value="">בחר ממאגר הנושאים…</option>
-              {availablePoolItems.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                  {p.status !== "approved" ? ` (${TOPIC_POOL_STATUS_LABELS[p.status]})` : ""}
-                </option>
-              ))}
-            </select>
+            <div className="w-64">
+              <DsSelect
+                value=""
+                disabled={busy}
+                onChange={(v) => {
+                  if (v) addTopicFromPool(v);
+                }}
+              >
+                <option value="">בחר ממאגר הנושאים…</option>
+                {availablePoolItems.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                    {p.status !== "approved" ? ` (${TOPIC_POOL_STATUS_LABELS[p.status]})` : ""}
+                  </option>
+                ))}
+              </DsSelect>
+            </div>
           )}
         </div>
       )}
@@ -835,16 +854,17 @@ export default function MeetingDetail() {
       )}
 
       {isPrep ? null : isActive && editor ? (
-        <div className="mb-6">
+        <div className="mb-8">
+          {/* Destructive-ish milestone: DS `danger` fill, not an off-palette rose. */}
           <button
             onClick={() => nextStatus && changeStatus(nextStatus)}
             disabled={busy || !hasResolvedTopic || !hasAttendance}
-            className="w-full rounded-lg bg-rose-600 px-4 py-3 text-sm font-semibold text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
+            className="w-full rounded-md bg-danger px-4 py-3 font-rubik text-base font-bold text-white transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
           >
-            🔒 נעל ישיבה
+            נעל ישיבה
           </button>
           {(!hasResolvedTopic || !hasAttendance) && (
-            <p className="mt-1 text-center text-xs text-ink-soft">
+            <p className="mt-2 text-center font-rubik text-xs text-ink-soft">
               {!hasResolvedTopic && !hasAttendance
                 ? "נדרש לסמן נוכחות ולסיים את הטיפול בנושא אחד לפחות"
                 : !hasResolvedTopic
@@ -854,7 +874,7 @@ export default function MeetingDetail() {
           )}
         </div>
       ) : editor && meeting.status === "approved" ? (
-        <div className="mb-6">
+        <div className="mb-8">
           <button
             onClick={() => setPublishing(true)}
             disabled={
@@ -862,18 +882,18 @@ export default function MeetingDetail() {
               (meeting.protocol_approvals || []).length === 0 ||
               (receipt !== null && !receipt.threshold_met)
             }
-            className="w-full rounded-lg bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-accent-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
+            className="w-full rounded-md bg-turquoise px-4 py-3 font-rubik text-base font-bold text-white transition hover:bg-turquoise-dark disabled:cursor-not-allowed disabled:bg-line disabled:text-ink-soft"
           >
             פרסם לציבור והעבר לפורסם
           </button>
           {(meeting.protocol_approvals || []).length === 0 ? (
-            <p className="mt-1 text-center text-xs text-ink-soft">
+            <p className="mt-2 text-center font-rubik text-xs text-ink-soft">
               נדרש לפחות אישור פרוטוקול אחד לפני הפרסום
             </p>
           ) : (
             receipt !== null &&
             !receipt.threshold_met && (
-              <p className="mt-1 text-center text-xs text-ink-soft">
+              <p className="mt-2 text-center font-rubik text-xs text-ink-soft">
                 נדרש שלפחות מחצית מהמוזמנים יאשרו קבלת הפרוטוקול לפני פרסום לציבור
               </p>
             )
@@ -882,13 +902,11 @@ export default function MeetingDetail() {
       ) : (
         editor &&
         nextStatus && (
-          <button
-            onClick={() => changeStatus(nextStatus)}
-            disabled={busy}
-            className="mb-6 rounded bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
-          >
-            העבר לסטטוס: {STATUS_LABELS[nextStatus]}
-          </button>
+          <div className="mb-8">
+            <DsButton size="compact" onClick={() => changeStatus(nextStatus)} disabled={busy}>
+              העבר לסטטוס: {STATUS_LABELS[nextStatus]}
+            </DsButton>
+          </div>
         )
       )}
 
@@ -896,9 +914,10 @@ export default function MeetingDetail() {
         <button
           onClick={downloadProtocol}
           disabled={pdfBusy}
-          className="mb-6 block w-full rounded-lg border border-accent bg-surface px-4 py-3 text-center text-sm font-semibold text-accent-dark hover:bg-line disabled:opacity-50"
+          className="mb-8 flex w-full items-center justify-center gap-2 rounded-md border-2 border-turquoise bg-white px-4 py-3 font-rubik text-base font-bold text-turquoise transition hover:bg-turquoise hover:text-white disabled:opacity-50"
         >
-          {pdfBusy ? "מפיק…" : "📄 הפק PDF (פרוטוקול)"}
+          <span>{pdfBusy ? "מפיק…" : "הפק PDF (פרוטוקול)"}</span>
+          <DownloadIcon />
         </button>
       )}
 
@@ -929,48 +948,49 @@ export default function MeetingDetail() {
       )}
 
       {editor && (meeting.status === "pending_approval" || meeting.status === "approved") && (
-        <div className="mb-6 rounded border border-line bg-surface p-4">
-          <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
-            <span aria-hidden>📨</span> אישור קבלת פרוטוקול (מוזמנים)
-          </h3>
-          <p className="mb-3 text-xs text-ink-soft">
+        <DsCard interactive={false} className="mb-8 p-4">
+          <SectionHeader>אישור קבלת פרוטוקול (מוזמנים)</SectionHeader>
+          <p className="mb-4 font-rubik text-xs text-ink-soft">
             הפצת הפרוטוקול למוזמנים לאישור קבלה. יש צורך שלפחות מחצית מהמוזמנים יאשרו קבלה לפני פרסום
             לציבור.
           </p>
 
           {receipt && receipt.total > 0 && (
-            <div className="mb-3">
-              <div className="mb-1 flex items-center justify-between text-sm">
+            <div className="mb-4">
+              <div className="mb-2 flex items-center justify-between text-sm">
                 <span className="text-ink-soft">אישרו קבלה</span>
-                <span className={receipt.threshold_met ? "font-semibold text-emerald-700" : "font-medium"}>
+                <span
+                  className={
+                    receipt.threshold_met ? "font-semibold text-success" : "font-medium"
+                  }
+                >
                   {receipt.confirmed} מתוך {receipt.total}
                   {receipt.threshold_met ? " · הרוב הושג ✓" : ""}
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-line">
                 <div
-                  className={`h-full ${receipt.threshold_met ? "bg-emerald-500" : "bg-accent"}`}
+                  className={`h-full ${receipt.threshold_met ? "bg-success" : "bg-turquoise"}`}
                   style={{ width: `${Math.min(100, (receipt.confirmed / receipt.total) * 100)}%` }}
                 />
               </div>
             </div>
           )}
           {receipt && receipt.total === 0 && (
-            <p className="mb-3 text-xs text-ink-soft">אין מוזמנים עם כתובת אימייל להפצה.</p>
+            <p className="mb-4 font-rubik text-xs text-ink-soft">
+              אין מוזמנים עם כתובת אימייל להפצה.
+            </p>
           )}
 
-          <button
+          <DsButton
+            size="compact"
             onClick={() => distributeApproval(false)}
             disabled={receiptBusy || (receipt?.total ?? 0) === 0}
-            className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            icon={<SendIcon />}
           >
-            {receiptBusy
-              ? "שולח…"
-              : receipt?.sent
-                ? "📨 הפץ שוב לאישור"
-                : "📨 הפץ פרוטוקול לאישור"}
-          </button>
-        </div>
+            {receiptBusy ? "שולח…" : receipt?.sent ? "הפץ שוב לאישור" : "הפץ פרוטוקול לאישור"}
+          </DsButton>
+        </DsCard>
       )}
 
       {closingTopic && (
@@ -1002,35 +1022,38 @@ export default function MeetingDetail() {
       )}
 
       {finishEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-lg border border-line bg-surface p-5 text-center shadow-lg">
-            <h2 className="mb-2 text-base font-semibold">סיום עריכת הפרוטוקול</h2>
-            <p className="mb-4 text-sm text-ink-soft">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
+          <div className="w-full max-w-sm rounded-lg border border-line bg-white p-8 shadow-[0px_2px_0_rgba(0,0,0,0.05),0px_4px_25px_0px_rgba(0,0,0,0.08)]">
+            <h2 className="mb-2 font-rubik text-2xl font-bold text-ink">סיום עריכת הפרוטוקול</h2>
+            <p className="mb-8 text-sm text-ink-soft">
               לשלוח את הפרוטוקול הערוך לאישור משתתפי הפגישה? הם יקבלו את הנוסח המעודכן במייל ויתבקשו לאשר
               קבלה מחדש (אישורים קודמים יתאפסו כי הפרוטוקול עודכן).
             </p>
-            <div className="flex justify-center gap-2">
-              <button
-                onClick={() => {
-                  setFinishEditModal(false);
-                  setAgendaEditing(false);
-                }}
-                disabled={receiptBusy}
-                className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
-              >
-                לא, רק סיים
-              </button>
-              <button
+            {/* DS §4.6 — actions on the LEFT; row-reverse puts the primary
+                (DOM-first) button on the far left. */}
+            <div className="flex flex-row-reverse justify-start gap-2">
+              <DsButton
+                size="compact"
                 onClick={async () => {
                   await distributeApproval(true);
                   setFinishEditModal(false);
                   setAgendaEditing(false);
                 }}
                 disabled={receiptBusy}
-                className="rounded bg-accent-dark px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
               >
                 {receiptBusy ? "שולח…" : "כן, שלח לאישור מחדש"}
-              </button>
+              </DsButton>
+              <DsButton
+                variant="ghost"
+                size="compact"
+                onClick={() => {
+                  setFinishEditModal(false);
+                  setAgendaEditing(false);
+                }}
+                disabled={receiptBusy}
+              >
+                לא, רק סיים
+              </DsButton>
             </div>
           </div>
         </div>

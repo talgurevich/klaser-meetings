@@ -65,7 +65,7 @@ export default function ProtocolView() {
       .catch((err) => setError(apiErrorMessage(err)));
   }, [id]);
 
-  if (error) return <p className="text-sm text-red-700">{error}</p>;
+  if (error) return <p className="text-sm text-danger">{error}</p>;
   if (!meeting || !settings) return <p className="text-sm text-ink-soft animate-pulse">טוען…</p>;
 
   const kindLabel = KIND_LABELS[meeting.kind];
@@ -116,12 +116,12 @@ export default function ProtocolView() {
       <style>{PRINT_CSS}</style>
 
       <div className="no-print mb-4 flex items-center justify-between">
-        <Link to={`/meetings/${meeting.id}`} className="text-sm text-accent-dark hover:underline">
+        <Link to={`/meetings/${meeting.id}`} className="font-rubik text-sm font-medium text-turquoise transition hover:text-turquoise-dark hover:underline">
           ← חזרה לישיבה
         </Link>
         <button
           onClick={() => window.print()}
-          className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark"
+          className="inline-flex h-10 items-center rounded-md bg-turquoise px-4 font-rubik text-sm font-bold text-white transition hover:bg-turquoise-dark"
         >
           הפק PDF
         </button>

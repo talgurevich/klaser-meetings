@@ -7,9 +7,21 @@ import {
   type DecisionSearchResult,
   type MeetingKind,
 } from "../lib/api";
-import { KIND_LABELS, STATUS_COLORS, STATUS_LABELS } from "../lib/meetingLabels";
+import { KIND_LABELS, STATUS_LABELS, STATUS_VARIANTS } from "../lib/meetingLabels";
 import { useIsEditor } from "../components/Layout";
 import { useAuth } from "../lib/auth";
+import {
+  ArrowCircleLeft,
+  DsButton,
+  DsCard,
+  DsInput,
+  DsSelect,
+  PageHeader,
+  PlusIcon,
+  SearchIcon,
+  SectionHeader,
+  StatusPill,
+} from "../components/klaser-ds";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -120,75 +132,73 @@ export default function Home() {
 
   return (
     <div>
-      <header className="mb-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">בית</div>
-            <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
-              שלום {user?.display_name || user?.email}
-            </h1>
-          </div>
-          {editor && (
-            <div className="flex shrink-0 gap-2">
-              <button
+      <PageHeader
+        eyebrow="בית"
+        title={`שלום ${user?.display_name || user?.email || ""}`}
+        actions={
+          editor && (
+            <>
+              <DsButton
                 onClick={() => createAndGo("meeting")}
                 disabled={busy}
-                className="bg-accent px-5 py-2 text-sm font-bold text-surface transition-colors hover:bg-accent-dark disabled:opacity-50"
+                size="compact"
+                icon={<PlusIcon />}
               >
-                + ישיבה חדשה
-              </button>
-              <button
+                ישיבה חדשה
+              </DsButton>
+              <DsButton
                 onClick={() => createAndGo("assembly")}
                 disabled={busy}
-                className="border-2 border-ink px-4 py-2 text-sm font-bold text-ink transition-colors hover:bg-ink hover:text-surface disabled:opacity-50"
+                variant="secondary"
+                size="compact"
               >
                 אסיפה חדשה
-              </button>
-            </div>
-          )}
-        </div>
-      </header>
+              </DsButton>
+            </>
+          )
+        }
+      />
 
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
           {error}
         </div>
       )}
 
-      {!data && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
+      {!data && !error && <p className="animate-pulse text-sm text-ink-soft">טוען…</p>}
 
       {data && (
         <>
           {data.continuing_meeting && (
             <Link
               to={`/meetings/${data.continuing_meeting.id}`}
-              className="mb-4 flex items-center justify-between rounded border border-line bg-surface px-4 py-3 hover:bg-line"
+              className="mb-8 flex items-center justify-between gap-4 rounded-lg border border-turquoise/30 bg-turquoise/5 px-4 py-3 transition hover:bg-turquoise/10"
             >
-              <span className="flex items-center gap-2 text-sm font-medium text-accent-dark">
-                המשך לישיבה ←
-              </span>
               <span className="flex items-center gap-3">
                 <span className="font-medium">
                   {KIND_LABELS[data.continuing_meeting.kind]} {data.continuing_meeting.display_number} בעבודה
                 </span>
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[data.continuing_meeting.status]}`}
-                >
+                <StatusPill variant={STATUS_VARIANTS[data.continuing_meeting.status]}>
                   {STATUS_LABELS[data.continuing_meeting.status]}
-                </span>
+                </StatusPill>
+              </span>
+              {/* Icon DOM-last → renders on the visual left (DS §2.5). */}
+              <span className="flex shrink-0 items-center gap-2 font-rubik text-sm font-bold text-turquoise">
+                <span>המשך לישיבה</span>
+                <ArrowCircleLeft />
               </span>
             </Link>
           )}
 
-          <h2 className="mb-3 font-display text-lg font-semibold">ישיבות עתידיות</h2>
-          <div className="mb-4 rounded border border-line bg-surface p-8 text-center">
+          <SectionHeader>ישיבות עתידיות</SectionHeader>
+          <DsCard className="mb-8 p-8 text-center" interactive={!!data.upcoming_meeting}>
             {data.upcoming_meeting ? (
-              <Link to={`/meetings/${data.upcoming_meeting.id}`} className="block hover:opacity-80">
-                <p className="font-medium">
+              <Link to={`/meetings/${data.upcoming_meeting.id}`} className="block transition hover:opacity-80">
+                <p className="font-rubik font-bold text-ink">
                   {KIND_LABELS[data.upcoming_meeting.kind]}
                   {data.upcoming_meeting.title && ` · ${data.upcoming_meeting.title}`}
                 </p>
-                <p className="text-sm text-ink-soft">
+                <p className="mt-2 font-rubik text-sm text-ink-soft">
                   {data.upcoming_meeting.date}
                   {data.upcoming_meeting.time_start && ` ${data.upcoming_meeting.time_start}`}
                   {data.upcoming_meeting.location && ` · ${data.upcoming_meeting.location}`}
@@ -197,195 +207,205 @@ export default function Home() {
             ) : (
               <p className="text-ink-soft">אין ישיבה קרובה</p>
             )}
-          </div>
+          </DsCard>
 
-          <div className="mb-6 rounded border border-line bg-surface p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-ink-soft">תאריכים שמורים</h2>
-              {editor && !addingDate && (
+          <SectionHeader>תאריכים שמורים</SectionHeader>
+          <DsCard className="mb-8 p-4" interactive={false}>
+            {editor && !addingDate && (
+              <div className="mb-4 flex">
                 <button
                   onClick={() => setAddingDate(true)}
-                  className="text-sm text-accent-dark hover:underline"
+                  className="inline-flex items-center gap-1.5 font-rubik text-sm font-medium text-turquoise transition hover:text-turquoise-dark"
                 >
-                  + הוסף תאריך
+                  <span>הוסף תאריך</span>
+                  <PlusIcon />
                 </button>
-              )}
-            </div>
+              </div>
+            )}
 
             {addingDate && (
-              <form onSubmit={addSavedDate} className="mb-3 flex flex-wrap items-end gap-2">
-                <input
-                  type="date"
-                  required
-                  value={newDate}
-                  onChange={(e) => setNewDate(e.target.value)}
-                  className="rounded border border-line-strong px-2 py-1 text-sm"
-                />
-                <select
-                  value={newDateKind}
-                  onChange={(e) => setNewDateKind(e.target.value as MeetingKind)}
-                  className="rounded border border-line-strong px-2 py-1 text-sm"
-                >
-                  <option value="meeting">ישיבת ועד</option>
-                  <option value="assembly">אסיפה</option>
-                </select>
-                <input
-                  type="text"
-                  placeholder="הערה (אופציונלי)"
-                  value={newDateNote}
-                  onChange={(e) => setNewDateNote(e.target.value)}
-                  className="rounded border border-line-strong px-2 py-1 text-sm"
-                />
-                <button
-                  type="submit"
-                  disabled={busy || !newDate}
-                  className="rounded bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-dark disabled:opacity-50"
-                >
+              <form onSubmit={addSavedDate} className="mb-4 flex flex-wrap items-end gap-4">
+                <div className="w-40">
+                  <DsInput type="date" required value={newDate} onChange={setNewDate} />
+                </div>
+                <div className="w-40">
+                  <DsSelect
+                    value={newDateKind}
+                    onChange={(v) => setNewDateKind(v as MeetingKind)}
+                  >
+                    <option value="meeting">ישיבת ועד</option>
+                    <option value="assembly">אסיפה</option>
+                  </DsSelect>
+                </div>
+                <div className="min-w-[12rem] flex-1">
+                  <DsInput
+                    placeholder="הערה (אופציונלי)"
+                    value={newDateNote}
+                    onChange={setNewDateNote}
+                  />
+                </div>
+                <DsButton type="submit" size="compact" disabled={busy || !newDate}>
                   שמור
-                </button>
-                <button
-                  type="button"
+                </DsButton>
+                <DsButton
+                  variant="ghost"
+                  size="compact"
                   onClick={() => setAddingDate(false)}
                   disabled={busy}
-                  className="text-xs text-ink-soft hover:underline"
                 >
                   ביטול
-                </button>
+                </DsButton>
               </form>
             )}
 
             {data.saved_dates.length === 0 ? (
               <p className="text-sm text-ink-soft">אין תאריכים שמורים קרובים</p>
             ) : (
-              <div className="space-y-1">
+              <div className="flex flex-col gap-1">
                 {data.saved_dates.map((sd) => (
                   <div
                     key={sd.id}
-                    className="flex items-center justify-between rounded px-2 py-1.5 text-sm hover:bg-surface"
+                    className="flex items-center justify-between gap-4 rounded-md px-2 py-1.5 text-sm transition hover:bg-turquoise/5"
                   >
                     <span>
                       {sd.date} · {KIND_LABELS[sd.kind]}
                       {sd.note && ` · ${sd.note}`}
                     </span>
                     {editor && (
-                      <span className="flex gap-3">
-                        <button
+                      <span className="flex shrink-0 gap-2">
+                        <DsButton
+                          variant="secondary"
+                          size="micro"
                           onClick={() => convertSavedDate(sd.id)}
                           disabled={busy}
-                          className="text-xs text-accent-dark hover:underline disabled:opacity-50"
+                          className="border"
                         >
                           הפוך לישיבה
-                        </button>
-                        <button
+                        </DsButton>
+                        <DsButton
+                          variant="destructive"
+                          size="micro"
                           onClick={() => removeSavedDate(sd.id)}
                           disabled={busy}
-                          className="text-xs text-red-700 hover:underline disabled:opacity-50"
                         >
                           הסר
-                        </button>
+                        </DsButton>
                       </span>
                     )}
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </DsCard>
 
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <button
               onClick={() => setSearchOpen((v) => !v)}
-              className="rounded border border-emerald-200 bg-emerald-50 p-4 text-center hover:bg-emerald-100"
+              className={`rounded-lg border p-4 text-center transition ${
+                searchOpen
+                  ? "border-turquoise bg-turquoise/10"
+                  : "border-line bg-white hover:border-turquoise/40 hover:bg-turquoise/5"
+              }`}
             >
-              <p className="font-display text-lg font-bold">חפש</p>
-              <p className="text-xs text-ink-soft">חיפוש בהחלטות</p>
+              <p className="flex items-center justify-center gap-2 font-rubik text-lg font-bold text-turquoise">
+                <SearchIcon />
+                <span>חפש</span>
+              </p>
+              <p className="mt-1 font-rubik text-xs text-ink-soft">חיפוש בהחלטות</p>
             </button>
-            <div className="rounded border border-line bg-surface p-4 text-center">
-              <p className="font-display text-2xl font-bold">{data.protocols_count}</p>
-              <p className="text-xs text-ink-soft">פרוטוקולים</p>
-            </div>
+            <DsCard className="p-4 text-center" interactive={false}>
+              <p className="font-rubik text-2xl font-bold text-ink">{data.protocols_count}</p>
+              <p className="mt-1 font-rubik text-xs text-ink-soft">פרוטוקולים</p>
+            </DsCard>
             <Link
               to="/action-items"
-              className="rounded border border-amber-200 bg-amber-50 p-4 text-center hover:bg-amber-100"
+              className="rounded-lg border border-line bg-white p-4 text-center transition hover:border-turquoise/40 hover:bg-turquoise/5"
             >
-              <p className="font-display text-2xl font-bold">{data.open_action_items_count}</p>
-              <p className="text-xs text-ink-soft">פריטי ביצוע פתוחים</p>
+              <p className="font-rubik text-2xl font-bold text-warning-dark">
+                {data.open_action_items_count}
+              </p>
+              <p className="mt-1 font-rubik text-xs text-ink-soft">פריטי ביצוע פתוחים</p>
             </Link>
           </div>
 
           {searchOpen && (
-            <div className="mb-6 rounded border border-line bg-surface p-4">
-              <form onSubmit={runSearch} className="mb-3 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="חיפוש בהחלטות…"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="flex-1 rounded border border-line-strong px-3 py-2 text-sm"
-                  autoFocus
-                />
-                <button
+            <DsCard className="mb-8 p-4" interactive={false}>
+              <form onSubmit={runSearch} className="mb-4 flex gap-2">
+                <div className="flex-1">
+                  <DsInput
+                    placeholder="חיפוש בהחלטות…"
+                    value={query}
+                    onChange={setQuery}
+                  />
+                </div>
+                <DsButton
                   type="submit"
+                  size="compact"
                   disabled={searching || !query.trim()}
-                  className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
+                  icon={<SearchIcon />}
                 >
                   חפש
-                </button>
+                </DsButton>
               </form>
-              {results === null && <p className="text-sm text-ink-soft">הקלידו טקסט לחיפוש בהחלטות שהתקבלו.</p>}
+              {results === null && (
+                <p className="text-sm text-ink-soft">הקלידו טקסט לחיפוש בהחלטות שהתקבלו.</p>
+              )}
               {results !== null && results.length === 0 && (
                 <p className="text-sm text-ink-soft">לא נמצאו החלטות תואמות.</p>
               )}
               {results !== null && results.length > 0 && (
-                <div className="space-y-2">
+                <div className="flex flex-col gap-2">
                   {results.map((r) => (
                     <Link
                       key={r.topic_id}
                       to={`/meetings/${r.meeting_id}`}
-                      className="block rounded border border-line px-3 py-2 hover:bg-surface"
+                      className="block rounded-md border border-line px-3 py-2 transition hover:border-turquoise/40 hover:bg-turquoise/5"
                     >
-                      <p className="text-xs text-ink-soft">
+                      <p className="font-rubik text-xs text-ink-soft">
                         {KIND_LABELS[r.meeting_kind]}
                         {r.meeting_number && ` · מס׳ ${r.meeting_number}`} · {r.meeting_date} ·{" "}
                         {r.topic_title}
                       </p>
-                      <p className="text-sm">{r.decision_text}</p>
+                      <p className="mt-1 text-sm">{r.decision_text}</p>
                     </Link>
                   ))}
                 </div>
               )}
-            </div>
+            </DsCard>
           )}
 
-          <div className="mb-3 flex items-center justify-between">
-            <Link to="/meetings" className="text-sm text-accent-dark hover:underline">
-              כל הפרוטוקולים
-            </Link>
-            <h2 className="font-display text-lg font-semibold">פרוטוקולים אחרונים</h2>
-          </div>
+          <SectionHeader>פרוטוקולים אחרונים</SectionHeader>
 
           {data.recent_protocols.length === 0 ? (
             <p className="text-sm text-ink-soft">אין עדיין פרוטוקולים.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               {data.recent_protocols.map((m) => (
                 <Link
                   key={m.id}
                   to={`/meetings/${m.id}`}
-                  className="flex items-center justify-between rounded border border-line bg-surface px-4 py-3 hover:bg-surface"
+                  className="flex items-center justify-between gap-4 rounded-lg border border-line bg-white px-4 py-3 transition hover:border-turquoise/40 hover:bg-turquoise/5"
                 >
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[m.status]}`}
-                  >
-                    {STATUS_LABELS[m.status]}
-                  </span>
                   <span className="text-sm">
                     {KIND_LABELS[m.kind]} {m.number}
                     <span className="mr-2 text-ink-soft">{m.date}</span>
                   </span>
+                  <StatusPill variant={STATUS_VARIANTS[m.status]}>
+                    {STATUS_LABELS[m.status]}
+                  </StatusPill>
                 </Link>
               ))}
             </div>
           )}
+
+          <div className="mt-4">
+            <Link
+              to="/meetings"
+              className="font-rubik text-sm font-medium text-turquoise transition hover:text-turquoise-dark"
+            >
+              כל הפרוטוקולים ←
+            </Link>
+          </div>
         </>
       )}
     </div>

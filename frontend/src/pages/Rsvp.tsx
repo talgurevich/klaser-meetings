@@ -79,7 +79,7 @@ export default function Rsvp() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-6 text-ink">
       <div className="w-full max-w-md rounded-lg border border-line bg-surface p-8">
-        <h1 className="text-center font-display text-2xl font-bold">אישור הגעה</h1>
+        <h1 className="text-center font-rubik text-2xl font-bold text-ink">אישור הגעה</h1>
 
         {load.kind === "loading" && (
           <p className="mt-8 text-center text-sm text-ink-soft">טוען…</p>
@@ -114,7 +114,7 @@ export default function Rsvp() {
             {load.meeting.topics.length > 0 && (
               <div className="mt-4 rounded bg-surface p-3">
                 <p className="mb-1 text-sm font-medium">סדר יום:</p>
-                <ol className="list-decimal pr-5 text-sm">
+                <ol className="list-decimal pr-4 text-sm">
                   {load.meeting.topics.map((t, i) => (
                     <li key={i}>
                       {t.title}
@@ -133,21 +133,21 @@ export default function Rsvp() {
               <button
                 onClick={() => respond("confirmed_absent")}
                 disabled={busy}
-                className="rounded bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-warning px-4 py-2.5 font-rubik text-sm font-bold text-white transition hover:brightness-95 disabled:opacity-50"
               >
                 מאשר/ת קבלה ולא אוכל להגיע
               </button>
               <button
                 onClick={() => respond("confirmed_attend")}
                 disabled={busy}
-                className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="rounded-md bg-success px-4 py-2.5 font-rubik text-sm font-bold text-white transition hover:brightness-95 disabled:opacity-50"
               >
                 מאשר/ת ומגיע/ה
               </button>
             </div>
 
             {error && (
-              <div className="mt-4 rounded border border-red-200 bg-red-50 p-3 text-center text-sm text-red-700">
+              <div className="mt-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-center text-sm text-danger">
                 {error}
               </div>
             )}

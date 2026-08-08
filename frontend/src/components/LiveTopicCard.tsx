@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import type { MeetingRecording, Topic } from "../lib/api";
 import TopicRecorder from "./TopicRecorder";
-import { TOPIC_STATUS_COLORS, TOPIC_STATUS_LABELS } from "../lib/meetingLabels";
+import { TOPIC_STATUS_LABELS, TOPIC_STATUS_VARIANTS } from "../lib/meetingLabels";
+import {
+  CheckMarkIcon,
+  CloseIcon,
+  DsButton,
+  DsCard,
+  DsTag,
+  DsTextarea,
+  ExternalLinkIcon,
+  PencilIcon,
+  StatusPill,
+} from "./klaser-ds";
 
 function formatElapsed(totalSeconds: number): string {
   const m = Math.floor(totalSeconds / 60);
@@ -77,27 +88,23 @@ export default function LiveTopicCard({
   const overBudget = plannedSeconds !== null && displayElapsed > plannedSeconds;
 
   return (
-    <div className="rounded border border-line bg-surface p-4">
-      <div className="flex items-start justify-between gap-3">
+    <DsCard interactive={false} className="p-4">
+      <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="font-medium">
               {index}. {topic.title}
             </p>
-            <span
-              className={`rounded-full px-2 py-0.5 text-xs font-medium ${TOPIC_STATUS_COLORS[topic.status]}`}
-            >
+            <StatusPill variant={TOPIC_STATUS_VARIANTS[topic.status]}>
               {TOPIC_STATUS_LABELS[topic.status]}
-            </span>
-            {topic.is_private && (
-              <span className="rounded bg-line px-1.5 py-0.5 text-xs text-ink-soft">פרטי</span>
-            )}
+            </StatusPill>
+            {topic.is_private && <DsTag>פרטי</DsTag>}
           </div>
         </div>
         <button
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? "הרחב" : "כווץ"}
-          className="rounded px-1.5 py-0.5 text-ink-soft hover:bg-line"
+          className="shrink-0 rounded-md px-2 py-1 text-ink-soft transition hover:bg-turquoise/10 hover:text-turquoise"
         >
           {collapsed ? "︿" : "﹀"}
         </button>
@@ -105,7 +112,7 @@ export default function LiveTopicCard({
 
       {!collapsed && (
         <>
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-4 flex items-center gap-2">
             {editable && !finished && (
               <>
                 <button
@@ -113,7 +120,7 @@ export default function LiveTopicCard({
                   disabled={busy}
                   title="איפוס טיימר"
                   aria-label="איפוס טיימר"
-                  className="rounded border border-line-strong px-2 py-1 text-sm hover:bg-line disabled:opacity-50"
+                  className="rounded-md border border-line px-2 py-1 text-sm text-ink-soft transition hover:border-turquoise hover:text-turquoise disabled:opacity-50"
                 >
                   ↺
                 </button>
@@ -123,7 +130,7 @@ export default function LiveTopicCard({
                     disabled={busy}
                     title="השהה טיימר"
                     aria-label="השהה טיימר"
-                    className="rounded border border-line-strong px-2 py-1 text-sm hover:bg-line disabled:opacity-50"
+                    className="rounded-md border border-line px-2 py-1 text-sm text-ink-soft transition hover:border-turquoise hover:text-turquoise disabled:opacity-50"
                   >
                     ⏸
                   </button>
@@ -133,7 +140,7 @@ export default function LiveTopicCard({
                     disabled={busy}
                     title={topic.status === "pending" ? "התחל דיון" : "המשך טיימר"}
                     aria-label="התחל טיימר"
-                    className="rounded border border-line-strong px-2 py-1 text-sm hover:bg-line disabled:opacity-50"
+                    className="rounded-md border border-line px-2 py-1 text-sm text-ink-soft transition hover:border-turquoise hover:text-turquoise disabled:opacity-50"
                   >
                     ▶
                   </button>
@@ -141,32 +148,33 @@ export default function LiveTopicCard({
               </>
             )}
             <span className="font-mono text-lg tabular-nums">
-              <span className={overBudget ? "font-bold text-red-600" : "text-ink-soft"}>
+              <span className={overBudget ? "font-bold text-danger" : "text-ink-soft"}>
                 {formatElapsed(displayElapsed)}
               </span>
               {plannedSeconds !== null && (
                 <span className="text-ink-soft"> / {formatElapsed(plannedSeconds)}</span>
               )}
             </span>
-            {overBudget && (
-              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                חריגה מהזמן המתוכנן
-              </span>
-            )}
+            {overBudget && <StatusPill variant="danger">חריגה מהזמן המתוכנן</StatusPill>}
           </div>
 
           {prevProtocol && (
-            <button
-              onClick={prevProtocol.onOpen}
-              disabled={prevProtocol.busy}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-accent bg-surface px-3 py-1.5 text-sm font-medium text-accent-dark hover:bg-line disabled:opacity-50"
-            >
-              {prevProtocol.busy ? "טוען…" : prevProtocol.label}
-            </button>
+            <div className="mt-4">
+              <DsButton
+                variant="secondary"
+                size="micro"
+                className="border"
+                onClick={prevProtocol.onOpen}
+                disabled={prevProtocol.busy}
+                icon={<ExternalLinkIcon />}
+              >
+                {prevProtocol.busy ? "טוען…" : prevProtocol.label}
+              </DsButton>
+            </div>
           )}
 
           {finished && (
-            <div className="mt-3 space-y-1 rounded bg-surface p-3 text-sm">
+            <div className="mt-4 flex flex-col gap-2 rounded-md bg-surface p-4 text-sm">
               {topic.decision_text && (
                 <p>
                   <span className="font-medium text-ink-soft">החלטה: </span>
@@ -183,70 +191,80 @@ export default function LiveTopicCard({
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-ink-soft">נדחה לישיבה הבאה.</p>
                   {editable && (
-                    <button
+                    <DsButton
+                      variant="ghost"
+                      size="micro"
+                      className="shrink-0"
                       onClick={onUndoDefer}
                       disabled={busy}
-                      className="shrink-0 text-xs text-accent-dark hover:underline disabled:opacity-50"
                     >
                       ↺ בטל דחייה
-                    </button>
+                    </DsButton>
                   )}
                 </div>
               )}
               {topic.status === "cancelled" && <p className="text-ink-soft">הנושא בוטל.</p>}
               {editable && topic.status === "done" && (
+                // DS §2.5 — `justify-end` places this on the visual LEFT.
                 <div className="flex justify-end pt-1">
-                  <button
+                  <DsButton
+                    variant="ghost"
+                    size="micro"
                     onClick={onEdit}
                     disabled={busy}
-                    className="text-xs text-accent-dark hover:underline disabled:opacity-50"
+                    icon={<PencilIcon />}
                   >
-                    ✏ ערוך החלטה
-                  </button>
+                    ערוך החלטה
+                  </DsButton>
                 </div>
               )}
             </div>
           )}
 
           {editable && !finished && (
-            <div className="mt-3">
-              <label className="mb-1 block text-xs font-medium text-ink-soft">הערות</label>
-              <textarea
+            <div className="mt-4">
+              <label className="mb-2 block font-rubik text-xs font-medium text-turquoise">
+                הערות
+              </label>
+              <DsTextarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={setNotes}
                 onBlur={() => {
                   if (notes !== (topic.topic_notes || "")) onSaveNotes(notes);
                 }}
                 rows={2}
                 placeholder="הערות לנושא — יתווספו לסגירת הנושא"
-                className="w-full rounded border border-line-strong px-3 py-2 text-sm"
               />
             </div>
           )}
 
           {editable && !finished && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
+            <div className="mt-4 flex flex-wrap gap-2">
+              <DsButton
+                size="micro"
                 onClick={() => onOpenClose(notes)}
                 disabled={busy}
-                className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                icon={<CheckMarkIcon />}
               >
-                ✓ סגור נושא
-              </button>
+                סגור נושא
+              </DsButton>
               <button
                 onClick={onDefer}
                 disabled={busy}
-                className="rounded border border-amber-300 px-3 py-1.5 text-sm text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md border border-warning bg-white px-3 py-1.5 font-rubik text-xs font-medium text-warning-dark transition hover:bg-warning hover:text-white disabled:opacity-50"
               >
-                → העבר לישיבה הבאה
+                <span>העבר לישיבה הבאה</span>
+                <span aria-hidden>←</span>
               </button>
-              <button
+              <DsButton
+                variant="destructive"
+                size="micro"
                 onClick={onCancel}
                 disabled={busy}
-                className="rounded border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                icon={<CloseIcon />}
               >
-                ✕ בטל נושא
-              </button>
+                בטל נושא
+              </DsButton>
             </div>
           )}
 
@@ -262,6 +280,6 @@ export default function LiveTopicCard({
           )}
         </>
       )}
-    </div>
+    </DsCard>
   );
 }

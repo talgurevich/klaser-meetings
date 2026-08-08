@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage, type Meeting } from "../lib/api";
+import {
+  DsButton,
+  DsCard,
+  DsInput,
+  DsTextarea,
+  Field,
+  SectionHeader,
+  StatusPill,
+} from "./klaser-ds";
 
 /** Editable "פרטי ישיבה" block — number/date/times/location/online link/
  * notes. Only rendered during the prep phase (draft/invited_*) for
@@ -82,102 +91,67 @@ export default function MeetingDetailsForm({
   }
 
   return (
-    <div className="mb-6 rounded border border-line bg-surface p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-ink-soft">פרטי ישיבה</h2>
-        <div className="flex items-center gap-2">
-          {saved && !dirty && <span className="text-xs text-emerald-700">נשמר</span>}
-          <button
-            onClick={save}
-            disabled={busy || !dirty}
-            className="rounded bg-accent px-3 py-1.5 text-xs font-medium text-white hover:bg-accent-dark disabled:opacity-50"
-          >
+    <DsCard interactive={false} className="mb-8 p-4">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div className="flex-1">
+          <SectionHeader className="mb-0">פרטי ישיבה</SectionHeader>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {saved && !dirty && <StatusPill variant="success">נשמר</StatusPill>}
+          <DsButton size="compact" onClick={save} disabled={busy || !dirty}>
             שמור
-          </button>
+          </DsButton>
         </div>
       </div>
 
-      {error && <p className="mb-3 text-xs text-red-700">{error}</p>}
+      {error && <p className="mb-4 text-sm text-danger">{error}</p>}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <label className="text-sm">
-          <span className="mb-1 block font-medium text-ink-soft">מספר ישיבה</span>
-          <input
-            type="text"
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Field label="מספר ישיבה">
+          <DsInput
             value={number}
-            onChange={(e) => setNumber(e.target.value)}
+            onChange={setNumber}
             placeholder="ייקבע אוטומטית בעת הפרסום אם יישאר ריק"
-            className="w-full rounded border border-line-strong px-3 py-2"
           />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block font-medium text-ink-soft">תאריך *</span>
-          <input
-            type="date"
-            required
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full rounded border border-line-strong px-3 py-2"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block font-medium text-ink-soft">שעת התחלה</span>
-          <input
-            type="time"
-            value={timeStart}
-            onChange={(e) => setTimeStart(e.target.value)}
-            className="w-full rounded border border-line-strong px-3 py-2"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block font-medium text-ink-soft">שעת סיום</span>
-          <input
-            type="time"
-            value={timeEnd}
-            onChange={(e) => setTimeEnd(e.target.value)}
-            className="w-full rounded border border-line-strong px-3 py-2"
-          />
-        </label>
-        <label className="text-sm sm:col-span-2">
-          <span className="mb-1 block font-medium text-ink-soft">כותרת (אופציונלי)</span>
-          <input
-            type="text"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded border border-line-strong px-3 py-2"
-          />
-        </label>
-        <label className="text-sm sm:col-span-2">
-          <span className="mb-1 block font-medium text-ink-soft">מקום</span>
-          <input
-            type="text"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="w-full rounded border border-line-strong px-3 py-2"
-          />
-        </label>
-        <label className="text-sm sm:col-span-2">
-          <span className="mb-1 block font-medium text-ink-soft">קישור לפגישה מקוונת (אופציונלי)</span>
-          <input
-            type="text"
-            value={onlineUrl}
-            onChange={(e) => setOnlineUrl(e.target.value)}
-            placeholder="https://zoom.us/... או https://meet.google.com/..."
-            className="w-full rounded border border-line-strong px-3 py-2"
-            dir="ltr"
-          />
-          <span className="mt-1 block text-xs text-ink-soft">הקישור יישלח אוטומטית בהזמנת המייל למוזמנים</span>
-        </label>
-        <label className="text-sm sm:col-span-2">
-          <span className="mb-1 block font-medium text-ink-soft">הערות</span>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={2}
-            className="w-full rounded border border-line-strong px-3 py-2"
-          />
-        </label>
+        </Field>
+        <Field label="תאריך *">
+          <DsInput type="date" required value={date} onChange={setDate} />
+        </Field>
+        <Field label="שעת התחלה">
+          <DsInput type="time" value={timeStart} onChange={setTimeStart} />
+        </Field>
+        <Field label="שעת סיום">
+          <DsInput type="time" value={timeEnd} onChange={setTimeEnd} />
+        </Field>
+        <div className="sm:col-span-2">
+          <Field label="כותרת (אופציונלי)">
+            <DsInput value={title} onChange={setTitle} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="מקום">
+            <DsInput value={location} onChange={setLocation} />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field
+            label="קישור לפגישה מקוונת (אופציונלי)"
+            hint="יישלח אוטומטית בהזמנת המייל למוזמנים"
+          >
+            <DsInput
+              value={onlineUrl}
+              onChange={setOnlineUrl}
+              placeholder="https://zoom.us/... או https://meet.google.com/..."
+              dir="ltr"
+            />
+          </Field>
+        </div>
+        <div className="sm:col-span-2">
+          <Field label="הערות">
+            <DsTextarea value={notes} onChange={setNotes} rows={2} />
+          </Field>
+        </div>
       </div>
-    </div>
+    </DsCard>
   );
 }

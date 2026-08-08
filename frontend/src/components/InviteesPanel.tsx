@@ -1,5 +1,16 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { api, apiErrorMessage, type Member, type MeetingInvite, type Participant } from "../lib/api";
+import {
+  Chip,
+  CloseIcon,
+  DsButton,
+  DsCard,
+  DsCheckbox,
+  DsTag,
+  SectionHeader,
+  StatusPill,
+  type StatusVariant,
+} from "./klaser-ds";
 
 const RSVP_LABELS: Record<MeetingInvite["status"], string> = {
   pending: "ממתין",
@@ -7,10 +18,10 @@ const RSVP_LABELS: Record<MeetingInvite["status"], string> = {
   confirmed_absent: "מאשר/ת קבלה ולא מגיע/ה",
 };
 
-const RSVP_COLORS: Record<MeetingInvite["status"], string> = {
-  pending: "text-ink-soft",
-  confirmed_attend: "text-emerald-700",
-  confirmed_absent: "text-amber-700",
+const RSVP_VARIANTS: Record<MeetingInvite["status"], StatusVariant> = {
+  pending: "neutral",
+  confirmed_attend: "success",
+  confirmed_absent: "warning",
 };
 
 /** "מוזמנים" + "אישורי השתתפות" — who's invited to this meeting (from
@@ -105,14 +116,14 @@ export default function InviteesPanel({
   const confirmedCount = invites.filter((i) => i.status === "confirmed_attend").length;
 
   return (
-    <div className="mb-4 rounded border border-line bg-surface p-4">
-      <h3 className="mb-3 text-sm font-semibold text-ink-soft">מוזמנים ({invites.length})</h3>
+    <DsCard interactive={false} className="mb-4 p-4">
+      <SectionHeader>מוזמנים ({invites.length})</SectionHeader>
 
-      {error && <p className="mb-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="mb-2 text-sm text-danger">{error}</p>}
 
       {editable && (
-        <div className="mb-3 rounded border border-line bg-surface p-3">
-          <p className="mb-2 text-xs font-medium text-ink-soft">הוסף מוזמנים</p>
+        <div className="mb-4 rounded-md border border-line p-4">
+          <p className="mb-2 font-rubik text-xs font-medium text-turquoise">הוסף מוזמנים</p>
           {!members || !participants ? (
             <p className="text-sm text-ink-soft">טוען…</p>
           ) : availableMembers.length === 0 && availableParticipants.length === 0 ? (
@@ -121,53 +132,57 @@ export default function InviteesPanel({
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {availableMembers.map((m) => {
                 const key = `member:${m.id}`;
+                const label = m.display_name || m.email;
                 return (
-                  <label key={key} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-line">
-                    <input
-                      type="checkbox"
+                  <div
+                    key={key}
+                    onClick={() => toggleSelected(key)}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm transition hover:bg-turquoise/5"
+                  >
+                    <DsCheckbox
                       checked={selected.has(key)}
                       onChange={() => toggleSelected(key)}
-                      className="rounded"
+                      ariaLabel={label}
                     />
-                    <span>{m.display_name || m.email}</span>
-                  </label>
+                    <span>{label}</span>
+                  </div>
                 );
               })}
               {availableParticipants.map((p) => {
                 const key = `participant:${p.id}`;
                 return (
-                  <label key={key} className="flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-line">
-                    <input
-                      type="checkbox"
+                  <div
+                    key={key}
+                    onClick={() => toggleSelected(key)}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm transition hover:bg-turquoise/5"
+                  >
+                    <DsCheckbox
                       checked={selected.has(key)}
                       onChange={() => toggleSelected(key)}
-                      className="rounded"
+                      ariaLabel={p.full_name}
                     />
-                    <span>
-                      {p.full_name}
-                      <span className="mr-1 rounded bg-line px-1 py-0.5 text-[10px] text-ink-soft">משתתף/ת</span>
+                    <span className="flex items-center gap-2">
+                      <span>{p.full_name}</span>
+                      <DsTag>משתתף/ת</DsTag>
                     </span>
-                  </label>
+                  </div>
                 );
               })}
             </div>
           )}
           <div className="mt-2 flex gap-2">
-            <button
-              onClick={addSelected}
-              disabled={busy || selected.size === 0}
-              className="rounded bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-dark disabled:opacity-50"
-            >
+            <DsButton size="micro" onClick={addSelected} disabled={busy || selected.size === 0}>
               הוסף ({selected.size})
-            </button>
+            </DsButton>
             {selected.size > 0 && (
-              <button
+              <DsButton
+                variant="ghost"
+                size="micro"
                 onClick={() => setSelected(new Set())}
                 disabled={busy}
-                className="text-xs text-ink-soft hover:underline"
               >
                 נקה בחירה
-              </button>
+              </DsButton>
             )}
           </div>
         </div>
@@ -177,44 +192,43 @@ export default function InviteesPanel({
         <p className="text-sm text-ink-soft">אין עדיין מוזמנים.</p>
       ) : (
         <div className="mb-4 flex flex-wrap gap-2">
-          {invites.map((inv) => (
-            <span
-              key={inv.id}
-              className="flex items-center gap-1 rounded-full bg-line px-2 py-1 text-xs text-ink"
-            >
-              {editable && (
-                <button
-                  onClick={() => removeInvite(inv.id)}
-                  disabled={busy}
-                  className="text-ink-soft hover:text-red-700"
-                  aria-label="הסר מוזמן"
-                >
-                  ✕
-                </button>
-              )}
-              {inv.display_name || inv.email}
-            </span>
-          ))}
+          {invites.map((inv) =>
+            editable ? (
+              <Chip
+                key={inv.id}
+                onClick={() => removeInvite(inv.id)}
+                disabled={busy}
+                title="הסר מוזמן"
+              >
+                <span>{inv.display_name || inv.email}</span>
+                <CloseIcon />
+              </Chip>
+            ) : (
+              <DsTag key={inv.id}>{inv.display_name || inv.email}</DsTag>
+            )
+          )}
         </div>
       )}
 
       {actions}
 
       {showRsvp && invites.length > 0 && (
-        <div className="rounded border border-line bg-surface p-3">
+        <div className="rounded-md border border-line p-4">
           <p className="mb-2 text-sm font-medium">
             אישורי השתתפות: {confirmedCount} מאשרים מתוך {invites.length} מוזמנים
           </p>
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1">
             {invites.map((inv) => (
-              <div key={inv.id} className="flex items-center justify-between text-xs">
+              <div key={inv.id} className="flex items-center justify-between gap-4 text-sm">
                 <span>{inv.display_name || inv.email}</span>
-                <span className={RSVP_COLORS[inv.status]}>{RSVP_LABELS[inv.status]}</span>
+                <StatusPill variant={RSVP_VARIANTS[inv.status]}>
+                  {RSVP_LABELS[inv.status]}
+                </StatusPill>
               </div>
             ))}
           </div>
         </div>
       )}
-    </div>
+    </DsCard>
   );
 }

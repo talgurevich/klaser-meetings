@@ -1,4 +1,4 @@
-"""FastAPI application entry point — Klaser Meetings backend.
+"""FastAPI application entry point — Ogdan (אוגדן) backend.
 
 No SessionMiddleware here, unlike a typical FastAPI app with local auth —
 this service never decodes a session itself. It only ever forwards the
@@ -28,8 +28,8 @@ from app.routes import settings as settings_routes
 log = structlog.get_logger()
 
 app = FastAPI(
-    title="Klaser Meetings",
-    description="Klaser Meetings — backend",
+    title="Ogdan (אוגדן)",
+    description="Ogdan (אוגדן) — meetings & protocols backend",
     version="0.1.0",
 )
 

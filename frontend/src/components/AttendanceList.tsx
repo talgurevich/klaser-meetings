@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage, type Member, type Participant } from "../lib/api";
+import {
+  DsButton,
+  DsCard,
+  DsCheckbox,
+  DsInput,
+  PlusIcon,
+  SectionHeader,
+} from "./klaser-ds";
 
 const NAME_MAX_LENGTH = 16;
 
@@ -109,7 +117,7 @@ export default function AttendanceList({
   }
 
   if (error) {
-    return <p className="text-sm text-red-700">{error}</p>;
+    return <p className="text-sm text-danger">{error}</p>;
   }
   if (!members || !participants) {
     return <p className="text-sm text-ink-soft">טוען נוכחות…</p>;
@@ -158,18 +166,20 @@ export default function AttendanceList({
     return (
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
         {rows.map((row) => (
-          <label
+          <div
             key={row.key}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-              row.checked ? "border-accent bg-accent/5" : "border-line"
-            } ${row.rowEditable ? "cursor-pointer hover:bg-surface" : ""}`}
+            onClick={() => {
+              if (row.rowEditable && busyId !== row.id) row.onToggle();
+            }}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+              row.checked ? "border-turquoise bg-turquoise/5" : "border-line"
+            } ${row.rowEditable ? "cursor-pointer hover:bg-turquoise/5" : ""}`}
           >
-            <input
-              type="checkbox"
+            <DsCheckbox
               checked={row.checked}
               disabled={!row.rowEditable || busyId === row.id}
               onChange={row.onToggle}
-              className="shrink-0 rounded"
+              ariaLabel={row.name}
             />
             <span
               title={row.name}
@@ -177,82 +187,76 @@ export default function AttendanceList({
             >
               {truncateName(row.name)}
             </span>
-          </label>
+          </div>
         ))}
       </div>
     );
   }
 
   return (
-    <div className="rounded border border-line bg-surface p-4">
-      <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
-        <span aria-hidden>👥</span> נוכחות: {totalChecked}/{totalCount}
-      </h3>
+    <DsCard interactive={false} className="p-4">
+      <SectionHeader>
+        נוכחות: {totalChecked}/{totalCount}
+      </SectionHeader>
 
-      <p className="mb-2 text-xs font-semibold text-ink-soft">
+      <p className="mb-2 font-rubik text-xs font-medium text-turquoise">
         מוזמנים לפגישה ({presentIds.length}/{members.length})
       </p>
       {grid(memberRows)}
 
-      <p className="mb-2 mt-4 text-xs font-semibold text-ink-soft">
+      <p className="mb-2 mt-4 font-rubik text-xs font-medium text-turquoise">
         מוזמנים חיצוניים ({participantIds.length}/{participants.length})
       </p>
       {grid(participantRows)}
 
-      <div className="mt-4 border-t border-line pt-3">
+      <div className="mt-4 border-t border-line pt-4">
         {participantsEditable && !addingOpen && (
           <button
             onClick={() => setAddingOpen(true)}
-            className="mt-2 text-xs text-accent-dark hover:underline"
+            className="inline-flex items-center gap-1.5 font-rubik text-sm font-medium text-turquoise transition hover:text-turquoise-dark"
           >
-            + הוסף משתתף/ת חדש/ה
+            <span>הוסף משתתף/ת חדש/ה</span>
+            <PlusIcon />
           </button>
         )}
 
         {participantsEditable && addingOpen && (
-          <form onSubmit={createAndAttach} className="mt-2 flex flex-wrap items-end gap-2">
-            <input
-              type="text"
-              placeholder="שם מלא"
-              required
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="rounded border border-line-strong px-2 py-1 text-sm"
-            />
-            <input
-              type="tel"
-              placeholder="טלפון (אופציונלי)"
-              value={newPhone}
-              onChange={(e) => setNewPhone(e.target.value)}
-              className="rounded border border-line-strong px-2 py-1 text-sm"
-              dir="ltr"
-            />
-            <input
-              type="email"
-              placeholder="אימייל (אופציונלי)"
-              value={newEmail}
-              onChange={(e) => setNewEmail(e.target.value)}
-              className="rounded border border-line-strong px-2 py-1 text-sm"
-              dir="ltr"
-            />
-            <button
-              type="submit"
-              disabled={addBusy || !newName.trim()}
-              className="rounded bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-dark disabled:opacity-50"
-            >
+          <form onSubmit={createAndAttach} className="flex flex-wrap items-end gap-2">
+            <div className="w-44">
+              <DsInput placeholder="שם מלא" required value={newName} onChange={setNewName} />
+            </div>
+            <div className="w-44">
+              <DsInput
+                type="tel"
+                placeholder="טלפון (אופציונלי)"
+                value={newPhone}
+                onChange={setNewPhone}
+                dir="ltr"
+              />
+            </div>
+            <div className="w-52">
+              <DsInput
+                type="email"
+                placeholder="אימייל (אופציונלי)"
+                value={newEmail}
+                onChange={setNewEmail}
+                dir="ltr"
+              />
+            </div>
+            <DsButton type="submit" size="compact" disabled={addBusy || !newName.trim()}>
               הוסף וצרף
-            </button>
-            <button
-              type="button"
+            </DsButton>
+            <DsButton
+              variant="ghost"
+              size="compact"
               onClick={() => setAddingOpen(false)}
               disabled={addBusy}
-              className="text-xs text-ink-soft hover:underline"
             >
               ביטול
-            </button>
+            </DsButton>
           </form>
         )}
       </div>
-    </div>
+    </DsCard>
   );
 }

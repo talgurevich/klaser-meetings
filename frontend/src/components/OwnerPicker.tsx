@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Member, type Participant } from "../lib/api";
+import { Chip, DsSelect } from "./klaser-ds";
 
 /** Shared "אחראי" (responsible person) picker for follow-up tasks. Offers
  * the meeting's attendees as quick picks first, with a collapsed dropdown
@@ -45,52 +46,53 @@ export default function OwnerPicker({
 
   return (
     <div className="text-sm">
-      <span className="mb-1 block font-medium text-ink-soft">
-        אחראי{value && <span className="text-ink"> · {value}</span>}
-      </span>
+      <div className="mb-2 flex items-baseline gap-2 font-rubik text-xs font-medium text-turquoise">
+        <span>אחראי</span>
+        {value && <span className="font-normal text-ink-soft">· {value}</span>}
+      </div>
       {attendees.length > 0 ? (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {attendees.map((name) => {
             const on = value === name;
             return (
-              <button
-                type="button"
+              <Chip
                 key={name}
+                variant={on ? "active" : "grey"}
                 onClick={() => onChange(on ? "" : name)}
-                className={`rounded-full px-3 py-1 text-xs ${
-                  on ? "bg-accent-dark text-white" : "border border-line-strong text-ink hover:bg-line"
-                }`}
               >
                 {name}
-              </button>
+              </Chip>
             );
           })}
         </div>
       ) : (
-        <p className="text-xs text-ink-soft">אין נוכחים מסומנים — אפשר לבחור מהאלפון.</p>
+        <p className="font-rubik text-xs text-ink-soft">
+          אין נוכחים מסומנים — אפשר לבחור מהאלפון.
+        </p>
       )}
 
       <div className="mt-2">
         <button
           type="button"
           onClick={() => setDirOpen((o) => !o)}
-          className="text-xs text-accent-dark hover:underline"
+          className="font-rubik text-xs font-medium text-turquoise transition hover:text-turquoise-dark"
         >
           {dirOpen ? "▾" : "▸"} בחר מהאלפון
         </button>
         {dirOpen && (
-          <select
-            value={directory.includes(value) ? value : ""}
-            onChange={(e) => onChange(e.target.value)}
-            className="mt-2 w-full rounded border border-line-strong px-3 py-2 text-sm"
-          >
-            <option value="">— בחר איש קשר —</option>
-            {directory.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+          <div className="mt-2">
+            <DsSelect
+              value={directory.includes(value) ? value : ""}
+              onChange={onChange}
+            >
+              <option value="">— בחר איש קשר —</option>
+              {directory.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </DsSelect>
+          </div>
         )}
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage, type Approval, type Member } from "../lib/api";
+import { CheckMarkIcon, DsButton, DsCard, StatusPill } from "./klaser-ds";
 
 export default function ApprovalPanel({
   title,
@@ -45,37 +46,45 @@ export default function ApprovalPanel({
   }
 
   return (
-    <div className="rounded border border-line bg-surface p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-ink-soft">
+    <DsCard interactive={false} className="p-4">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h3 className="font-rubik text-base font-bold tracking-[0.15em] text-turquoise">
           {title} ({approvals.length})
         </h3>
         {canApprove && !alreadyApproved && (
-          <button
+          <DsButton
+            size="compact"
             onClick={handleApprove}
             disabled={submitting}
-            className="rounded bg-accent px-3 py-1.5 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
+            icon={<CheckMarkIcon />}
           >
             {submitting ? "מאשר…" : "אשר"}
-          </button>
+          </DsButton>
         )}
-        {alreadyApproved && <span className="text-xs text-emerald-700">✓ אישרת</span>}
+        {alreadyApproved && (
+          <StatusPill variant="success">
+            <CheckMarkIcon />
+            <span>אישרת</span>
+          </StatusPill>
+        )}
       </div>
 
-      {error && <p className="mb-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="mb-2 text-sm text-danger">{error}</p>}
 
       {approvals.length === 0 ? (
         <p className="text-sm text-ink-soft">אין עדיין אישורים.</p>
       ) : (
-        <ul className="space-y-1 text-sm">
+        <ul className="flex flex-col gap-1 text-sm">
           {approvals.map((a) => (
-            <li key={a.member_id} className="flex justify-between text-ink-soft">
+            <li key={a.member_id} className="flex justify-between gap-4 text-ink-soft">
               <span>{members ? nameFor(a.member_id) : a.member_id}</span>
-              <span>{new Date(a.approved_at).toLocaleString("he-IL")}</span>
+              <span className="font-rubik text-xs">
+                {new Date(a.approved_at).toLocaleString("he-IL")}
+              </span>
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </DsCard>
   );
 }
