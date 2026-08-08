@@ -265,6 +265,15 @@ export type MeetingUpdateInput = Partial<
   }
 >;
 
+export type ScheduledMeetingRef = {
+  id: string;
+  kind: MeetingKind;
+  number: string | null;
+  title: string | null;
+  date: string;
+  status: MeetingStatus;
+};
+
 export type TopicPoolItem = {
   id: string;
   title: string;
@@ -277,6 +286,10 @@ export type TopicPoolItem = {
   status: TopicPoolStatus;
   created_at: string;
   updated_at: string;
+  scheduled_meeting: ScheduledMeetingRef | null;
+  scheduled_decision: string | null;
+  scheduled_action_item: string | null;
+  scheduled_notes: string | null;
 };
 
 export type Member = {

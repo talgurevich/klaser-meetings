@@ -293,6 +293,18 @@ class TopicPoolUpdate(BaseModel):
     status: str | None = None  # pending_review | approved | in_meeting | used | rejected
 
 
+class ScheduledMeetingRef(BaseModel):
+    """The meeting/assembly a pool topic was scheduled into — enough to label
+    and link to it from the pool."""
+
+    id: UUID
+    kind: str
+    number: str | None
+    title: str | None
+    date: dt.date
+    status: str
+
+
 class TopicPoolOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -307,6 +319,13 @@ class TopicPoolOut(BaseModel):
     status: str
     created_at: dt.datetime
     updated_at: dt.datetime
+
+    # Where this pool topic was scheduled and what came of it there (populated
+    # by list_topic_pool from the linked meeting Topic), if anything.
+    scheduled_meeting: ScheduledMeetingRef | None = None
+    scheduled_decision: str | None = None
+    scheduled_action_item: str | None = None
+    scheduled_notes: str | None = None
 
 
 # ─────────────────────────────────────────────────────────────────────────

@@ -336,8 +336,9 @@ export default function MeetingDetail() {
     }
   }
 
-  async function removeTopic(topicId: string) {
+  async function removeTopic(topicId: string, title: string) {
     if (!id) return;
+    if (!window.confirm(`למחוק את הנושא "${title}"? לא ניתן לשחזר.`)) return;
     setBusy(true);
     setError(null);
     try {
@@ -784,7 +785,7 @@ export default function MeetingDetail() {
                     ↓
                   </button>
                   <button
-                    onClick={() => removeTopic(t.id)}
+                    onClick={() => removeTopic(t.id, t.title)}
                     disabled={busy}
                     className="rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-30"
                     aria-label="מחק נושא"

@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, apiErrorMessage, type TopicPoolItem } from "../lib/api";
+import { KIND_LABELS } from "../lib/meetingLabels";
 import { useIsEditor } from "../components/Layout";
 import AddPoolTopicModal from "../components/AddPoolTopicModal";
+
+function fmtDate(d: string): string {
+  return d.split("-").reverse().join("/");
+}
 import {
   DsButton,
   DsCard,
@@ -27,7 +33,8 @@ export default function TopicPool() {
 
   useEffect(load, []);
 
-  async function remove(id: string) {
+  async function remove(id: string, title: string) {
+    if (!window.confirm(`למחוק את הנושא "${title}"? לא ניתן לשחזר.`)) return;
     setBusy(true);
     try {
       await api.deleteTopicPoolItem(id);
@@ -75,13 +82,44 @@ export default function TopicPool() {
                 {item.invited_guests && item.invited_guests.length > 0 && (
                   <span>· {item.invited_guests.length} מוזמנים חיצוניים</span>
                 )}
-                {item.status === "in_meeting" && <StatusPill variant="teal">שובץ לישיבה</StatusPill>}
+                {!item.scheduled_meeting && item.status === "in_meeting" && (
+                  <StatusPill variant="teal">שובץ לישיבה</StatusPill>
+                )}
                 {item.status === "used" && <StatusPill variant="neutral">נוצל</StatusPill>}
               </div>
+
+              {item.scheduled_meeting && (
+                <div className="mt-2 font-rubik text-xs">
+                  <Link
+                    to={`/meetings/${item.scheduled_meeting.id}`}
+                    className="font-medium text-turquoise transition hover:text-turquoise-dark hover:underline"
+                  >
+                    ↗ שובץ ל{KIND_LABELS[item.scheduled_meeting.kind]}
+                    {item.scheduled_meeting.number ? ` ${item.scheduled_meeting.number}` : ""} ·{" "}
+                    {fmtDate(item.scheduled_meeting.date)}
+                  </Link>
+                  {item.scheduled_decision && (
+                    <p className="mt-1 text-ink-soft">
+                      <span className="font-medium text-ink">החלטה:</span> {item.scheduled_decision}
+                    </p>
+                  )}
+                  {item.scheduled_action_item && (
+                    <p className="mt-0.5 text-ink-soft">
+                      <span className="font-medium text-ink">משימה:</span>{" "}
+                      {item.scheduled_action_item}
+                    </p>
+                  )}
+                  {item.scheduled_notes && (
+                    <p className="mt-0.5 text-ink-soft">
+                      <span className="font-medium text-ink">הערות:</span> {item.scheduled_notes}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
             {editor && (
               <button
-                onClick={() => remove(item.id)}
+                onClick={() => remove(item.id, item.title)}
                 disabled={busy}
                 className="shrink-0 rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
                 aria-label="מחק"

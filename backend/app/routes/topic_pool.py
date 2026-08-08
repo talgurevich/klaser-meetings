@@ -15,8 +15,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import TopicPool
-from app.schemas import TopicPoolCreate, TopicPoolOut, TopicPoolUpdate
+from app.models import Meeting, Topic, TopicPool
+from app.schemas import (
+    ScheduledMeetingRef,
+    TopicPoolCreate,
+    TopicPoolOut,
+    TopicPoolUpdate,
+)
 from app.services.identity import IdentityUser, require_entitlement
 from app.services.permissions import is_editor, require_editor
 
@@ -30,14 +35,49 @@ def list_topic_pool(
     status: str | None = None,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_entitlement("meetings")),
-) -> list[TopicPool]:
+) -> list[TopicPoolOut]:
     stmt = select(TopicPool).where(TopicPool.tenant_id == UUID(user.tenant_id))
     if not is_editor(user):
         stmt = stmt.where(TopicPool.status.in_(_PUBLICLY_VISIBLE_STATUSES))
     elif status:
         stmt = stmt.where(TopicPool.status == status)
     stmt = stmt.order_by(TopicPool.priority.desc().nulls_last(), TopicPool.created_at.desc())
-    return list(db.execute(stmt).scalars().all())
+    items = list(db.execute(stmt).scalars().all())
+
+    # Enrich each pool topic with the meeting it was scheduled into (the linked
+    # Topic's meeting) and any outcome recorded there — decision / follow-up /
+    # notes. A topic scheduled more than once keeps its most recent placement.
+    pool_ids = [i.id for i in items]
+    latest_by_pool: dict[UUID, tuple[Topic, Meeting]] = {}
+    if pool_ids:
+        rows = db.execute(
+            select(Topic, Meeting)
+            .join(Meeting, Topic.meeting_id == Meeting.id)
+            .where(Topic.source_pool_id.in_(pool_ids))
+            .order_by(Topic.created_at.asc())
+        ).all()
+        for topic, meeting in rows:
+            latest_by_pool[topic.source_pool_id] = (topic, meeting)  # last wins = most recent
+
+    out: list[TopicPoolOut] = []
+    for item in items:
+        o = TopicPoolOut.model_validate(item)
+        pair = latest_by_pool.get(item.id)
+        if pair is not None:
+            topic, meeting = pair
+            o.scheduled_meeting = ScheduledMeetingRef(
+                id=meeting.id,
+                kind=meeting.kind,
+                number=meeting.number,
+                title=meeting.title,
+                date=meeting.date,
+                status=meeting.status,
+            )
+            o.scheduled_decision = topic.decision_text
+            o.scheduled_action_item = topic.action_item
+            o.scheduled_notes = topic.topic_notes
+        out.append(o)
+    return out
 
 
 @router.post("", response_model=TopicPoolOut, status_code=201)
