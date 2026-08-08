@@ -2,6 +2,14 @@ import { useEffect, useState } from "react";
 import { api, apiErrorMessage, type TopicPoolItem } from "../lib/api";
 import { useIsEditor } from "../components/Layout";
 import AddPoolTopicModal from "../components/AddPoolTopicModal";
+import {
+  DsButton,
+  DsCard,
+  PageHeader,
+  PlusIcon,
+  StatusPill,
+  TrashIcon,
+} from "../components/klaser-ds";
 
 export default function TopicPool() {
   const editor = useIsEditor();
@@ -33,57 +41,55 @@ export default function TopicPool() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">מאגר</div>
-          <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
-            מאגר נושאים
-          </h1>
-        </div>
-        <button
-          onClick={() => setAdding(true)}
-          className="shrink-0 bg-accent px-5 py-2 text-sm font-bold text-surface transition-colors hover:bg-accent-dark"
-        >
-          + הצעה חדשה
-        </button>
-      </header>
+      <PageHeader
+        eyebrow="מאגר"
+        title="מאגר נושאים"
+        actions={
+          <DsButton size="compact" onClick={() => setAdding(true)} icon={<PlusIcon />}>
+            הצעה חדשה
+          </DsButton>
+        }
+      />
 
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
+          {error}
+        </div>
       )}
 
-      {items === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
+      {items === null && !error && <p className="animate-pulse text-sm text-ink-soft">טוען…</p>}
       {items && items.length === 0 && <p className="text-ink-soft">אין נושאים במאגר.</p>}
 
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2">
         {items?.map((item) => (
-          <div
+          <DsCard
             key={item.id}
-            className="flex items-start justify-between rounded border border-line bg-surface px-4 py-3"
+            interactive={false}
+            className="flex items-start justify-between gap-4 px-4 py-3"
           >
             <div>
               <p className="font-medium">{item.title}</p>
-              {item.description && <p className="mt-0.5 text-sm text-ink-soft">{item.description}</p>}
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-soft">
+              {item.description && <p className="mt-1 text-sm text-ink-soft">{item.description}</p>}
+              <div className="mt-2 flex flex-wrap items-center gap-2 font-rubik text-xs text-ink-soft">
                 {item.duration_minutes ? <span>{item.duration_minutes} ד׳</span> : null}
                 {item.invited_guests && item.invited_guests.length > 0 && (
                   <span>· {item.invited_guests.length} מוזמנים חיצוניים</span>
                 )}
-                {item.status === "in_meeting" && <span className="text-blue-700">· שובץ לישיבה</span>}
-                {item.status === "used" && <span>· נוצל</span>}
+                {item.status === "in_meeting" && <StatusPill variant="teal">שובץ לישיבה</StatusPill>}
+                {item.status === "used" && <StatusPill variant="neutral">נוצל</StatusPill>}
               </div>
             </div>
             {editor && (
               <button
                 onClick={() => remove(item.id)}
                 disabled={busy}
-                className="shrink-0 rounded px-2 py-1 text-ink-soft hover:bg-line"
+                className="shrink-0 rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
                 aria-label="מחק"
               >
-                ✕
+                <TrashIcon />
               </button>
             )}
-          </div>
+          </DsCard>
         ))}
       </div>
 

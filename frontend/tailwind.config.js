@@ -6,26 +6,44 @@ export default {
       fontFamily: {
         sans: ['"Heebo"', '"Assistant"', "system-ui", "sans-serif"],
         display: ['"Heebo"', '"Assistant"', "system-ui", "sans-serif"],
+        // Klaser DS — Rubik for display/H*/Caption/Small; Heebo for Body/Body 2
+        rubik: ['"Rubik"', '"Heebo"', "system-ui", "sans-serif"],
       },
       colors: {
         accent: {
-          DEFAULT: "#b8412b",
-          dark: "#922f1f",
-          light: "#d96a52",
+          DEFAULT: "#19819A",
+          dark: "#166b80",
+          light: "#d96a52", // legacy — do not use in new code
         },
         ink: "#171717",
         "ink-soft": "#525252",
         surface: "#fafaf9",
         line: "#e7e5e4",
         "line-strong": "#d6d3d1",
+        turquoise: {
+          DEFAULT: "#19819a",
+          dark: "#166b80",
+        },
+        warning: {
+          DEFAULT: "#ff7c2a",
+          dark: "#c2410c",
+        },
+        success: {
+          DEFAULT: "#20B86B",
+          soft: "#dcfce7",
+        },
+        danger: {
+          DEFAULT: "#FF4848",
+          soft: "#fee2e2",
+        },
       },
       backgroundImage: {
-        "brand-gradient": "linear-gradient(180deg, #b8412b 0%, #922f1f 100%)",
+        "brand-gradient": "linear-gradient(180deg, #19819A 0%, #166b80 100%)",
       },
       boxShadow: {
         soft: "0 1px 0 rgba(23, 23, 23, 0.04)",
         lift: "0 2px 0 rgba(23, 23, 23, 0.06)",
-        glow: "0 0 0 3px rgba(184, 65, 43, 0.18)",
+        glow: "0 0 0 3px rgba(25, 129, 154, 0.18)",
       },
       borderRadius: {
         DEFAULT: "0.125rem",

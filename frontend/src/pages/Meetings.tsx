@@ -1,8 +1,18 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, apiErrorMessage, type MeetingListItem, type MeetingStatus } from "../lib/api";
-import { KIND_LABELS, STATUS_COLORS, STATUS_LABELS } from "../lib/meetingLabels";
+import { KIND_LABELS, STATUS_LABELS, STATUS_VARIANTS } from "../lib/meetingLabels";
 import { useIsAdmin, useIsEditor } from "../components/Layout";
+import {
+  DsButton,
+  DsInput,
+  DsSelect,
+  Field,
+  PageHeader,
+  PlusIcon,
+  StatusPill,
+  TrashIcon,
+} from "../components/klaser-ds";
 
 /** Shared list page for both the ישיבות area (board meetings) and the אסיפות
  * area (assemblies) — same flow, different kind. `section` selects which
@@ -78,81 +88,68 @@ export default function Meetings({ section = "board" }: { section?: "board" | "a
 
   return (
     <div>
-      <header className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">
-            {isAssembly ? "אסיפה" : "ישיבה"}
-          </div>
-          <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
-            {isAssembly ? "אסיפות" : "ישיבות"}
-          </h1>
-        </div>
-        {editor && (
-          <button
-            onClick={createAndGo}
-            disabled={creating}
-            className="shrink-0 bg-accent px-5 py-2 text-sm font-bold text-surface transition-colors hover:bg-accent-dark disabled:opacity-50"
-          >
-            {isAssembly ? "+ אסיפה חדשה" : "+ ישיבה חדשה"}
-          </button>
-        )}
-      </header>
+<PageHeader
+        eyebrow={isAssembly ? "אסיפה" : "ישיבה"}
+        title={isAssembly ? "אסיפות" : "ישיבות"}
+        actions={
+          editor && (
+            <DsButton
+              onClick={createAndGo}
+              disabled={creating}
+              size="compact"
+              icon={<PlusIcon />}
+            >
+              {isAssembly ? "אסיפה חדשה" : "ישיבה חדשה"}
+            </DsButton>
+          )
+        }
+      />
 
-      <div className="mb-4 flex flex-wrap items-end gap-3">
-        <label className="text-sm">
-          <span className="mb-1 block text-ink-soft">סטטוס</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-            className="rounded border border-line-strong px-3 py-2 text-sm"
-          >
-            <option value="">כל הסטטוסים</option>
-            {Object.entries(STATUS_LABELS).map(([v, l]) => (
-              <option key={v} value={v}>
-                {l}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-ink-soft">מתאריך</span>
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded border border-line-strong px-3 py-2 text-sm"
-          />
-        </label>
-        <label className="text-sm">
-          <span className="mb-1 block text-ink-soft">עד תאריך</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="rounded border border-line-strong px-3 py-2 text-sm"
-          />
-        </label>
+      <div className="mb-4 flex flex-wrap items-end gap-4">
+        <div className="w-48">
+          <Field label="סטטוס">
+            <DsSelect value={status} onChange={setStatus}>
+              <option value="">כל הסטטוסים</option>
+              {Object.entries(STATUS_LABELS).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </DsSelect>
+          </Field>
+        </div>
+        <div className="w-40">
+          <Field label="מתאריך">
+            <DsInput type="date" value={dateFrom} onChange={setDateFrom} />
+          </Field>
+        </div>
+        <div className="w-40">
+          <Field label="עד תאריך">
+            <DsInput type="date" value={dateTo} onChange={setDateTo} />
+          </Field>
+        </div>
         {hasFilters && (
-          <button
+          <DsButton
+            variant="ghost"
+            size="compact"
             onClick={() => {
               setStatus("");
               setDateFrom("");
               setDateTo("");
             }}
-            className="py-2 text-sm text-ink-soft hover:underline"
           >
             נקה סינון
-          </button>
+          </DsButton>
         )}
       </div>
 
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
           {error}
         </div>
       )}
 
-      {meetings === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
+      {meetings === null && !error && <p className="animate-pulse text-sm text-ink-soft">טוען…</p>}
 
       {meetings && meetings.length === 0 && (
         <p className="text-ink-soft">
@@ -165,64 +162,67 @@ export default function Meetings({ section = "board" }: { section?: "board" | "a
       )}
 
       {meetings && meetings.length > 0 && (
-        <div className="overflow-hidden rounded border border-line bg-surface">
+        <div className="overflow-hidden rounded-lg border border-line bg-white shadow-[0px_1px_0_rgba(0,0,0,0.03),0px_4px_16px_-4px_rgba(0,0,0,0.06)]">
           <table className="w-full text-right text-sm">
-            <thead className="bg-surface text-ink-soft">
+            <thead className="bg-surface font-rubik text-xs uppercase tracking-[0.1em] text-ink-soft">
               <tr>
-                <th className="px-4 py-2 font-medium">מספר</th>
-                <th className="px-4 py-2 font-medium">כותרת</th>
-                <th className="px-4 py-2 font-medium">סוג</th>
-                <th className="px-4 py-2 font-medium">תאריך</th>
-                <th className="px-4 py-2 font-medium">סטטוס</th>
-                {admin && <th className="px-4 py-2 font-medium"></th>}
+                <th className="px-4 py-3 font-medium">מספר</th>
+                <th className="px-4 py-3 font-medium">כותרת</th>
+                <th className="px-4 py-3 font-medium">סוג</th>
+                <th className="px-4 py-3 font-medium">תאריך</th>
+                <th className="px-4 py-3 font-medium">סטטוס</th>
+                {admin && <th className="px-4 py-3 font-medium"></th>}
               </tr>
             </thead>
             <tbody>
               {meetings.map((m) => (
-                <tr key={m.id} className="border-t border-line hover:bg-surface">
-                  <td className="px-4 py-2">
-                    <Link to={`/meetings/${m.id}`} className="text-accent-dark hover:underline">
+                <tr key={m.id} className="border-t border-line transition hover:bg-turquoise/5">
+                  <td className="px-4 py-3">
+                    <Link
+                      to={`/meetings/${m.id}`}
+                      className="font-medium text-turquoise hover:text-turquoise-dark hover:underline"
+                    >
                       {m.number || "—"}
                     </Link>
                   </td>
-                  <td className="px-4 py-2">{m.title || "(ללא כותרת)"}</td>
-                  <td className="px-4 py-2">{KIND_LABELS[m.kind]}</td>
-                  <td className="px-4 py-2">{m.date}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[m.status]}`}
-                    >
+                  <td className="px-4 py-3">{m.title || "(ללא כותרת)"}</td>
+                  <td className="px-4 py-3">{KIND_LABELS[m.kind]}</td>
+                  <td className="px-4 py-3">{m.date}</td>
+                  <td className="px-4 py-3">
+                    <StatusPill variant={STATUS_VARIANTS[m.status]}>
                       {STATUS_LABELS[m.status]}
-                    </span>
+                    </StatusPill>
                   </td>
                   {admin && (
-                    <td className="px-4 py-2 text-left">
+                    <td className="px-4 py-3 text-left">
                       {confirmId === m.id ? (
-                        <span className="flex items-center justify-end gap-2 whitespace-nowrap text-xs">
-                          <span className="text-red-700">למחוק לצמיתות?</span>
-                          <button
+                        <span className="flex items-center gap-2 whitespace-nowrap font-rubik text-xs">
+                          <span className="text-danger">למחוק לצמיתות?</span>
+                          <DsButton
+                            variant="destructive"
+                            size="micro"
                             onClick={() => confirmDelete(m.id)}
                             disabled={deletingId === m.id}
-                            className="rounded bg-red-600 px-2 py-1 font-medium text-white hover:bg-red-700 disabled:opacity-50"
                           >
                             {deletingId === m.id ? "מוחק…" : "מחק"}
-                          </button>
-                          <button
+                          </DsButton>
+                          <DsButton
+                            variant="ghost"
+                            size="micro"
                             onClick={() => setConfirmId(null)}
                             disabled={deletingId === m.id}
-                            className="rounded border border-line-strong px-2 py-1 hover:bg-line"
                           >
                             ביטול
-                          </button>
+                          </DsButton>
                         </span>
                       ) : (
                         <button
                           onClick={() => setConfirmId(m.id)}
-                          className="rounded px-2 py-1 text-ink-soft hover:bg-line"
+                          className="rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger"
                           aria-label="מחק ישיבה"
                           title="מחק ישיבה"
                         >
-                          ✕
+                          <TrashIcon />
                         </button>
                       )}
                     </td>

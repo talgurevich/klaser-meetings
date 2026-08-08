@@ -94,7 +94,7 @@ export default function DocumentsPanel({
         )}
       </div>
 
-      {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
 
       {docs && docs.length === 0 && <p className="mt-2 text-sm text-ink-soft">אין מסמכים.</p>}
       {docs && docs.length > 0 && (
@@ -109,14 +109,14 @@ export default function DocumentsPanel({
                 <span className="text-ink-soft"> · {fmtSize(d.size_bytes)}</span>
               </span>
               <span className="flex items-center gap-3">
-                <button onClick={() => view(d)} className="text-accent-dark hover:underline">
+                <button onClick={() => view(d)} className="font-rubik text-xs font-medium text-turquoise transition hover:text-turquoise-dark hover:underline">
                   צפה / הורד
                 </button>
                 {canEdit && (
                   <button
                     onClick={() => remove(d)}
                     disabled={busy}
-                    className="text-red-700 hover:underline disabled:opacity-50"
+                    className="font-rubik text-xs font-medium text-danger transition hover:underline disabled:opacity-50"
                   >
                     מחק
                   </button>

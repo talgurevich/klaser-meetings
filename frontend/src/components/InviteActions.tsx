@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage, type Meeting, type Participant } from "../lib/api";
 import InvitePreviewModal from "./InvitePreviewModal";
+import { ArrowCircleLeft, DsButton, DsModal, SearchIcon, SendIcon } from "./klaser-ds";
 
 /** The prep-phase action row — replaces the generic "העבר לסטטוס" stepper
  * for draft/invited_internal specifically, since those transitions now
@@ -101,62 +102,69 @@ export default function InviteActions({
   }
 
   return (
-    <div className="mb-6">
-      {error && <p className="mb-2 text-sm text-red-700">{error}</p>}
+    <div className="mb-8">
+      {error && <p className="mb-2 text-sm text-danger">{error}</p>}
       <div className="flex flex-wrap gap-2">
         {hasInvitees && (
-          <button
+          <DsButton
+            variant="secondary"
+            size="compact"
+            className="border"
             onClick={() => setPreviewOpen(true)}
-            className="rounded border border-line-strong px-3 py-1.5 text-sm hover:bg-line"
+            icon={<SearchIcon />}
           >
-            👁 תצוגה מקדימה
-          </button>
+            תצוגה מקדימה
+          </DsButton>
         )}
 
         {meeting.status === "draft" && (
-          <button
+          <DsButton
+            size="compact"
             onClick={() => run(() => api.sendInternalInvites(meeting.id))}
             disabled={busy || !hasInvitees}
             title={hasInvitees ? undefined : "יש להוסיף מוזמנים תחילה"}
-            className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            icon={<SendIcon />}
           >
-            ✈ שלח לחברי הועד לאישור {meeting.kind === "assembly" ? "האסיפה" : "הפגישה"}
-          </button>
+            שלח לחברי הועד לאישור {meeting.kind === "assembly" ? "האסיפה" : "הפגישה"}
+          </DsButton>
         )}
 
         {(meeting.status === "invited_internal" || meeting.status === "invited_public") && (
-          <button
+          <DsButton
+            size="compact"
             onClick={() => run(() => api.sendInternalInvites(meeting.id))}
             disabled={busy || !hasInvitees}
-            className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            icon={<SendIcon />}
           >
-            ✈ שלח שוב לחברי ועד
-          </button>
+            שלח שוב לחברי ועד
+          </DsButton>
         )}
 
         {isInvited && (
-          <button
+          <DsButton
+            size="compact"
             onClick={requestDistributeAlfon}
             disabled={busy}
-            className="rounded bg-accent-dark px-3 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            icon={<SendIcon />}
           >
-            ✉ {meeting.invite_sent_public_at ? "הפץ שוב הזמנה לאלפון" : "הפץ הזמנה לאלפון"}
-          </button>
+            {meeting.invite_sent_public_at ? "הפץ שוב הזמנה לאלפון" : "הפץ הזמנה לאלפון"}
+          </DsButton>
         )}
 
         {isInvited && (
           <button
             onClick={requestOpen}
             disabled={busy}
-            className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-2 rounded-md bg-success px-4 font-rubik text-sm font-bold text-white transition hover:brightness-95 disabled:opacity-50"
           >
-            → פתח {isAssembly ? "אסיפה" : "ישיבה"}
+            <span>פתח {isAssembly ? "אסיפה" : "ישיבה"}</span>
+            <ArrowCircleLeft />
           </button>
         )}
       </div>
 
       {isInvited && (
-        <p className="mt-2 text-xs text-ink-soft">
+        <p className="mt-2 font-rubik text-xs text-ink-soft">
           {approvedVerb}: {confirmedCount} מתוך {total} חברי ועד
           {!majorityConfirmed && ` · אפשר לפתוח את ${kindNoun} גם ללא רוב אישורים`}
           {meeting.invite_sent_public_at && " · ✓ הזמנה הופצה לאלפון"}
@@ -172,59 +180,56 @@ export default function InviteActions({
       )}
 
       {confirmingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm border border-ink bg-surface p-5 text-center">
-            <h2 className="mb-2 text-base font-semibold">פתיחת {isAssembly ? "האסיפה" : "הישיבה"}</h2>
-            <p className="mb-1 text-sm">
-              {approvedVerb}: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> חברי ועד.
-            </p>
-            <p className="mb-4 text-sm text-ink-soft">
-              לא כל חברי הועד אישרו, האם לפתוח את {kindNoun} בכל זאת?
-            </p>
-            <div className="flex justify-center gap-2">
-              <button
-                onClick={() => setConfirmingOpen(false)}
-                disabled={busy}
-                className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
-              >
-                ביטול
-              </button>
+        <DsModal
+          size="sm"
+          title={`פתיחת ${isAssembly ? "האסיפה" : "הישיבה"}`}
+          onClose={() => setConfirmingOpen(false)}
+          actions={
+            <>
               <button
                 onClick={openMeeting}
                 disabled={busy}
-                className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="inline-flex h-10 items-center rounded-md bg-success px-4 font-rubik text-sm font-bold text-white transition hover:brightness-95 disabled:opacity-50"
               >
                 פתח בכל זאת
               </button>
-            </div>
-          </div>
-        </div>
+              <DsButton
+                variant="ghost"
+                size="compact"
+                onClick={() => setConfirmingOpen(false)}
+                disabled={busy}
+              >
+                ביטול
+              </DsButton>
+            </>
+          }
+        >
+          <p className="mb-1 text-sm">
+            אישרו הגעה: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> מוזמנים.
+          </p>
+          <p className="text-sm text-ink-soft">
+            עדיין לא כל המוזמנים אישרו הגעה. לפתוח את הישיבה בכל זאת?
+          </p>
+        </DsModal>
       )}
 
       {alfonReminderOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm border border-ink bg-surface p-5 text-center">
-            <h2 className="mb-2 text-base font-semibold">הזמנה לאלפון לא נשלחה</h2>
-            <p className="mb-4 text-sm text-ink-soft">
-              עדיין לא הופצה הזמנה לאלפון. לשלוח עכשיו, או להמשיך ולפתוח את {kindNoun} בכל זאת?
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              <button
-                onClick={() => setAlfonReminderOpen(false)}
-                disabled={busy}
-                className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
-              >
-                ביטול
-              </button>
+        <DsModal
+          size="sm"
+          title="הזמנה לאלפון לא נשלחה"
+          onClose={() => setAlfonReminderOpen(false)}
+          actions={
+            <>
               <button
                 onClick={async () => {
                   await run(() => api.distributeAlfonInvite(meeting.id));
                   setAlfonReminderOpen(false);
                 }}
                 disabled={busy}
-                className="rounded bg-accent-dark px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-turquoise px-4 font-rubik text-sm font-bold text-white transition hover:bg-turquoise-dark disabled:opacity-50"
               >
-                {busy ? "שולח…" : "✉ שלח הזמנה לאלפון"}
+                <span>{busy ? "שולח…" : "שלח הזמנה לאלפון"}</span>
+                <SendIcon />
               </button>
               <button
                 onClick={() => {
@@ -232,43 +237,60 @@ export default function InviteActions({
                   proceedOpen();
                 }}
                 disabled={busy}
-                className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                className="inline-flex h-10 items-center rounded-md bg-success px-4 font-rubik text-sm font-bold text-white transition hover:brightness-95 disabled:opacity-50"
               >
                 פתח בכל זאת
               </button>
-            </div>
-          </div>
-        </div>
+              <DsButton
+                variant="ghost"
+                size="compact"
+                onClick={() => setAlfonReminderOpen(false)}
+                disabled={busy}
+              >
+                ביטול
+              </DsButton>
+            </>
+          }
+        >
+          <p className="text-sm text-ink-soft">
+            עדיין לא הופצה הזמנה לאלפון. לשלוח עכשיו, או להמשיך ולפתוח את {kindNoun} בכל זאת?
+          </p>
+        </DsModal>
       )}
 
       {alfonMajorityOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm border border-ink bg-surface p-5 text-center">
-            <h2 className="mb-2 text-base font-semibold">הפצה לאלפון</h2>
-            <p className="mb-1 text-sm">
-              {approvedVerb}: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> חברי ועד.
-            </p>
-            <p className="mb-4 text-sm text-ink-soft">
-              לא כל חברי הועד אישרו את האסיפה. האם להפיץ הזמנה לאלפון בכל זאת?
-            </p>
-            <div className="flex justify-center gap-2">
-              <button
-                onClick={() => setAlfonMajorityOpen(false)}
-                disabled={busy}
-                className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line disabled:opacity-50"
-              >
-                ביטול
-              </button>
+        <DsModal
+          size="sm"
+          title="הפצה לאלפון"
+          onClose={() => setAlfonMajorityOpen(false)}
+          actions={
+            <>
               <button
                 onClick={distributeAlfon}
                 disabled={busy}
-                className="rounded bg-accent-dark px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+                className="inline-flex h-10 items-center gap-2 rounded-md bg-turquoise px-4 font-rubik text-sm font-bold text-white transition hover:bg-turquoise-dark disabled:opacity-50"
               >
-                {busy ? "שולח…" : "✉ הפץ בכל זאת"}
+                <span>{busy ? "שולח…" : "הפץ בכל זאת"}</span>
+                <SendIcon />
               </button>
-            </div>
-          </div>
-        </div>
+              <DsButton
+                variant="ghost"
+                size="compact"
+                onClick={() => setAlfonMajorityOpen(false)}
+                disabled={busy}
+              >
+                ביטול
+              </DsButton>
+            </>
+          }
+        >
+          <p className="mb-1 text-sm">
+            {approvedVerb}: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> חברי ועד.
+          </p>
+          <p className="text-sm text-ink-soft">
+            לא כל חברי הועד אישרו את האסיפה. האם להפיץ הזמנה לאלפון בכל זאת?
+          </p>
+        </DsModal>
       )}
     </div>
   );

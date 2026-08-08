@@ -9,6 +9,7 @@ import {
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isAdmin } from "../lib/permissions";
+import { DsSelect, TrashIcon, UploadCloudIcon } from "../components/klaser-ds";
 
 // 0=Sunday .. 6=Saturday — see backend/app/models.py's TenantSettings
 // docstring. Rendered in this order as flex children so the RTL layout
@@ -16,14 +17,20 @@ import { isAdmin } from "../lib/permissions";
 // mockup.
 const WEEKDAY_LABELS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
-const INPUT_CLS = "w-full rounded border border-line-strong px-3 py-2 text-sm";
-const SECTION_CLS = "mb-4 rounded-lg border border-line bg-surface p-5";
+// Klaser DS tokens — these two constants style most controls on this page.
+const INPUT_CLS =
+  "w-full rounded-md border border-line bg-white px-3 py-2.5 font-rubik text-sm text-ink text-right outline-none transition focus:border-turquoise focus:ring-2 focus:ring-turquoise/20 disabled:bg-line/40 disabled:text-ink-soft";
+const SECTION_CLS =
+  "mb-4 rounded-lg border border-line bg-white p-8 shadow-[0px_1px_0_rgba(0,0,0,0.03),0px_4px_16px_-4px_rgba(0,0,0,0.06)]";
 
+/** DS §4.3 compact in-page header. `icon` is a decorative emoji kept from
+ * the original layout; the rule fills the remaining width. */
 function SectionHeader({ icon, title }: { icon: string; title: string }) {
   return (
-    <h2 className="mb-4 flex items-center gap-2 text-base font-semibold">
+    <h2 className="mb-4 flex items-center gap-3 font-rubik text-base font-bold tracking-[0.15em] text-turquoise">
       <span>{title}</span>
-      <span className="text-ink-soft">{icon}</span>
+      <span aria-hidden>{icon}</span>
+      <span className="h-px flex-1 bg-line" />
     </h2>
   );
 }
@@ -48,17 +55,18 @@ function ImageField({
         <button
           onClick={onRemove}
           disabled={disabled}
-          className="shrink-0 text-xs text-red-700 hover:underline disabled:opacity-50"
+          className="shrink-0 rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
         >
-          ✕ הסר
+          <TrashIcon />
         </button>
       )}
       <button
         onClick={() => inputRef.current?.click()}
         disabled={disabled}
-        className="shrink-0 rounded border border-line-strong px-3 py-1.5 text-sm hover:bg-line disabled:opacity-50"
+        className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-turquoise bg-white px-3 py-1.5 font-rubik text-xs font-semibold text-turquoise transition hover:bg-turquoise hover:text-white disabled:opacity-50"
       >
-        ⬆ {imageUrl ? "החלף" : "העלאה"}
+        <span>{imageUrl ? "החלף" : "העלאה"}</span>
+        <UploadCloudIcon />
       </button>
       <input
         ref={inputRef}
@@ -72,7 +80,7 @@ function ImageField({
         }}
       />
       {imageUrl ? (
-        <img src={imageUrl} alt="" className="h-14 w-14 rounded border border-line bg-surface object-contain p-1" />
+        <img src={imageUrl} alt="" className="h-14 w-14 rounded-md border border-line bg-white object-contain p-1" />
       ) : (
         <span className="text-xs text-ink-soft">{hint}</span>
       )}
@@ -96,10 +104,10 @@ function WeekdayPicker({
           key={i}
           onClick={() => onChange(i)}
           disabled={disabled}
-          className={`rounded border px-3 py-1.5 text-sm disabled:opacity-50 ${
+          className={`rounded-md border px-3 py-1.5 font-rubik text-sm font-medium transition disabled:opacity-50 ${
             value === i
-              ? "border-accent bg-accent-dark text-white"
-              : "border-line-strong text-ink hover:bg-line"
+              ? "border-turquoise bg-turquoise text-white"
+              : "border-line text-ink-soft hover:border-turquoise hover:text-turquoise"
           }`}
         >
           יום {label}
@@ -179,20 +187,20 @@ function SignaturePad({ onSave, saving }: { onSave: (dataUrl: string) => void; s
         onPointerMove={move}
         onPointerUp={end}
         onPointerLeave={end}
-        className="w-full touch-none rounded-lg border border-dashed border-line-strong bg-surface"
+        className="w-full touch-none rounded-lg border border-dashed border-line-strong bg-white"
       />
       <div className="mt-3 flex justify-end gap-2">
         <button
           onClick={clear}
           disabled={saving || !hasDrawn}
-          className="rounded border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:bg-line disabled:opacity-50"
+          className="rounded-md px-3 py-1.5 font-rubik text-sm font-medium text-ink-soft transition hover:bg-line/60 hover:text-ink disabled:opacity-50"
         >
           🗑 נקה
         </button>
         <button
           onClick={save}
           disabled={saving || !hasDrawn}
-          className="rounded bg-accent-dark px-4 py-1.5 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+          className="rounded-md bg-turquoise px-4 py-1.5 font-rubik text-sm font-bold text-white transition hover:bg-turquoise-dark disabled:opacity-50"
         >
           💾 שמור חתימה
         </button>
@@ -257,7 +265,7 @@ function SignatoryCard({
         <button
           onClick={onDelete}
           disabled={disabled || busy}
-          className="rounded px-1.5 py-0.5 text-ink-soft hover:bg-line hover:text-red-700"
+          className="rounded-md px-1.5 py-0.5 text-ink-soft transition hover:bg-danger/10 hover:text-danger"
           aria-label="מחק חתימה"
         >
           🗑
@@ -266,11 +274,10 @@ function SignatoryCard({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-soft">בעל התפקיד</label>
-          <select
+          <DsSelect
             value={signatory.member_user_id || ""}
             disabled={disabled || busy}
-            onChange={(e) => save({ member_user_id: e.target.value || null })}
-            className={INPUT_CLS}
+            onChange={(v) => save({ member_user_id: v || null })}
           >
             <option value="">— ללא —</option>
             {members.map((m) => (
@@ -278,7 +285,7 @@ function SignatoryCard({
                 {m.display_name || m.email}
               </option>
             ))}
-          </select>
+          </DsSelect>
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium text-ink-soft">שם התפקיד</label>
@@ -486,7 +493,7 @@ export default function Settings() {
 
   if (!settings) {
     return error ? (
-      <p className="text-sm text-red-700">{error}</p>
+      <p className="text-sm text-danger">{error}</p>
     ) : (
       <p className="text-sm text-ink-soft">טוען…</p>
     );
@@ -497,14 +504,14 @@ export default function Settings() {
   return (
     <div className="mx-auto max-w-3xl">
       <header className="mb-8">
-        <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">תצורה</div>
-        <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
+        <div className="font-rubik text-[11px] font-bold uppercase tracking-[0.15em] text-turquoise">תצורה</div>
+        <h1 className="mt-1 font-rubik text-[32px] font-bold leading-tight text-ink">
           הגדרות מערכת
         </h1>
       </header>
 
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">{error}</div>
       )}
       {!admin && (
         <div className="mb-4 rounded border border-line bg-surface p-3 text-sm text-ink-soft">
@@ -594,7 +601,7 @@ export default function Settings() {
                 }
               }}
               disabled={busy}
-              className="mb-4 rounded border border-line-strong px-3 py-1.5 text-sm hover:bg-line disabled:opacity-50"
+              className="mb-4 rounded-md border-2 border-turquoise bg-white px-3 py-1.5 font-rubik text-sm font-bold text-turquoise transition hover:bg-turquoise hover:text-white disabled:opacity-50"
             >
               + הוסף חתימה
             </button>
@@ -637,7 +644,7 @@ export default function Settings() {
         )}
 
         {/* בעלי תפקידים מהאלפון — auto-listed from role assignments, collapsible */}
-        <div className="mt-5 border-t border-line pt-4">
+        <div className="mt-4 border-t border-line pt-4">
           <button
             type="button"
             onClick={() => setRoleHoldersOpen((o) => !o)}
@@ -712,7 +719,7 @@ export default function Settings() {
           }}
         />
 
-        <hr className="my-5 border-line" />
+        <hr className="my-4 border-line" />
 
         <h3 className="mb-3 text-sm font-semibold">ברירות מחדל לישיבות</h3>
         <label className="mb-1 block text-xs font-medium text-ink-soft">מקום ברירת מחדל לישיבות</label>
@@ -761,7 +768,7 @@ export default function Settings() {
           </div>
         </div>
 
-        <hr className="my-5 border-line" />
+        <hr className="my-4 border-line" />
 
         <h3 className="mb-3 text-sm font-semibold">ברירות מחדל לאסיפות</h3>
         <label className="mb-1 block text-xs font-medium text-ink-soft">מקום ברירת מחדל לאסיפות</label>
@@ -826,7 +833,7 @@ export default function Settings() {
                   <button
                     onClick={() => saveField({ role_titles: settings.role_titles.filter((x) => x !== r) })}
                     disabled={busy}
-                    className="text-ink-soft hover:text-red-700 disabled:opacity-50"
+                    className="rounded-md p-1 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
                     aria-label="הסר תפקיד"
                   >
                     ✕
@@ -862,7 +869,7 @@ export default function Settings() {
             <button
               type="submit"
               disabled={busy || !newRole.trim()}
-              className="shrink-0 rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
+              className="inline-flex h-10 shrink-0 items-center rounded-md bg-turquoise px-4 font-rubik text-sm font-bold text-white transition hover:bg-turquoise-dark disabled:opacity-50"
             >
               הוסף
             </button>
@@ -1024,7 +1031,7 @@ export default function Settings() {
                 }
               }}
               disabled={signatureBusy}
-              className="rounded border border-line-strong px-3 py-1.5 text-sm text-ink-soft hover:bg-line disabled:opacity-50"
+              className="rounded-md px-3 py-1.5 font-rubik text-sm font-medium text-ink-soft transition hover:bg-line/60 hover:text-ink disabled:opacity-50"
             >
               🗑 מחק וצייר מחדש
             </button>

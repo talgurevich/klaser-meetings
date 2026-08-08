@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, apiErrorMessage, type MeetingRecording } from "../lib/api";
+import { DsButton, MicIcon, StopIcon, TrashIcon, UploadCloudIcon } from "./klaser-ds";
 
 function fmtDuration(sec: number | null): string {
   if (sec == null) return "";
@@ -144,13 +145,11 @@ export default function MeetingRecorder({ meetingId }: { meetingId: string }) {
   }
 
   return (
-    <div className="mb-6 rounded-xl border border-violet-200 bg-violet-50/60 p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="mb-8 rounded-lg border border-turquoise/30 bg-turquoise/5 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-1.5 font-display text-base font-bold text-violet-800">
-            <span aria-hidden>✨</span> הקלטה וסיכום AI
-          </h3>
-          <p className="mt-1 text-sm text-violet-900/70">
+          <h3 className="font-rubik text-base font-bold text-turquoise">הקלטה וסיכום AI</h3>
+          <p className="mt-1 text-sm text-ink-soft">
             הקלט את הישיבה — המערכת תתמלל ותכין טיוטות סיכום לכל נושא לאישורך לפני שייכנסו לפרוטוקול.
           </p>
         </div>
@@ -160,9 +159,10 @@ export default function MeetingRecorder({ meetingId }: { meetingId: string }) {
             <button
               onClick={() => fileRef.current?.click()}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-4 py-2 text-sm font-medium hover:bg-line disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-2 rounded-md border-2 border-turquoise bg-white px-4 font-rubik text-sm font-bold text-turquoise transition hover:bg-turquoise hover:text-white disabled:opacity-50"
             >
-              ⬆ העלה קובץ אודיו
+              <span>העלה קובץ אודיו</span>
+              <UploadCloudIcon />
             </button>
           )}
           <input
@@ -175,28 +175,30 @@ export default function MeetingRecorder({ meetingId }: { meetingId: string }) {
           {recording ? (
             <button
               onClick={stopRecording}
-              className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-danger px-4 font-rubik text-sm font-bold text-white transition hover:brightness-95"
             >
               <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
-              עצור הקלטה · {fmtDuration(elapsed)}
+              <span>עצור הקלטה · {fmtDuration(elapsed)}</span>
+              <StopIcon />
             </button>
           ) : (
             <button
               onClick={startRecording}
               disabled={busy}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-danger px-4 font-rubik text-sm font-bold text-white transition hover:brightness-95 disabled:opacity-50"
             >
-              🎙 התחל הקלטה
+              <span>התחל הקלטה</span>
+              <MicIcon />
             </button>
           )}
         </div>
       </div>
 
-      {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-      {busy && !recording && <p className="mt-3 text-sm text-violet-900/70">מעלה…</p>}
+      {error && <p className="mt-4 text-sm text-danger">{error}</p>}
+      {busy && !recording && <p className="mt-4 text-sm text-ink-soft">מעלה…</p>}
 
       {recordings && recordings.length > 0 && (
-        <ul className="mt-4 space-y-2 border-t border-violet-200 pt-3">
+        <ul className="mt-4 flex flex-col gap-2 border-t border-turquoise/20 pt-4">
           {recordings.map((rec) => (
             <li
               key={rec.id}
@@ -214,16 +216,18 @@ export default function MeetingRecorder({ meetingId }: { meetingId: string }) {
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <button onClick={() => play(rec)} className="text-xs text-accent-dark hover:underline">
+                <DsButton variant="ghost" size="micro" onClick={() => play(rec)}>
                   {playingId === rec.id ? "סגור" : "▶ נגן"}
-                </button>
-                <button
+                </DsButton>
+                <DsButton
+                  variant="destructive"
+                  size="micro"
                   onClick={() => remove(rec)}
                   disabled={busy}
-                  className="text-xs text-red-700 hover:underline disabled:opacity-50"
+                  icon={<TrashIcon />}
                 >
                   מחק
-                </button>
+                </DsButton>
               </div>
             </li>
           ))}
@@ -231,7 +235,7 @@ export default function MeetingRecorder({ meetingId }: { meetingId: string }) {
       )}
 
       {playingId && audioUrl && (
-        <audio src={audioUrl} controls autoPlay className="mt-3 w-full" />
+        <audio src={audioUrl} controls autoPlay className="mt-4 w-full" />
       )}
     </div>
   );

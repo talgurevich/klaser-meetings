@@ -2,6 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { api, apiErrorMessage, type Participant } from "../lib/api";
 import { useIsEditor } from "../components/Layout";
 import ContactModal from "../components/ContactModal";
+import {
+  CheckMarkIcon,
+  DsButton,
+  PageHeader,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  UploadCloudIcon,
+} from "../components/klaser-ds";
 
 /** אלפון — the organisation's contacts. "חבר" is someone from the general
  * public (receives the published summary, can be a non-committee invitee).
@@ -60,61 +69,76 @@ export default function Participants() {
   }
 
   const yesNo = (v: boolean) =>
-    v ? <span className="text-emerald-700">✓</span> : <span className="text-ink-soft">—</span>;
+    v ? (
+      <span className="inline-flex text-success">
+        <CheckMarkIcon />
+      </span>
+    ) : (
+      <span className="text-ink-soft">—</span>
+    );
   const fmtDate = (d: string | null) => (d ? d.split("-").reverse().join("/") : "—");
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">קהילה</div>
-            <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
-              אלפון
-            </h1>
-          </div>
-          {editor && (
-            <div className="flex shrink-0 items-center gap-2">
-              <button
+      <PageHeader
+        eyebrow="קהילה"
+        title="אלפון"
+        description={
+          <>
+            אנשי הקשר של הארגון. "חבר" הוא איש מהציבור הכללי — מקבל את סיכום הישיבה כשמפרסמים לציבור,
+            ויכול להיות מוזמן שאינו חבר ועד. "חבר ועד" מוזמן אוטומטית לכל פגישה, ונקבע לפי סימון ידני
+            או התאמת האימייל למשתמש מערכת קיים.
+          </>
+        }
+        actions={
+          editor && (
+            <>
+              <DsButton
+                variant="secondary"
+                size="compact"
                 onClick={() => fileRef.current?.click()}
                 disabled={busy}
-                className="border-2 border-ink px-3 py-2 text-sm font-bold text-ink transition-colors hover:bg-ink hover:text-surface disabled:opacity-50"
+                icon={<UploadCloudIcon />}
               >
-                ⬆ ייבוא CSV
-              </button>
-              <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onImportFile} />
-              <button
+                ייבוא CSV
+              </DsButton>
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,text/csv"
+                className="hidden"
+                onChange={onImportFile}
+              />
+              <DsButton
+                size="compact"
                 onClick={() => setModal({ contact: null })}
-                className="bg-accent px-5 py-2 text-sm font-bold text-surface transition-colors hover:bg-accent-dark"
+                icon={<PlusIcon />}
               >
-                + חבר חדש
-              </button>
-            </div>
-          )}
-        </div>
-        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
-          אנשי הקשר של הארגון. "חבר" הוא איש מהציבור הכללי — מקבל את סיכום הישיבה כשמפרסמים לציבור, ויכול
-          להיות מוזמן שאינו חבר ועד. "חבר ועד" מוזמן אוטומטית לכל פגישה, ונקבע לפי סימון ידני או התאמת
-          האימייל למשתמש מערכת קיים.
-        </p>
-      </header>
+                חבר חדש
+              </DsButton>
+            </>
+          )
+        }
+      />
 
       {importMsg && (
-        <div className="mb-4 rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+        <div className="mb-4 rounded-md border border-success/30 bg-success-soft p-4 text-sm text-success">
           {importMsg}
         </div>
       )}
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
+          {error}
+        </div>
       )}
 
-      {items === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
+      {items === null && !error && <p className="animate-pulse text-sm text-ink-soft">טוען…</p>}
       {items && items.length === 0 && <p className="text-ink-soft">האלפון ריק.</p>}
 
       {items && items.length > 0 && (
-        <div className="overflow-x-auto rounded border border-line bg-surface">
+        <div className="overflow-x-auto rounded-lg border border-line bg-white shadow-[0px_1px_0_rgba(0,0,0,0.03),0px_4px_16px_-4px_rgba(0,0,0,0.06)]">
           <table className="w-full text-right text-sm">
-            <thead className="bg-surface text-ink-soft">
+            <thead className="bg-surface font-rubik text-xs uppercase tracking-[0.1em] text-ink-soft">
               <tr>
                 <th className="px-3 py-2 font-medium">שם</th>
                 <th className="px-3 py-2 font-medium">נייד</th>
@@ -128,7 +152,7 @@ export default function Participants() {
             </thead>
             <tbody>
               {items.map((p) => (
-                <tr key={p.id} className="border-t border-line">
+                <tr key={p.id} className="border-t border-line transition hover:bg-turquoise/5">
                   <td className="px-3 py-2">{p.full_name}</td>
                   <td className="px-3 py-2" dir="ltr">{p.phone || "—"}</td>
                   <td className="px-3 py-2" dir="ltr">{p.email || "—"}</td>
@@ -139,12 +163,25 @@ export default function Participants() {
                   {editor && (
                     <td className="px-3 py-2 text-left">
                       <div className="flex justify-end gap-2 whitespace-nowrap">
-                        <button onClick={() => setModal({ contact: p })} disabled={busy} className="text-xs text-accent-dark hover:underline disabled:opacity-50">
+                        <DsButton
+                          variant="secondary"
+                          size="micro"
+                          className="border"
+                          onClick={() => setModal({ contact: p })}
+                          disabled={busy}
+                          icon={<PencilIcon />}
+                        >
                           ערוך
-                        </button>
-                        <button onClick={() => remove(p.id)} disabled={busy} className="text-xs text-red-700 hover:underline disabled:opacity-50">
+                        </DsButton>
+                        <DsButton
+                          variant="destructive"
+                          size="micro"
+                          onClick={() => remove(p.id)}
+                          disabled={busy}
+                          icon={<TrashIcon />}
+                        >
                           הסר
-                        </button>
+                        </DsButton>
                       </div>
                     </td>
                   )}

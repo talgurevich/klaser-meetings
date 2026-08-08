@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, apiErrorMessage, type MeetingRecording } from "../lib/api";
+import { DsButton, MicIcon, StopIcon, TrashIcon, UploadCloudIcon } from "./klaser-ds";
 
 function fmtDuration(sec: number | null): string {
   if (sec == null) return "";
@@ -157,25 +158,27 @@ export default function TopicRecorder({
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-violet-200 bg-violet-50/50 p-3">
+    <div className="mt-4 rounded-lg border border-turquoise/30 bg-turquoise/5 p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-violet-800">🎙 הקלטת הנושא</span>
+        <span className="font-rubik text-xs font-bold text-turquoise">הקלטת הנושא</span>
         {canRecord &&
           (recording ? (
             <button
               onClick={stopRecording}
-              className="inline-flex items-center gap-1.5 rounded bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700"
+              className="inline-flex items-center gap-1.5 rounded-md bg-danger px-3 py-1.5 font-rubik text-xs font-medium text-white transition hover:brightness-95"
             >
               <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-white" />
-              עצור · {fmtDuration(elapsed)}
+              <span>עצור · {fmtDuration(elapsed)}</span>
+              <StopIcon />
             </button>
           ) : (
             <button
               onClick={startRecording}
               disabled={busy}
-              className="rounded bg-red-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md bg-danger px-3 py-1.5 font-rubik text-xs font-medium text-white transition hover:brightness-95 disabled:opacity-50"
             >
-              התחל הקלטה
+              <span>התחל הקלטה</span>
+              <MicIcon />
             </button>
           ))}
         {canRecord && !recording && (
@@ -183,41 +186,44 @@ export default function TopicRecorder({
             <button
               onClick={() => fileRef.current?.click()}
               disabled={busy}
-              className="rounded border border-line-strong bg-surface px-2.5 py-1 text-xs hover:bg-line disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-turquoise bg-white px-3 py-1.5 font-rubik text-xs font-medium text-turquoise transition hover:bg-turquoise hover:text-white disabled:opacity-50"
             >
-              ⬆ העלה קובץ
+              <span>העלה קובץ</span>
+              <UploadCloudIcon />
             </button>
             <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={onFilePicked} />
           </>
         )}
-        {busy && !recording && <span className="text-xs text-ink-soft">מעלה…</span>}
+        {busy && !recording && <span className="font-rubik text-xs text-ink-soft">מעלה…</span>}
       </div>
 
-      {error && <p className="mt-2 text-xs text-red-700">{error}</p>}
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
 
       {recordings.length > 0 && (
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-2 flex flex-col gap-1">
           {recordings.map((rec) => (
             <li
               key={rec.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded bg-white px-2.5 py-1.5 text-xs"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-white px-3 py-1.5 font-rubik text-xs"
             >
               <span className="min-w-0 truncate text-ink-soft">
                 {new Date(rec.created_at).toLocaleString("he-IL")} · {fmtSize(rec.size_bytes)}
                 {rec.duration_seconds != null ? ` · ${fmtDuration(rec.duration_seconds)}` : ""}
               </span>
               <span className="flex items-center gap-3">
-                <button onClick={() => play(rec)} className="text-accent-dark hover:underline">
+                <DsButton variant="ghost" size="micro" onClick={() => play(rec)}>
                   {playingId === rec.id ? "סגור" : "▶ נגן"}
-                </button>
+                </DsButton>
                 {canRecord && (
-                  <button
+                  <DsButton
+                    variant="destructive"
+                    size="micro"
                     onClick={() => remove(rec)}
                     disabled={busy}
-                    className="text-red-700 hover:underline disabled:opacity-50"
+                    icon={<TrashIcon />}
                   >
                     מחק
-                  </button>
+                  </DsButton>
                 )}
               </span>
             </li>

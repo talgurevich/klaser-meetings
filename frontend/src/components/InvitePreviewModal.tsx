@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage, type InvitePreview } from "../lib/api";
 import { KIND_LABELS } from "../lib/meetingLabels";
+import { CloseIcon, DsButton } from "./klaser-ds";
 
 /** "תצוגה מקדימה של ההזמנה" — renders the exact structured content the
  * invitation email carries, for one sample invitee, before actually
@@ -48,29 +49,31 @@ export default function InvitePreviewModal({
       : preview?.time_start || "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 print:static print:bg-white print:p-0">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto border border-ink bg-surface p-6 print:max-h-none print:overflow-visible print:border-0 print:shadow-none">
-        <div className="mb-4 flex items-center justify-between print:hidden">
-          <button
-            onClick={() => window.print()}
-            className="rounded border border-line-strong px-3 py-1.5 text-sm hover:bg-line"
-          >
-            🖶 הדפס מסמך
-          </button>
-          <div className="flex items-center gap-2">
-            <h2 className="font-display text-lg font-semibold">✉️ תצוגה מקדימה של ההזמנה</h2>
-            <button onClick={onClose} className="rounded px-2 py-1 text-ink-soft hover:bg-line" aria-label="סגור">
-              ✕
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4 print:static print:bg-white print:p-0">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-lg border border-line bg-white p-8 shadow-[0px_2px_0_rgba(0,0,0,0.05),0px_4px_25px_0px_rgba(0,0,0,0.08)] print:max-h-none print:overflow-visible print:rounded-none print:border-0 print:shadow-none">
+        {/* Title first in DOM → right; close last → left (DS §4.6). */}
+        <div className="mb-8 flex items-start justify-between gap-4 print:hidden">
+          <h2 className="font-rubik text-2xl font-bold text-ink">תצוגה מקדימה של ההזמנה</h2>
+          <div className="flex shrink-0 items-center gap-2">
+            <DsButton variant="secondary" size="micro" className="border" onClick={() => window.print()}>
+              הדפס מסמך
+            </DsButton>
+            <button
+              onClick={onClose}
+              className="rounded-md p-1 text-ink-soft transition hover:bg-line hover:text-ink"
+              aria-label="סגור"
+            >
+              <CloseIcon />
             </button>
           </div>
         </div>
 
-        {error && <p className="text-sm text-red-700">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
         {!preview && !error && <p className="text-sm text-ink-soft">טוען…</p>}
 
         {preview && (
           <>
-            <div className="mb-4 rounded bg-surface p-3 text-sm print:hidden">
+            <div className="mb-8 rounded-md bg-surface p-4 text-sm print:hidden">
               <p>
                 <strong>נמען לדוגמה:</strong> {preview.recipient_name}
               </p>
@@ -78,10 +81,12 @@ export default function InvitePreviewModal({
                 <strong>נושא:</strong> הזמנה ל{KIND_LABELS[preview.meeting_kind]}
                 {preview.meeting_number && ` מספר ${preview.meeting_number}`} — {preview.meeting_date}
               </p>
-              <p className="text-xs text-ink-soft">המייל יישלח ל-{inviteeCount} מוזמנים</p>
+              <p className="mt-1 font-rubik text-xs text-ink-soft">
+                המייל יישלח ל-{inviteeCount} מוזמנים
+              </p>
             </div>
 
-            <div className="rounded border border-line p-5">
+            <div className="rounded-lg border border-line p-8">
               <p className="mb-1">שלום {preview.recipient_name},</p>
               <p className="mb-1 font-medium">
                 מוזמן/ת ל{KIND_LABELS[preview.meeting_kind]}
@@ -91,12 +96,12 @@ export default function InvitePreviewModal({
                 תאריך: {preview.meeting_date}
                 {timeRange && ` | שעה: ${timeRange}`}
               </p>
-              {preview.location && <p className="mb-3">מקום: {preview.location}</p>}
+              {preview.location && <p className="mb-4">מקום: {preview.location}</p>}
 
               {preview.topics.length > 0 && (
                 <>
                   <p className="mb-1 font-medium">סדר יום:</p>
-                  <ol className="mb-3 list-decimal pr-5 text-sm">
+                  <ol className="mb-4 list-decimal pr-4 text-sm">
                     {preview.topics.map((t, i) => (
                       <li key={i}>
                         {t.title}
@@ -111,19 +116,19 @@ export default function InvitePreviewModal({
               <div className="flex gap-2 print:hidden">
                 <button
                   disabled
-                  className="rounded bg-amber-600 px-3 py-2 text-xs font-medium text-white opacity-90"
+                  className="rounded-md bg-warning px-3 py-2 font-rubik text-xs font-medium text-white opacity-90"
                 >
                   מאשר/ת קבלה ולא אוכל להגיע
                 </button>
                 <button
                   disabled
-                  className="rounded bg-emerald-600 px-3 py-2 text-xs font-medium text-white opacity-90"
+                  className="rounded-md bg-success px-3 py-2 font-rubik text-xs font-medium text-white opacity-90"
                 >
                   מאשר/ת ומגיע/ה
                 </button>
               </div>
 
-              <p className="mt-4 border-t border-line pt-2 text-xs text-ink-soft">
+              <p className="mt-4 border-t border-line pt-2 font-rubik text-xs text-ink-soft">
                 {preview.tenant_name} · Klaser
               </p>
             </div>

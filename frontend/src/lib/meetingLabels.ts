@@ -1,3 +1,4 @@
+import type { StatusVariant } from "../components/klaser-ds";
 import type { MeetingKind, MeetingStatus, TopicPoolStatus, TopicStatus } from "./api";
 
 export const KIND_LABELS: Record<MeetingKind, string> = {
@@ -53,15 +54,18 @@ export const STATUS_DESCRIPTIONS: Record<MeetingStatus, string> = {
   archived: "בארכיון — הישיבה הסתיימה במלואה ואוחסנה בארכיון.",
 };
 
-export const STATUS_COLORS: Record<MeetingStatus, string> = {
-  draft: "bg-line text-ink-soft",
-  invited_internal: "bg-blue-100 text-blue-800",
-  invited_public: "bg-blue-100 text-blue-800",
-  active: "bg-emerald-100 text-emerald-800",
-  pending_approval: "bg-amber-100 text-amber-800",
-  approved: "bg-emerald-100 text-emerald-800",
-  published: "bg-emerald-100 text-emerald-800",
-  archived: "bg-line text-ink-soft",
+// Klaser DS: statuses render through <StatusPill variant={…}> rather than
+// ad-hoc badge classes. The DS palette has no blue, so the informational
+// "invited" states map onto the teal (info) variant.
+export const STATUS_VARIANTS: Record<MeetingStatus, StatusVariant> = {
+  draft: "neutral",
+  invited_internal: "teal",
+  invited_public: "teal",
+  active: "success",
+  pending_approval: "warning",
+  approved: "success",
+  published: "success",
+  archived: "neutral",
 };
 
 export const TOPIC_STATUS_LABELS: Record<TopicStatus, string> = {
@@ -73,13 +77,13 @@ export const TOPIC_STATUS_LABELS: Record<TopicStatus, string> = {
   cancelled: "בוטל",
 };
 
-export const TOPIC_STATUS_COLORS: Record<TopicStatus, string> = {
-  pending: "bg-line text-ink-soft",
-  in_progress: "bg-blue-100 text-blue-800",
-  done: "bg-emerald-100 text-emerald-800",
-  deferred: "bg-amber-100 text-amber-800",
-  skipped: "bg-line text-ink-soft",
-  cancelled: "bg-red-100 text-red-800",
+export const TOPIC_STATUS_VARIANTS: Record<TopicStatus, StatusVariant> = {
+  pending: "neutral",
+  in_progress: "teal",
+  done: "success",
+  deferred: "warning",
+  skipped: "neutral",
+  cancelled: "danger",
 };
 
 export const TOPIC_POOL_STATUS_LABELS: Record<TopicPoolStatus, string> = {

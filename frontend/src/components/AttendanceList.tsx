@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
 import { api, apiErrorMessage, type MeetingInvite, type Participant } from "../lib/api";
+import {
+  DsButton,
+  DsCard,
+  DsCheckbox,
+  DsInput,
+  DsSelect,
+  PlusIcon,
+} from "./klaser-ds";
 
 const NAME_MAX_LENGTH = 16;
 
@@ -109,7 +117,7 @@ export default function AttendanceList({
     }
   }
 
-  if (error) return <p className="text-sm text-red-700">{error}</p>;
+  if (error) return <p className="text-sm text-danger">{error}</p>;
   if (!participants) return <p className="text-sm text-ink-soft">טוען נוכחות…</p>;
 
   const presentSet = new Set(presentIds);
@@ -166,23 +174,25 @@ export default function AttendanceList({
     return (
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
         {cells.map((c) => (
-          <label
+          <div
             key={c.id}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-              c.checked ? "border-accent bg-accent/5" : "border-line"
-            } ${c.rowEditable ? "cursor-pointer hover:bg-surface" : ""}`}
+            onClick={() => {
+              if (c.rowEditable && busyId !== c.id) c.onToggle();
+            }}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+              c.checked ? "border-turquoise bg-turquoise/5" : "border-line"
+            } ${c.rowEditable ? "cursor-pointer hover:bg-turquoise/5" : ""}`}
           >
-            <input
-              type="checkbox"
+            <DsCheckbox
               checked={c.checked}
               disabled={!c.rowEditable || busyId === c.id}
               onChange={c.onToggle}
-              className="shrink-0 rounded"
+              ariaLabel={c.name}
             />
             <span title={c.name} className={`min-w-0 truncate ${c.checked ? "text-ink" : "text-ink-soft"}`}>
               {truncateName(c.name)}
             </span>
-          </label>
+          </div>
         ))}
       </div>
     );
@@ -191,31 +201,36 @@ export default function AttendanceList({
   const showBody = !collapsible || open;
 
   return (
-    <div className="rounded border border-line bg-surface p-4">
+<DsCard interactive={false} className="p-4">
       {collapsible ? (
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center justify-between text-sm font-semibold text-ink-soft"
+          className="flex w-full items-center justify-between font-rubik text-base font-bold tracking-[0.15em] text-turquoise"
         >
-          <span className="flex items-center gap-1.5">
-            <span aria-hidden>👥</span> נוכחות: {totalPresent}/{totalCount}
+          <span>
+            נוכחות: {totalPresent}/{totalCount}
           </span>
-          <span className="text-xs font-normal">{open ? "▾ הסתר" : "▸ הצג"}</span>
+          <span className="font-rubik text-xs font-normal text-ink-soft">
+            {open ? "▾ הסתר" : "▸ הצג"}
+          </span>
         </button>
       ) : (
-        <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-ink-soft">
-          <span aria-hidden>👥</span> נוכחות: {totalPresent}/{totalCount}
+        <h3 className="flex items-center gap-3 font-rubik text-base font-bold tracking-[0.15em] text-turquoise">
+          <span>
+            נוכחות: {totalPresent}/{totalCount}
+          </span>
+          <span className="h-px flex-1 bg-line" />
         </h3>
       )}
 
       {showBody && (
         <>
-          <p className="mb-2 mt-3 text-xs font-semibold text-ink-soft">
+          <p className="mb-2 mt-4 font-rubik text-xs font-medium text-turquoise">
             מוזמנים לפגישה ({committeePresent}/{invites.length})
           </p>
           {grid(committeeCells)}
 
-          <p className="mb-2 mt-4 text-xs font-semibold text-ink-soft">
+          <p className="mb-2 mt-4 font-rubik text-xs font-medium text-turquoise">
             נוכחים מהאלפון ({attachedExtra.length})
           </p>
           {grid(externalCells)}
@@ -223,28 +238,33 @@ export default function AttendanceList({
       )}
 
       {showBody && participantsEditable && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
-          <select
-            value=""
-            disabled={unattached.length === 0}
-            onChange={(e) => {
-              if (e.target.value) toggleParticipant(e.target.value, false);
-            }}
-            className="rounded border border-line-strong px-2 py-1 text-sm disabled:opacity-50"
-          >
-            <option value="">
-              {unattached.length === 0 ? "כל האלפון כבר נוסף" : "+ הוסף מהאלפון…"}
-            </option>
-            {unattached.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.full_name}
+        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-4">
+          <div className="w-56">
+            <DsSelect
+              value=""
+              disabled={unattached.length === 0}
+              onChange={(v) => {
+                if (v) toggleParticipant(v, false);
+              }}
+            >
+              <option value="">
+                {unattached.length === 0 ? "כל האלפון כבר נוסף" : "+ הוסף מהאלפון…"}
               </option>
-            ))}
-          </select>
+              {unattached.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.full_name}
+                </option>
+              ))}
+            </DsSelect>
+          </div>
 
           {!addingOpen && (
-            <button onClick={() => setAddingOpen(true)} className="text-xs text-accent-dark hover:underline">
-              + איש קשר חדש
+            <button
+              onClick={() => setAddingOpen(true)}
+              className="inline-flex items-center gap-1.5 font-rubik text-sm font-medium text-turquoise transition hover:text-turquoise-dark"
+            >
+              <span>איש קשר חדש</span>
+              <PlusIcon />
             </button>
           )}
         </div>
@@ -252,47 +272,40 @@ export default function AttendanceList({
 
       {showBody && participantsEditable && addingOpen && (
         <form onSubmit={createAndAttach} className="mt-2 flex flex-wrap items-end gap-2">
-          <input
-            type="text"
-            placeholder="שם מלא"
-            required
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="rounded border border-line-strong px-2 py-1 text-sm"
-          />
-          <input
-            type="tel"
-            placeholder="טלפון (אופציונלי)"
-            value={newPhone}
-            onChange={(e) => setNewPhone(e.target.value)}
-            className="rounded border border-line-strong px-2 py-1 text-sm"
-            dir="ltr"
-          />
-          <input
-            type="email"
-            placeholder="אימייל (אופציונלי)"
-            value={newEmail}
-            onChange={(e) => setNewEmail(e.target.value)}
-            className="rounded border border-line-strong px-2 py-1 text-sm"
-            dir="ltr"
-          />
-          <button
-            type="submit"
-            disabled={addBusy || !newName.trim()}
-            className="rounded bg-accent px-3 py-1 text-xs font-medium text-white hover:bg-accent-dark disabled:opacity-50"
-          >
+          <div className="w-44">
+            <DsInput placeholder="שם מלא" required value={newName} onChange={setNewName} />
+          </div>
+          <div className="w-44">
+            <DsInput
+              type="tel"
+              placeholder="טלפון (אופציונלי)"
+              value={newPhone}
+              onChange={setNewPhone}
+              dir="ltr"
+            />
+          </div>
+          <div className="w-52">
+            <DsInput
+              type="email"
+              placeholder="אימייל (אופציונלי)"
+              value={newEmail}
+              onChange={setNewEmail}
+              dir="ltr"
+            />
+          </div>
+          <DsButton type="submit" size="compact" disabled={addBusy || !newName.trim()}>
             הוסף וצרף
-          </button>
-          <button
-            type="button"
+          </DsButton>
+          <DsButton
+            variant="ghost"
+            size="compact"
             onClick={() => setAddingOpen(false)}
             disabled={addBusy}
-            className="text-xs text-ink-soft hover:underline"
           >
             ביטול
-          </button>
+          </DsButton>
         </form>
       )}
-    </div>
+    </DsCard>
   );
 }

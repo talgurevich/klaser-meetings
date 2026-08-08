@@ -22,7 +22,7 @@ export default function StatusStepper({ status }: { status: MeetingStatus }) {
     <div className="relative mb-6 pt-1" dir="rtl">
       <div className="absolute right-0 left-0 top-5 h-0.5 bg-line" />
       <div
-        className="absolute right-0 top-5 h-0.5 bg-accent transition-all"
+        className="absolute right-0 top-5 h-0.5 bg-turquoise transition-all"
         style={{ width: `${progressPct}%` }}
       />
       <div className="relative flex">
@@ -39,25 +39,25 @@ export default function StatusStepper({ status }: { status: MeetingStatus }) {
               style={{ width: `${colWidthPct}%` }}
             >
               <div
-                className={`flex h-8 w-8 shrink-0 cursor-default items-center justify-center rounded-full border-2 text-xs font-semibold ${
+                className={`flex h-8 w-8 shrink-0 cursor-default items-center justify-center rounded-full border-2 font-rubik text-xs font-bold ${
                   done
-                    ? "border-accent bg-accent text-white"
+                    ? "border-turquoise bg-turquoise text-white"
                     : current
-                      ? "border-accent bg-white text-accent-dark"
+                      ? "border-turquoise bg-white text-turquoise"
                       : "border-line bg-white text-ink-soft"
                 }`}
               >
                 {done ? "✓" : i + 1}
               </div>
               <span
-                className={`mt-2 px-0.5 text-center text-[11px] leading-tight ${
-                  current ? "font-semibold text-ink" : "text-ink-soft"
+                className={`mt-2 px-0.5 text-center font-rubik text-[11px] leading-tight ${
+                  current ? "font-bold text-ink" : "text-ink-soft"
                 }`}
               >
                 {STATUS_LABELS[s]}
               </span>
 
-              <div className="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-52 rounded bg-ink px-2.5 py-1.5 text-center text-xs leading-snug text-white group-hover:block">
+              <div className="pointer-events-none absolute bottom-full z-10 mb-2 hidden w-52 rounded-md bg-ink px-3 py-2 text-center font-rubik text-xs leading-snug text-white group-hover:block">
                 {STATUS_DESCRIPTIONS[s]}
               </div>
             </div>

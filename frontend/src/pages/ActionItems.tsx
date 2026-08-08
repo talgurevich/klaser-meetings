@@ -3,31 +3,38 @@ import { Link } from "react-router-dom";
 import { api, apiErrorMessage, type ActionItem } from "../lib/api";
 import { KIND_LABELS } from "../lib/meetingLabels";
 import { useIsEditor } from "../components/Layout";
+import {
+  DsButton,
+  DsCheckbox,
+  DsModal,
+  DsTag,
+  PageHeader,
+  SectionHeader,
+  TrashIcon,
+} from "../components/klaser-ds";
 
 /** Shown right after marking a task done or deleting one — notifying the
  * meeting's invitees is opt-in per action, decided here rather than via a
  * standing checkbox on the row. */
 function ConfirmNotifyModal({ onSend, onSkip }: { onSend: () => void; onSkip: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-sm border border-ink bg-surface p-5 text-center">
-        <p className="mb-4 text-sm">תרצה לעדכן את המשתתפים בפגישה על הפעולה?</p>
-        <div className="flex justify-center gap-2">
-          <button
-            onClick={onSkip}
-            className="rounded border border-line-strong px-4 py-2 text-sm hover:bg-line"
-          >
-            אין צורך
-          </button>
-          <button
-            onClick={onSend}
-            className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark"
-          >
+    <DsModal
+      size="sm"
+      title="עדכון משתתפים"
+      onClose={onSkip}
+      actions={
+        <>
+          <DsButton size="compact" onClick={onSend}>
             שלח עדכון
-          </button>
-        </div>
-      </div>
-    </div>
+          </DsButton>
+          <DsButton variant="ghost" size="compact" onClick={onSkip}>
+            אין צורך
+          </DsButton>
+        </>
+      }
+    >
+      <p className="text-sm">תרצה לעדכן את המשתתפים בפגישה על הפעולה?</p>
+    </DsModal>
   );
 }
 
@@ -113,45 +120,46 @@ export default function ActionItems() {
     const busy = busyId === item.topic_id;
     return (
       <div
-        className={`flex items-start justify-between gap-3 rounded border px-4 py-3 ${
-          item.action_item_done ? "border-line bg-surface opacity-60" : "border-line bg-surface"
+        className={`flex items-start justify-between gap-4 rounded-lg border border-line bg-white px-4 py-3 shadow-[0px_1px_0_rgba(0,0,0,0.03),0px_4px_16px_-4px_rgba(0,0,0,0.06)] transition ${
+          item.action_item_done ? "opacity-60" : "hover:border-turquoise/40"
         }`}
       >
-        <label className="flex flex-1 items-start gap-3">
-          <input
-            type="checkbox"
-            checked={item.action_item_done}
-            disabled={!editor || busy}
-            onChange={(e) => onToggleDone(item, e.target.checked)}
-            className="mt-1 rounded"
-          />
+        <div className="flex flex-1 items-start gap-3">
+          <span className="mt-0.5">
+            <DsCheckbox
+              checked={item.action_item_done}
+              disabled={!editor || busy}
+              onChange={() => onToggleDone(item, !item.action_item_done)}
+              ariaLabel={item.action_item || "משימה"}
+            />
+          </span>
           <span>
-            <p className={item.action_item_done ? "text-ink-soft line-through" : "font-medium"}>
-              {item.action_item}
-              {item.action_item_owner && (
-                <span className="mr-2 rounded-full bg-surface px-2 py-0.5 text-xs font-normal text-ink-soft">
-                  אחראי: {item.action_item_owner}
-                </span>
-              )}
+            <p
+              className={`flex flex-wrap items-center gap-2 ${
+                item.action_item_done ? "text-ink-soft line-through" : "font-medium"
+              }`}
+            >
+              <span>{item.action_item}</span>
+              {item.action_item_owner && <DsTag>אחראי: {item.action_item_owner}</DsTag>}
             </p>
             <Link
               to={`/meetings/${item.meeting_id}`}
-              className="mt-0.5 block text-xs text-ink-soft hover:text-accent-dark hover:underline"
+              className="mt-1 block font-rubik text-xs text-ink-soft transition hover:text-turquoise hover:underline"
             >
               {KIND_LABELS[item.meeting_kind]}
               {item.meeting_number && ` · מס׳ ${item.meeting_number}`} · {item.meeting_date} ·{" "}
               {item.topic_title}
             </Link>
           </span>
-        </label>
+        </div>
         {editor && (
           <button
             onClick={() => setPending({ item, kind: "delete" })}
             disabled={busy}
-            className="shrink-0 rounded px-2 py-1 text-sm text-ink-soft hover:bg-line disabled:opacity-50"
+            className="shrink-0 rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
             aria-label="מחק משימה"
           >
-            ✕
+            <TrashIcon />
           </button>
         )}
       </div>
@@ -160,31 +168,26 @@ export default function ActionItems() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">מעקב</div>
-        <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
-          משימות לביצוע
-        </h1>
-      </header>
+      <PageHeader eyebrow="מעקב" title="משימות לביצוע" />
 
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
           {error}
         </div>
       )}
 
-      {items === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
+      {items === null && !error && <p className="animate-pulse text-sm text-ink-soft">טוען…</p>}
 
       {items && items.length === 0 && <p className="text-ink-soft">אין עדיין משימות לביצוע.</p>}
 
       {items && items.length > 0 && (
-        <div className="space-y-6">
+        <div className="flex flex-col gap-8">
           <div>
-            <h2 className="mb-2 text-sm font-semibold text-ink-soft">פתוחות ({openItems.length})</h2>
+            <SectionHeader>פתוחות ({openItems.length})</SectionHeader>
             {openItems.length === 0 ? (
               <p className="text-sm text-ink-soft">אין משימות פתוחות.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 {openItems.map((item) => (
                   <Row key={item.topic_id} item={item} />
                 ))}
@@ -194,8 +197,8 @@ export default function ActionItems() {
 
           {doneItems.length > 0 && (
             <div>
-              <h2 className="mb-2 text-sm font-semibold text-ink-soft">הושלמו ({doneItems.length})</h2>
-              <div className="space-y-2">
+              <SectionHeader>הושלמו ({doneItems.length})</SectionHeader>
+              <div className="flex flex-col gap-2">
                 {doneItems.map((item) => (
                   <Row key={item.topic_id} item={item} />
                 ))}

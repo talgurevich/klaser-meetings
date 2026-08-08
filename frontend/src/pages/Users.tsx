@@ -2,6 +2,18 @@ import { useEffect, useState } from "react";
 import { api, apiErrorMessage, type TenantUserItem } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isAdmin } from "../lib/permissions";
+import {
+  DsButton,
+  DsCard,
+  DsInput,
+  DsSelect,
+  Field,
+  PageHeader,
+  SectionHeader,
+  SendIcon,
+  StatusPill,
+  TrashIcon,
+} from "../components/klaser-ds";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "מנהל/ת",
@@ -37,9 +49,9 @@ export default function Users() {
 
   if (!admin) {
     return (
-      <div className="rounded border border-line bg-surface p-6 text-center text-sm text-ink-soft">
+      <DsCard interactive={false} className="p-8 text-center text-sm text-ink-soft">
         עמוד זה זמין למנהלי הארגון בלבד.
-      </div>
+      </DsCard>
     );
   }
 
@@ -106,123 +118,114 @@ export default function Users() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <div className="text-[11px] font-bold uppercase tracking-[0.3em] text-accent">ניהול</div>
-        <h1 className="mt-1 font-display text-3xl font-black leading-tight text-ink md:text-4xl">
-          משתמשים
-        </h1>
-      </header>
+      <PageHeader eyebrow="ניהול" title="משתמשים" />
 
-      <form onSubmit={invite} className="mb-8 rounded border border-line bg-surface p-4">
-        <h2 className="mb-3 text-sm font-semibold text-ink-soft">הזמנת משתמש חדש</h2>
-        <div className="flex flex-wrap items-end gap-3">
-          <label className="flex-1 text-sm">
-            <span className="mb-1 block font-medium text-ink-soft">אימייל</span>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded border border-line-strong px-3 py-2"
-            />
-          </label>
-          <label className="flex-1 text-sm">
-            <span className="mb-1 block font-medium text-ink-soft">שם (אופציונלי)</span>
-            <input
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded border border-line-strong px-3 py-2"
-            />
-          </label>
-          <label className="text-sm">
-            <span className="mb-1 block font-medium text-ink-soft">תפקיד</span>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as "admin" | "user")}
-              className="rounded border border-line-strong px-3 py-2"
+      <form onSubmit={invite}>
+        <DsCard interactive={false} className="mb-8 p-4">
+          <SectionHeader>הזמנת משתמש חדש</SectionHeader>
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="min-w-[12rem] flex-1">
+              <Field label="אימייל">
+                <DsInput type="email" required value={email} onChange={setEmail} dir="ltr" />
+              </Field>
+            </div>
+            <div className="min-w-[12rem] flex-1">
+              <Field label="שם (אופציונלי)">
+                <DsInput value={displayName} onChange={setDisplayName} />
+              </Field>
+            </div>
+            <div className="w-40">
+              <Field label="תפקיד">
+                <DsSelect value={role} onChange={(v) => setRole(v as "admin" | "user")}>
+                  <option value="user">משתמש/ת</option>
+                  <option value="admin">מנהל/ת</option>
+                </DsSelect>
+              </Field>
+            </div>
+            <DsButton
+              type="submit"
+              size="compact"
+              disabled={busy || !email.trim()}
+              icon={<SendIcon />}
             >
-              <option value="user">משתמש/ת</option>
-              <option value="admin">מנהל/ת</option>
-            </select>
-          </label>
-          <button
-            type="submit"
-            disabled={busy || !email.trim()}
-            className="rounded bg-accent px-4 py-2 text-sm font-medium text-white hover:bg-accent-dark disabled:opacity-50"
-          >
-            שלח הזמנה
-          </button>
-        </div>
+              שלח הזמנה
+            </DsButton>
+          </div>
+        </DsCard>
       </form>
 
       {error && (
-        <div className="mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">
           {error}
         </div>
       )}
 
-      {users === null && !error && <p className="text-sm text-ink-soft animate-pulse">טוען…</p>}
+      {users === null && !error && <p className="animate-pulse text-sm text-ink-soft">טוען…</p>}
 
       {users && (
-        <div className="overflow-hidden rounded border border-line bg-surface">
+        <div className="overflow-hidden rounded-lg border border-line bg-white shadow-[0px_1px_0_rgba(0,0,0,0.03),0px_4px_16px_-4px_rgba(0,0,0,0.06)]">
           <table className="w-full text-right text-sm">
-            <thead className="bg-surface text-ink-soft">
+            <thead className="bg-surface font-rubik text-xs uppercase tracking-[0.1em] text-ink-soft">
               <tr>
-                <th className="px-4 py-2 font-medium">שם</th>
-                <th className="px-4 py-2 font-medium">אימייל</th>
-                <th className="px-4 py-2 font-medium">תפקיד</th>
-                <th className="px-4 py-2 font-medium">סטטוס</th>
-                <th className="px-4 py-2 font-medium"></th>
+                <th className="px-4 py-3 font-medium">שם</th>
+                <th className="px-4 py-3 font-medium">אימייל</th>
+                <th className="px-4 py-3 font-medium">תפקיד</th>
+                <th className="px-4 py-3 font-medium">סטטוס</th>
+                <th className="px-4 py-3 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => (
-                <tr key={u.id} className="border-t border-line">
-                  <td className="px-4 py-2">{u.display_name || "—"}</td>
-                  <td className="px-4 py-2" dir="ltr">
+                <tr key={u.id} className="border-t border-line transition hover:bg-turquoise/5">
+                  <td className="px-4 py-3">{u.display_name || "—"}</td>
+                  <td className="px-4 py-3" dir="ltr">
                     {u.email}
                   </td>
-                  <td className="px-4 py-2">
-                    <select
+                  <td className="px-4 py-3">
+                    <DsSelect
                       value={u.role}
                       disabled={busy || u.id === currentUser?.id}
-                      onChange={(e) => changeRole(u.id, e.target.value)}
-                      className="rounded border border-line-strong bg-surface px-2 py-1 text-sm"
+                      onChange={(v) => changeRole(u.id, v)}
+                      className="w-36"
                     >
                       <option value="user">משתמש/ת</option>
                       <option value="admin">מנהל/ת</option>
                       {!["user", "admin"].includes(u.role) && (
                         <option value={u.role}>{ROLE_LABELS[u.role] || u.role}</option>
                       )}
-                    </select>
+                    </DsSelect>
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-3">
                     {u.has_password ? (
-                      <span className="text-emerald-700">פעיל</span>
+                      <StatusPill variant="success">פעיל</StatusPill>
                     ) : (
-                      <span className="text-amber-700">ממתין להרשמה</span>
+                      <StatusPill variant="warning">ממתין להרשמה</StatusPill>
                     )}
                   </td>
-                  <td className="px-4 py-2 text-left">
-                    <div className="flex justify-end gap-2">
+                  <td className="px-4 py-3 text-left">
+                    <div className="flex justify-end gap-2 whitespace-nowrap">
                       {!u.has_password && (
-                        <button
+                        <DsButton
+                          variant="secondary"
+                          size="micro"
+                          className="border"
                           onClick={() => resend(u.id)}
                           disabled={busy}
-                          className="text-xs text-accent-dark hover:underline disabled:opacity-50"
+                          icon={<SendIcon />}
                         >
                           שלח הזמנה שוב
-                        </button>
+                        </DsButton>
                       )}
                       {u.id !== currentUser?.id && (
-                        <button
+                        <DsButton
+                          variant="destructive"
+                          size="micro"
                           onClick={() => remove(u.id)}
                           disabled={busy}
-                          className="text-xs text-red-700 hover:underline disabled:opacity-50"
+                          icon={<TrashIcon />}
                         >
                           הסר
-                        </button>
+                        </DsButton>
                       )}
                     </div>
                   </td>
