@@ -550,6 +550,17 @@ class TenantSettings(Base):
     assembly_recurring_topic_last_title: Mapped[str | None] = mapped_column(String)
     assembly_recurring_topic_last_duration: Mapped[int | None] = mapped_column(Integer)
 
+    # Whether distributing the public אלפון invitation must wait for a committee
+    # majority to approve first. When True, the "not everyone approved — send
+    # anyway?" gate applies (see InviteActions); when False it goes out freely.
+    # Defaults preserve prior behaviour: meetings unrestricted, assemblies gated.
+    meeting_require_approval_before_invite: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+    assembly_require_approval_before_invite: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
+
     # Org-defined role/position types ("בעלי תפקיד") — a plain list of
     # strings offered as the תפקיד dropdown in the אלפון. Admin-managed.
     role_titles: Mapped[list | None] = mapped_column(JSON)

@@ -602,6 +602,8 @@ class TenantSettingsUpdate(BaseModel):
     assembly_recurring_topic_first_duration: int | None = None
     assembly_recurring_topic_last_title: str | None = None
     assembly_recurring_topic_last_duration: int | None = None
+    meeting_require_approval_before_invite: bool | None = None
+    assembly_require_approval_before_invite: bool | None = None
     role_titles: list[str] | None = None
 
 
@@ -626,6 +628,8 @@ class TenantSettingsOut(BaseModel):
     assembly_recurring_topic_first_duration: int | None
     assembly_recurring_topic_last_title: str | None
     assembly_recurring_topic_last_duration: int | None
+    meeting_require_approval_before_invite: bool
+    assembly_require_approval_before_invite: bool
     role_titles: list[str] = Field(default_factory=list)
     signatories: list[SignatoryOut] = Field(default_factory=list)
 

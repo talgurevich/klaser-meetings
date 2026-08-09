@@ -9,7 +9,7 @@ import {
 } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import { isAdmin } from "../lib/permissions";
-import { DsSelect, TrashIcon, UploadCloudIcon } from "../components/klaser-ds";
+import { DsSelect, DsToggle, TrashIcon, UploadCloudIcon } from "../components/klaser-ds";
 
 // 0=Sunday .. 6=Saturday — see backend/app/models.py's TenantSettings
 // docstring. Rendered in this order as flex children so the RTL layout
@@ -840,6 +840,22 @@ export default function Settings() {
             />
           </div>
         </div>
+
+        <hr className="my-4 border-line" />
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <label className="block text-sm font-medium text-ink">דרוש אישור ועד לפני שליחת הזמנה</label>
+            <p className="mt-0.5 text-xs text-ink-soft">
+              כשמסומן, הפצת ההזמנה לאלפון תמתין לאישור רוב חברי הועד (עם אפשרות להפיץ בכל זאת).
+            </p>
+          </div>
+          <DsToggle
+            checked={settings.meeting_require_approval_before_invite}
+            disabled={editDisabled}
+            onChange={(v) => saveField({ meeting_require_approval_before_invite: v })}
+            ariaLabel="דרוש אישור ועד לפני שליחת הזמנה לישיבה"
+          />
+        </div>
       </div>
 
       {/* נושאים קבועים בכל ישיבה */}
@@ -951,6 +967,22 @@ export default function Settings() {
               className={INPUT_CLS}
             />
           </div>
+        </div>
+
+        <hr className="my-4 border-line" />
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <label className="block text-sm font-medium text-ink">דרוש אישור ועד לפני שליחת הזמנה</label>
+            <p className="mt-0.5 text-xs text-ink-soft">
+              כשמסומן, הפצת ההזמנה לאלפון תמתין לאישור רוב חברי הועד (עם אפשרות להפיץ בכל זאת).
+            </p>
+          </div>
+          <DsToggle
+            checked={settings.assembly_require_approval_before_invite}
+            disabled={editDisabled}
+            onChange={(v) => saveField({ assembly_require_approval_before_invite: v })}
+            ariaLabel="דרוש אישור ועד לפני שליחת הזמנה לאסיפה"
+          />
         </div>
       </div>
 

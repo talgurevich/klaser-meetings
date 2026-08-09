@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, apiErrorMessage, type Meeting, type Participant } from "../lib/api";
+import { api, apiErrorMessage, type Meeting, type Participant, type TenantSettings } from "../lib/api";
 import InvitePreviewModal from "./InvitePreviewModal";
 import { ArrowCircleLeft, DsButton, DsModal, SearchIcon, SendIcon } from "./klaser-ds";
 
@@ -30,9 +30,11 @@ export default function InviteActions({
   const [alfonReminderOpen, setAlfonReminderOpen] = useState(false);
   const [alfonMajorityOpen, setAlfonMajorityOpen] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [settings, setSettings] = useState<TenantSettings | null>(null);
 
   useEffect(() => {
     api.listParticipants().then(setParticipants).catch(() => setParticipants([]));
+    api.getTenantSettings().then(setSettings).catch(() => setSettings(null));
   }, []);
 
   const hasInvitees = meeting.invites.length > 0;
@@ -51,6 +53,13 @@ export default function InviteActions({
   const isAssembly = meeting.kind === "assembly";
   const kindNoun = isAssembly ? "האסיפה" : "הפגישה";
   const approvedVerb = isAssembly ? "אישרו את האסיפה" : "אישרו הגעה";
+  // Per-kind setting: does distributing the public אלפון invitation wait for a
+  // committee majority to approve first? (see TenantSettings / the Settings page)
+  const requireApprovalBeforeInvite = settings
+    ? isAssembly
+      ? settings.assembly_require_approval_before_invite
+      : settings.meeting_require_approval_before_invite
+    : false;
 
   function openMeeting() {
     setConfirmingOpen(false);
@@ -63,9 +72,10 @@ export default function InviteActions({
   }
 
   function requestDistributeAlfon() {
-    // For assemblies, warn before distributing to the public אלפון if the
-    // committee majority hasn't approved yet — the organiser can still proceed.
-    if (isAssembly && total > 0 && !majorityConfirmed) {
+    // When the tenant requires committee approval before the public invite,
+    // warn if the majority hasn't approved yet — the organiser can still
+    // proceed. Otherwise distribute straight away.
+    if (requireApprovalBeforeInvite && total > 0 && !majorityConfirmed) {
       setAlfonMajorityOpen(true);
       return;
     }
@@ -288,7 +298,7 @@ export default function InviteActions({
             {approvedVerb}: <strong>{confirmedCount}</strong> מתוך <strong>{total}</strong> חברי ועד.
           </p>
           <p className="text-sm text-ink-soft">
-            לא כל חברי הועד אישרו את האסיפה. האם להפיץ הזמנה לאלפון בכל זאת?
+            לא כל חברי הועד אישרו את {kindNoun}. האם להפיץ הזמנה לאלפון בכל זאת?
           </p>
         </DsModal>
       )}

@@ -470,6 +470,8 @@ export type TenantSettings = {
   assembly_recurring_topic_first_duration: number | null;
   assembly_recurring_topic_last_title: string | null;
   assembly_recurring_topic_last_duration: number | null;
+  meeting_require_approval_before_invite: boolean;
+  assembly_require_approval_before_invite: boolean;
   role_titles: string[];
   signatories: Signatory[];
 };
