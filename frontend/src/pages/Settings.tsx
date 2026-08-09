@@ -35,6 +35,16 @@ function SectionHeader({ icon, title }: { icon: string; title: string }) {
   );
 }
 
+/** Big group divider separating whole areas (e.g. ישיבות vs. אסיפות). */
+function GroupHeader({ title }: { title: string }) {
+  return (
+    <div className="mb-4 mt-10 flex items-center gap-3">
+      <h2 className="font-rubik text-xl font-bold text-ink">{title}</h2>
+      <span className="h-0.5 flex-1 rounded bg-turquoise/30" />
+    </div>
+  );
+}
+
 function ImageField({
   imageUrl,
   disabled,
@@ -685,9 +695,9 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* חותמת ופרטים תפעוליים */}
+      {/* חותמת האגודה */}
       <div className={SECTION_CLS}>
-        <SectionHeader icon="🖨" title="חותמת ופרטים תפעוליים" />
+        <SectionHeader icon="🖨" title="חותמת האגודה" />
 
         <label className="mb-1 block text-xs font-medium text-ink-soft">חותמת האגודה</label>
         <p className="mb-2 text-xs text-ink-soft">תופיע בפרוטוקולים רשמיים. PNG שקוף מומלץ.</p>
@@ -719,103 +729,6 @@ export default function Settings() {
           }}
         />
 
-        <hr className="my-4 border-line" />
-
-        <h3 className="mb-3 text-sm font-semibold">ברירות מחדל לישיבות</h3>
-        <label className="mb-1 block text-xs font-medium text-ink-soft">מקום ברירת מחדל לישיבות</label>
-        <p className="mb-1.5 text-xs text-ink-soft">המקום יתמלא אוטומטית בכל ישיבה חדשה.</p>
-        <input
-          type="text"
-          value={meetingLocation}
-          disabled={editDisabled}
-          onChange={(e) => setMeetingLocation(e.target.value)}
-          onBlur={() => saveField({ meeting_location: meetingLocation || null })}
-          className={`${INPUT_CLS} mb-4`}
-        />
-
-        <label className="mb-1 block text-xs font-medium text-ink-soft">יום ברירת מחדל לישיבה</label>
-        <p className="mb-1.5 text-xs text-ink-soft">יום בשבוע שבו הישיבות מתקיימות בדרך כלל.</p>
-        <div className="mb-4">
-          <WeekdayPicker
-            value={settings.meeting_weekday}
-            disabled={editDisabled}
-            onChange={(v) => saveField({ meeting_weekday: v })}
-          />
-        </div>
-
-        <label className="mb-1 block text-xs font-medium text-ink-soft">שעות ברירת מחדל לישיבה</label>
-        <p className="mb-1.5 text-xs text-ink-soft">יתמלאו אוטומטית בכל ישיבה חדשה.</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-xs text-ink-soft">שעת התחלה</label>
-            <input
-              type="time"
-              value={settings.meeting_start_time || ""}
-              disabled={editDisabled}
-              onChange={(e) => saveField({ meeting_start_time: e.target.value || null })}
-              className={INPUT_CLS}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-ink-soft">שעת סיום</label>
-            <input
-              type="time"
-              value={settings.meeting_end_time || ""}
-              disabled={editDisabled}
-              onChange={(e) => saveField({ meeting_end_time: e.target.value || null })}
-              className={INPUT_CLS}
-            />
-          </div>
-        </div>
-
-        <hr className="my-4 border-line" />
-
-        <h3 className="mb-3 text-sm font-semibold">ברירות מחדל לאסיפות</h3>
-        <label className="mb-1 block text-xs font-medium text-ink-soft">מקום ברירת מחדל לאסיפות</label>
-        <p className="mb-1.5 text-xs text-ink-soft">המקום יתמלא אוטומטית בכל אסיפה חדשה.</p>
-        <input
-          type="text"
-          value={assemblyLocation}
-          disabled={editDisabled}
-          onChange={(e) => setAssemblyLocation(e.target.value)}
-          onBlur={() => saveField({ assembly_location: assemblyLocation || null })}
-          className={`${INPUT_CLS} mb-4`}
-        />
-
-        <label className="mb-1 block text-xs font-medium text-ink-soft">יום ברירת מחדל לאסיפה</label>
-        <p className="mb-1.5 text-xs text-ink-soft">יום בשבוע שבו האסיפות מתקיימות בדרך כלל.</p>
-        <div className="mb-4">
-          <WeekdayPicker
-            value={settings.assembly_weekday}
-            disabled={editDisabled}
-            onChange={(v) => saveField({ assembly_weekday: v })}
-          />
-        </div>
-
-        <label className="mb-1 block text-xs font-medium text-ink-soft">שעות ברירת מחדל לאסיפה</label>
-        <p className="mb-1.5 text-xs text-ink-soft">יתמלאו אוטומטית בכל אסיפה חדשה.</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-xs text-ink-soft">שעת התחלה</label>
-            <input
-              type="time"
-              value={settings.assembly_start_time || ""}
-              disabled={editDisabled}
-              onChange={(e) => saveField({ assembly_start_time: e.target.value || null })}
-              className={INPUT_CLS}
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs text-ink-soft">שעת סיום</label>
-            <input
-              type="time"
-              value={settings.assembly_end_time || ""}
-              disabled={editDisabled}
-              onChange={(e) => saveField({ assembly_end_time: e.target.value || null })}
-              className={INPUT_CLS}
-            />
-          </div>
-        </div>
       </div>
 
       {/* בעלי תפקיד — role types for the אלפון */}
@@ -877,6 +790,58 @@ export default function Settings() {
         )}
       </div>
 
+      <GroupHeader title="ישיבות" />
+
+      {/* ברירות מחדל לישיבות */}
+      <div className={SECTION_CLS}>
+        <SectionHeader icon="🗓" title="ברירות מחדל לישיבות" />
+        <label className="mb-1 block text-xs font-medium text-ink-soft">מקום ברירת מחדל לישיבות</label>
+        <p className="mb-1.5 text-xs text-ink-soft">המקום יתמלא אוטומטית בכל ישיבה חדשה.</p>
+        <input
+          type="text"
+          value={meetingLocation}
+          disabled={editDisabled}
+          onChange={(e) => setMeetingLocation(e.target.value)}
+          onBlur={() => saveField({ meeting_location: meetingLocation || null })}
+          className={`${INPUT_CLS} mb-4`}
+        />
+
+        <label className="mb-1 block text-xs font-medium text-ink-soft">יום ברירת מחדל לישיבה</label>
+        <p className="mb-1.5 text-xs text-ink-soft">יום בשבוע שבו הישיבות מתקיימות בדרך כלל.</p>
+        <div className="mb-4">
+          <WeekdayPicker
+            value={settings.meeting_weekday}
+            disabled={editDisabled}
+            onChange={(v) => saveField({ meeting_weekday: v })}
+          />
+        </div>
+
+        <label className="mb-1 block text-xs font-medium text-ink-soft">שעות ברירת מחדל לישיבה</label>
+        <p className="mb-1.5 text-xs text-ink-soft">יתמלאו אוטומטית בכל ישיבה חדשה.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-xs text-ink-soft">שעת התחלה</label>
+            <input
+              type="time"
+              value={settings.meeting_start_time || ""}
+              disabled={editDisabled}
+              onChange={(e) => saveField({ meeting_start_time: e.target.value || null })}
+              className={INPUT_CLS}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-ink-soft">שעת סיום</label>
+            <input
+              type="time"
+              value={settings.meeting_end_time || ""}
+              disabled={editDisabled}
+              onChange={(e) => saveField({ meeting_end_time: e.target.value || null })}
+              className={INPUT_CLS}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* נושאים קבועים בכל ישיבה */}
       <div className={SECTION_CLS}>
         <SectionHeader icon="📋" title="נושאים קבועים בכל ישיבה" />
@@ -934,6 +899,58 @@ export default function Settings() {
             onBlur={() => saveField({ recurring_topic_last_title: lastTopicTitle || null })}
             className={`${INPUT_CLS} flex-1`}
           />
+        </div>
+      </div>
+
+      <GroupHeader title="אסיפות" />
+
+      {/* ברירות מחדל לאסיפות */}
+      <div className={SECTION_CLS}>
+        <SectionHeader icon="🗓" title="ברירות מחדל לאסיפות" />
+        <label className="mb-1 block text-xs font-medium text-ink-soft">מקום ברירת מחדל לאסיפות</label>
+        <p className="mb-1.5 text-xs text-ink-soft">המקום יתמלא אוטומטית בכל אסיפה חדשה.</p>
+        <input
+          type="text"
+          value={assemblyLocation}
+          disabled={editDisabled}
+          onChange={(e) => setAssemblyLocation(e.target.value)}
+          onBlur={() => saveField({ assembly_location: assemblyLocation || null })}
+          className={`${INPUT_CLS} mb-4`}
+        />
+
+        <label className="mb-1 block text-xs font-medium text-ink-soft">יום ברירת מחדל לאסיפה</label>
+        <p className="mb-1.5 text-xs text-ink-soft">יום בשבוע שבו האסיפות מתקיימות בדרך כלל.</p>
+        <div className="mb-4">
+          <WeekdayPicker
+            value={settings.assembly_weekday}
+            disabled={editDisabled}
+            onChange={(v) => saveField({ assembly_weekday: v })}
+          />
+        </div>
+
+        <label className="mb-1 block text-xs font-medium text-ink-soft">שעות ברירת מחדל לאסיפה</label>
+        <p className="mb-1.5 text-xs text-ink-soft">יתמלאו אוטומטית בכל אסיפה חדשה.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-xs text-ink-soft">שעת התחלה</label>
+            <input
+              type="time"
+              value={settings.assembly_start_time || ""}
+              disabled={editDisabled}
+              onChange={(e) => saveField({ assembly_start_time: e.target.value || null })}
+              className={INPUT_CLS}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-ink-soft">שעת סיום</label>
+            <input
+              type="time"
+              value={settings.assembly_end_time || ""}
+              disabled={editDisabled}
+              onChange={(e) => saveField({ assembly_end_time: e.target.value || null })}
+              className={INPUT_CLS}
+            />
+          </div>
         </div>
       </div>
 
