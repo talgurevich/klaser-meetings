@@ -158,7 +158,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       {/* DS §6.4 — turquoise header, brand on the right, actions on the left. */}
       <header className="sticky top-0 z-30 bg-turquoise text-white">
         <div className="flex h-16 w-full items-center justify-between gap-4 px-4 md:px-6">
-          <div className="flex shrink-0 items-baseline gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             {logoUrl && (
               <img
                 src={logoUrl}
