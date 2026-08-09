@@ -4,6 +4,7 @@ import { api, apiErrorMessage, type TopicPoolItem } from "../lib/api";
 import { KIND_LABELS } from "../lib/meetingLabels";
 import { useIsEditor } from "../components/Layout";
 import AddPoolTopicModal from "../components/AddPoolTopicModal";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 function fmtDate(d: string): string {
   return d.split("-").reverse().join("/");
@@ -23,6 +24,7 @@ export default function TopicPool() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [confirmItem, setConfirmItem] = useState<{ id: string; title: string } | null>(null);
 
   function load() {
     api
@@ -33,8 +35,7 @@ export default function TopicPool() {
 
   useEffect(load, []);
 
-  async function remove(id: string, title: string) {
-    if (!window.confirm(`למחוק את הנושא "${title}"? לא ניתן לשחזר.`)) return;
+  async function remove(id: string) {
     setBusy(true);
     try {
       await api.deleteTopicPoolItem(id);
@@ -43,6 +44,7 @@ export default function TopicPool() {
       setError(apiErrorMessage(err));
     } finally {
       setBusy(false);
+      setConfirmItem(null);
     }
   }
 
@@ -119,7 +121,7 @@ export default function TopicPool() {
             </div>
             {editor && (
               <button
-                onClick={() => remove(item.id, item.title)}
+                onClick={() => setConfirmItem({ id: item.id, title: item.title })}
                 disabled={busy}
                 className="shrink-0 rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
                 aria-label="מחק"
@@ -138,6 +140,20 @@ export default function TopicPool() {
             setAdding(false);
             load();
           }}
+        />
+      )}
+
+      {confirmItem && (
+        <ConfirmDialog
+          title="מחיקת נושא"
+          message={
+            <>
+              למחוק את הנושא "<strong>{confirmItem.title}</strong>"? לא ניתן לשחזר.
+            </>
+          }
+          busy={busy}
+          onConfirm={() => remove(confirmItem.id)}
+          onCancel={() => setConfirmItem(null)}
         />
       )}
     </div>

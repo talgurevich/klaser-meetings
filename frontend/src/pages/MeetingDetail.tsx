@@ -24,6 +24,7 @@ import LiveTopicCard from "../components/LiveTopicCard";
 import CloseTopicModal, { type CloseTopicValues } from "../components/CloseTopicModal";
 import MeetingDetailsForm from "../components/MeetingDetailsForm";
 import DocumentsPanel from "../components/DocumentsPanel";
+import ConfirmDialog from "../components/ConfirmDialog";
 import InviteesPanel from "../components/InviteesPanel";
 import InviteActions from "../components/InviteActions";
 import PublishModal from "../components/PublishModal";
@@ -118,6 +119,9 @@ export default function MeetingDetail() {
   // every topic card exposing its controls at once.
   const [meetingEditing, setMeetingEditing] = useState(false);
   const [finishEditModal, setFinishEditModal] = useState(false);
+  const [confirmDeleteTopic, setConfirmDeleteTopic] = useState<{ id: string; title: string } | null>(
+    null,
+  );
 
   async function distributeApproval(reset = false) {
     if (!id) return;
@@ -336,9 +340,8 @@ export default function MeetingDetail() {
     }
   }
 
-  async function removeTopic(topicId: string, title: string) {
+  async function removeTopic(topicId: string) {
     if (!id) return;
-    if (!window.confirm(`למחוק את הנושא "${title}"? לא ניתן לשחזר.`)) return;
     setBusy(true);
     setError(null);
     try {
@@ -348,6 +351,7 @@ export default function MeetingDetail() {
       setError(apiErrorMessage(err));
     } finally {
       setBusy(false);
+      setConfirmDeleteTopic(null);
     }
   }
 
@@ -785,7 +789,7 @@ export default function MeetingDetail() {
                     ↓
                   </button>
                   <button
-                    onClick={() => removeTopic(t.id, t.title)}
+                    onClick={() => setConfirmDeleteTopic({ id: t.id, title: t.title })}
                     disabled={busy}
                     className="rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-30"
                     aria-label="מחק נושא"
@@ -1112,6 +1116,20 @@ export default function MeetingDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {confirmDeleteTopic && (
+        <ConfirmDialog
+          title="מחיקת נושא"
+          message={
+            <>
+              למחוק את הנושא "<strong>{confirmDeleteTopic.title}</strong>"? לא ניתן לשחזר.
+            </>
+          }
+          busy={busy}
+          onConfirm={() => removeTopic(confirmDeleteTopic.id)}
+          onCancel={() => setConfirmDeleteTopic(null)}
+        />
       )}
     </div>
   );
