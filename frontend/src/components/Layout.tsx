@@ -159,17 +159,16 @@ export default function Layout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-30 bg-turquoise text-white">
         <div className="flex h-16 w-full items-center justify-between gap-4 px-4 md:px-6">
           <div className="flex shrink-0 items-baseline gap-3">
-            {logoUrl ? (
+            {logoUrl && (
               <img
                 src={logoUrl}
                 alt={user?.tenant_name || "לוגו"}
                 className="h-9 w-auto max-w-[180px] object-contain"
               />
-            ) : (
-              <span className="font-rubik text-2xl font-bold leading-none text-white">
-                {user?.tenant_name || "—"}
-              </span>
             )}
+            <span className="font-rubik text-2xl font-bold leading-none text-white">
+              {user?.tenant_name || "—"}
+            </span>
             {/* Product wordmark. Hebrew, so no `uppercase`/heavy tracking. */}
             <span className="hidden border-r border-white/25 pr-3 font-rubik text-sm font-bold text-white/75 sm:inline">
               אוגדן
