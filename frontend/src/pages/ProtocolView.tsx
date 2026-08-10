@@ -136,7 +136,18 @@ function SnapshotBody({ content }: { content: ProtocolSnapshot }) {
               <td>{i + 1}</td>
               <td>
                 <div className="topic-title">{t.title}</div>
-                {t.decision_text && <div className="decision">החלטה: {t.decision_text}</div>}
+                {(t.decision_outcome || t.decision_text) && (
+                  <div className="decision">
+                    החלטה:{" "}
+                    {t.decision_outcome
+                      ? t.decision_outcome === "approved"
+                        ? "אושר"
+                        : "לא אושר"
+                      : ""}
+                    {t.decision_outcome && t.decision_text ? " — " : ""}
+                    {t.decision_text}
+                  </div>
+                )}
                 {t.action_item && <div className="decision">משימה: {t.action_item}</div>}
               </td>
               <td>{t.duration_minutes ? `${t.duration_minutes} ד׳` : ""}</td>
@@ -301,7 +312,18 @@ export default function ProtocolView() {
                 <td>{i + 1}</td>
                 <td>
                   <div className="topic-title">{t.title}</div>
-                  {t.decision_text && <div className="decision">החלטה: {t.decision_text}</div>}
+                  {(t.decision_outcome || t.decision_text) && (
+                  <div className="decision">
+                    החלטה:{" "}
+                    {t.decision_outcome
+                      ? t.decision_outcome === "approved"
+                        ? "אושר"
+                        : "לא אושר"
+                      : ""}
+                    {t.decision_outcome && t.decision_text ? " — " : ""}
+                    {t.decision_text}
+                  </div>
+                )}
                   {t.action_item && <div className="decision">משימה: {t.action_item}</div>}
                 </td>
                 <td>{t.duration_minutes ? `${t.duration_minutes} ד׳` : ""}</td>

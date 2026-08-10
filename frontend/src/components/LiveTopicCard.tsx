@@ -181,6 +181,17 @@ export default function LiveTopicCard({
 
           {finished && (
             <div className="mt-4 flex flex-col gap-2 rounded-md bg-surface p-4 text-sm">
+              {topic.decision_outcome && (
+                <span
+                  className={`inline-flex w-fit rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                    topic.decision_outcome === "approved"
+                      ? "bg-success-soft text-success"
+                      : "bg-danger-soft text-danger"
+                  }`}
+                >
+                  {topic.decision_outcome === "approved" ? "אושר" : "לא אושר"}
+                </span>
+              )}
               {topic.decision_text && (
                 <p>
                   <span className="font-medium text-ink-soft">החלטה: </span>

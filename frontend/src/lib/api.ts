@@ -153,6 +153,7 @@ export type Topic = {
   sent_to_assembly_meeting_id: string | null;
   from_committee_meeting: boolean;
   decision_text: string | null;
+  decision_outcome: "approved" | "rejected" | null;
   action_item: string | null;
   action_item_owner: string | null;
   timer_elapsed: number | null;
@@ -506,6 +507,7 @@ export type ProtocolReceiptStatus = {
 export type ProtocolSnapshotTopic = {
   title: string;
   decision_text: string | null;
+  decision_outcome: "approved" | "rejected" | null;
   action_item: string | null;
   duration_minutes: number | null;
 };

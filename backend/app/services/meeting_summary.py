@@ -121,6 +121,7 @@ def build_protocol_snapshot(db: Session, meeting: Meeting) -> dict:
             {
                 "title": t.title,
                 "decision_text": t.decision_text,
+                "decision_outcome": t.decision_outcome,
                 "action_item": t.action_item,
                 "duration_minutes": t.duration_minutes,
             }
@@ -173,7 +174,13 @@ def _sections(meeting: Meeting) -> tuple[list[tuple[str, str]], list[tuple[str, 
     """(decisions, action_items) as (topic_title, text) pairs — private
     topics excluded, since this goes out publicly."""
     topics = sorted((t for t in meeting.topics if not t.is_private), key=lambda t: t.order)
-    decisions = [(t.title, t.decision_text) for t in topics if (t.decision_text or "").strip()]
+    outcome_he = {"approved": "אושר", "rejected": "לא אושר"}
+    decisions = []
+    for t in topics:
+        outcome = outcome_he.get(t.decision_outcome or "")
+        text = (t.decision_text or "").strip()
+        if outcome or text:
+            decisions.append((t.title, " — ".join(x for x in [outcome, text] if x)))
     actions = [(t.title, t.action_item) for t in topics if (t.action_item or "").strip()]
     return decisions, actions
 

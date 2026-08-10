@@ -1055,6 +1055,7 @@ export default function MeetingDetail() {
       {closingTopic && (
         <CloseTopicModal
           topicTitle={closingTopic.title}
+          initialOutcome={closingTopic.decision_outcome}
           initialDecision={closingTopic.decision_text || ""}
           initialActionItem={closingTopic.action_item || ""}
           initialActionOwner={closingTopic.action_item_owner || ""}

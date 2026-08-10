@@ -91,10 +91,12 @@ def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes
     for idx, t in enumerate(topics, start=1):
         parts = [f"**{t.title}**"]
         status_note = _STATUS_NOTE.get(t.status)
+        outcome = {"approved": "אושר", "rejected": "לא אושר"}.get(t.decision_outcome or "")
         if status_note:
             parts.append(status_note)
-        elif (t.decision_text or "").strip():
-            parts.append(f"החלטה: {t.decision_text}")
+        elif outcome or (t.decision_text or "").strip():
+            detail = (t.decision_text or "").strip()
+            parts.append("החלטה: " + " — ".join(x for x in [outcome, detail] if x))
         if (t.topic_notes or "").strip():
             parts.append(f"הערות: {t.topic_notes}")
         if (t.action_item or "").strip():

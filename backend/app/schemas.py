@@ -38,6 +38,7 @@ class TopicUpdate(BaseModel):
     order: int | None = None
     status: str | None = None  # pending | in_progress | done | deferred | skipped
     decision_text: str | None = None
+    decision_outcome: str | None = None  # approved | rejected
     action_item: str | None = None
     action_item_owner: str | None = None
     timer_elapsed: int | None = None
@@ -85,6 +86,7 @@ class TopicOut(BaseModel):
     sent_to_assembly_meeting_id: UUID | None
     from_committee_meeting: bool
     decision_text: str | None
+    decision_outcome: str | None
     action_item: str | None
     action_item_done: bool
     action_item_owner: str | None

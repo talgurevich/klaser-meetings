@@ -183,6 +183,9 @@ class Topic(Base):
         SQLUUID(as_uuid=True), ForeignKey("topics.id", ondelete="SET NULL")
     )
     decision_text: Mapped[str | None] = mapped_column(Text)
+    # Outcome of the decision when the topic was closed: "approved" / "rejected"
+    # (אושר / לא אושר), or null if no vote/decision was recorded.
+    decision_outcome: Mapped[str | None] = mapped_column(String)
     action_item: Mapped[str | None] = mapped_column(Text)
     # Completion flag for action_item, tracked separately from the topic's
     # own status — a topic can be "done" while its follow-up task is still
