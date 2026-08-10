@@ -4,6 +4,7 @@ import { useIsEditor } from "../components/Layout";
 import ContactModal from "../components/ContactModal";
 import {
   CheckMarkIcon,
+  DownloadIcon,
   DsButton,
   PageHeader,
   PencilIcon,
@@ -12,6 +13,27 @@ import {
   TrashIcon,
   UploadCloudIcon,
 } from "../components/klaser-ds";
+
+// A sample CSV (with a UTF-8 BOM so Excel opens Hebrew correctly) users can
+// fill in and re-upload. Headers match what the importer detects.
+function downloadTemplate() {
+  const csvCell = (v: string) => (/[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const rows = [
+    ["שם מלא", "כינוי", "נייד", "אימייל", "תפקיד", "תאריך הצטרפות", "פעיל", "חבר ועד"],
+    ["ישראל ישראלי", "", "050-000-0000", "israel@example.com", "יו״ר", "01/01/2024", "כן", "כן"],
+    ["שרה כהן", "", "052-111-1111", "sara@example.com", "גזברית", "", "כן", "לא"],
+    ["דוד לוי", "", "054-222-2222", "", "", "", "כן", "לא"],
+  ];
+  const csv = "﻿" + rows.map((r) => r.map(csvCell).join(",")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "אלפון-תבנית.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
 
 /** אלפון — the organisation's contacts. "חבר" is someone from the general
  * public (receives the published summary, can be a non-committee invitee).
@@ -106,6 +128,14 @@ export default function Participants() {
         actions={
           editor && (
             <>
+              <DsButton
+                variant="ghost"
+                size="compact"
+                onClick={downloadTemplate}
+                icon={<DownloadIcon />}
+              >
+                הורד תבנית
+              </DsButton>
               <DsButton
                 variant="secondary"
                 size="compact"
