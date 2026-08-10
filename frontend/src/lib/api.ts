@@ -649,6 +649,8 @@ export const api = {
     request<ProtocolReceiptStatus>(`/api/meetings/${id}/protocol-receipt-status`),
   getProtocolVersions: (id: string) =>
     request<ProtocolVersion[]>(`/api/meetings/${id}/protocol-versions`),
+  approveWithoutDistribution: (id: string) =>
+    request<Meeting>(`/api/meetings/${id}/approve-without-distribution`, { method: "POST" }),
   distributeProtocolApproval: (id: string, reset = false) =>
     request<ProtocolReceiptStatus>(
       `/api/meetings/${id}/distribute-protocol-approval${reset ? "?reset=true" : ""}`,

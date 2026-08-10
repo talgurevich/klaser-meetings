@@ -136,6 +136,22 @@ export default function MeetingDetail() {
     }
   }
 
+  // Approve the protocol directly, without distributing it to the committee
+  // or waiting for their confirmations.
+  async function approveWithoutSend() {
+    if (!id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.approveWithoutDistribution(id);
+      load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   // Open the previous meeting's protocol PDF (for the recurring "אישור
   // פרוטוקול ישיבה קודמת" topic). Opened in a new tab for on-screen review.
   async function showPreviousProtocol() {
@@ -958,6 +974,15 @@ export default function MeetingDetail() {
                 נדרש שלפחות מחצית מחברי הועד יאשרו את הפרוטוקול לפני מעבר לסטטוס אושר
               </p>
             )
+          )}
+          {!isAssembly && (
+            <button
+              onClick={approveWithoutSend}
+              disabled={busy || meetingEditing}
+              className="mt-2 w-full rounded-md border border-turquoise bg-white px-4 py-2.5 font-rubik text-sm font-semibold text-turquoise transition hover:bg-turquoise hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              אשר ללא שליחה לחברי הועד
+            </button>
           )}
         </div>
       ) : editor && meeting.status === "approved" ? (

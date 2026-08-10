@@ -597,6 +597,30 @@ def publish_meeting(
     return meeting
 
 
+@router.post("/{meeting_id}/approve-without-distribution", response_model=MeetingOut)
+def approve_without_distribution(
+    meeting_id: UUID,
+    db: Session = Depends(get_db),
+    user: IdentityUser = Depends(require_editor()),
+) -> MeetingOut:
+    """Mark a locked protocol approved directly — without distributing it to
+    the committee or waiting for their confirmations (the chair/secretary
+    approving on the spot). Only from pending_approval; records a protocol
+    version like the normal approval path."""
+    meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
+    if meeting.status != "pending_approval":
+        raise HTTPException(
+            status_code=409, detail="ניתן לאשר כך רק ישיבה שננעלה וממתינה לאישור."
+        )
+    meeting.status = "approved"
+    _record_protocol_version(db, meeting)
+    db.commit()
+    db.refresh(meeting)
+    out = MeetingOut.model_validate(meeting)
+    out.topics = [TopicOut.model_validate(t) for t in _visible_topics(meeting, user)]
+    return out
+
+
 @router.get("/{meeting_id}/previous", response_model=PreviousMeetingOut | None)
 def previous_meeting(
     meeting_id: UUID,
