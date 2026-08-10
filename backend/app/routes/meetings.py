@@ -8,6 +8,7 @@ sourced from klaser-identity on every request (see identity-cutover.md).
 """
 import datetime as dt
 import html
+import re
 from urllib.parse import quote
 from uuid import UUID
 
@@ -29,6 +30,7 @@ from app.models import (
     TopicPool,
 )
 from app.schemas import (
+    InvalidRecipient,
     InviteeRef,
     InvitePreviewOut,
     InvitePreviewTopic,
@@ -44,6 +46,7 @@ from app.schemas import (
     ProtocolVersionOut,
     PublishPreviewOut,
     PublishRecipient,
+    SendResult,
     TopicCreate,
     TopicOut,
     TopicReorderItem,
@@ -70,6 +73,15 @@ from app.services.permissions import is_editor, require_admin, require_editor
 from app.services.protocol_pdf import build_protocol_pdf
 
 router = APIRouter()
+
+# Pragmatic email-format check — catches the malformed addresses that would be
+# rejected before delivery (missing @, spaces, no domain dot), which is what
+# "כתובת לא תקינה" means to the user. Not a full RFC validator.
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def _valid_email(s: str | None) -> bool:
+    return bool(_EMAIL_RE.match((s or "").strip()))
 
 # Sentinel order for the pinned "last" recurring topic (see
 # _seed_recurring_topics) — high enough that any number of ordinarily
@@ -548,13 +560,13 @@ def publish_preview(
     )
 
 
-@router.post("/{meeting_id}/publish", response_model=MeetingOut)
+@router.post("/{meeting_id}/publish", response_model=SendResult)
 def publish_meeting(
     meeting_id: UUID,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
-) -> Meeting:
+) -> SendResult:
     """Publish to public: email the summary to every invitee + attached
     participant, then transition approved -> published. Guarded exactly
     like the plain stepper transition (must be 'approved' with at least one
@@ -575,7 +587,26 @@ def publish_meeting(
     except Exception:  # noqa: BLE001 — a PDF failure must not block publishing
         attachments = ()
 
-    recipient_emails = [r.email for r in summary.recipients]
+    # Split into deliverable vs. malformed addresses. Resolve each bad address
+    # back to its אלפון contact id (when it is one) so the UI can link to edit.
+    email_to_pid = {
+        (e or "").strip().lower(): pid
+        for pid, e in db.execute(
+            select(Participant.id, Participant.email).where(
+                Participant.tenant_id == meeting.tenant_id, Participant.email.isnot(None)
+            )
+        )
+        if e and e.strip()
+    }
+    recipient_emails: list[str] = []
+    invalid: list[InvalidRecipient] = []
+    for r in summary.recipients:
+        if _valid_email(r.email):
+            recipient_emails.append(r.email)
+        else:
+            invalid.append(
+                InvalidRecipient(id=email_to_pid.get(r.email.strip().lower()), name=r.name, email=r.email)
+            )
     subject, html_body, text_body = summary.subject, summary.html, summary.text
 
     def _send_all() -> None:
@@ -602,7 +633,9 @@ def publish_meeting(
 
     # Email each follow-up owner their task(s) once the meeting is locked.
     notify_action_owners(db, meeting, user.tenant_name or "")
-    return meeting
+    out = MeetingOut.model_validate(meeting)
+    out.topics = [TopicOut.model_validate(t) for t in _visible_topics(meeting, user)]
+    return SendResult(meeting=out, invalid_recipients=invalid)
 
 
 @router.post("/{meeting_id}/approve-without-distribution", response_model=MeetingOut)
@@ -1169,12 +1202,12 @@ def remove_invite(
     db.commit()
 
 
-@router.post("/{meeting_id}/invites/send-internal", response_model=MeetingOut)
+@router.post("/{meeting_id}/invites/send-internal", response_model=SendResult)
 def send_internal_invites(
     meeting_id: UUID,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
-) -> MeetingOut:
+) -> SendResult:
     """First call (status still draft) advances draft -> invited_internal
     and stamps invite_sent_internal_at. Any later call is a pure resend —
     same endpoint, no status change — matching the mockup's "שלח לחברי
@@ -1193,9 +1226,18 @@ def send_internal_invites(
 
     _send_pending_invites(db, meeting, user)
     db.refresh(meeting)
+    invalid = [
+        InvalidRecipient(
+            id=inv.invitee_id if inv.invitee_kind == "participant" else None,
+            name=inv.display_name or inv.email,
+            email=inv.email,
+        )
+        for inv in meeting.invites
+        if inv.email and not _valid_email(inv.email)
+    ]
     out = MeetingOut.model_validate(meeting)
     out.topics = [TopicOut.model_validate(t) for t in _visible_topics(meeting, user)]
-    return out
+    return SendResult(meeting=out, invalid_recipients=invalid)
 
 
 @router.post("/{meeting_id}/invites/send-public", response_model=MeetingOut)
@@ -1223,13 +1265,13 @@ def send_public_invites(
     return out
 
 
-@router.post("/{meeting_id}/distribute-alfon-invite", response_model=MeetingOut)
+@router.post("/{meeting_id}/distribute-alfon-invite", response_model=SendResult)
 def distribute_alfon_invite(
     meeting_id: UUID,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
-) -> MeetingOut:
+) -> SendResult:
     """Email a simplified invitation — informational only, no RSVP and no
     receipt confirmation — to every אלפון contact with an email address.
     Available once the committee invitation has been sent (no need to wait for
@@ -1249,12 +1291,19 @@ def distribute_alfon_invite(
     )
     seen: set[str] = set()
     recipients: list[tuple[str, str]] = []
+    invalid: list[InvalidRecipient] = []
     for p in parts:
         email = (p.email or "").strip()
-        if email and email.lower() not in seen:
-            seen.add(email.lower())
+        if not email:
+            continue
+        if email.lower() in seen:
+            continue
+        seen.add(email.lower())
+        if _valid_email(email):
             recipients.append((p.full_name, email))
-    if not recipients:
+        else:
+            invalid.append(InvalidRecipient(id=p.id, name=p.full_name, email=email))
+    if not recipients and not invalid:
         raise HTTPException(status_code=400, detail="אין באלפון אנשי קשר עם כתובת אימייל.")
 
     try:
@@ -1324,7 +1373,7 @@ def distribute_alfon_invite(
     db.refresh(meeting)
     out = MeetingOut.model_validate(meeting)
     out.topics = [TopicOut.model_validate(t) for t in _visible_topics(meeting, user)]
-    return out
+    return SendResult(meeting=out, invalid_recipients=invalid)
 
 
 @router.get("/{meeting_id}/invites/preview", response_model=InvitePreviewOut)

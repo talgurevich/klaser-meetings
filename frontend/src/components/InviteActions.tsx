@@ -1,6 +1,14 @@
 import { useEffect, useState } from "react";
-import { api, apiErrorMessage, type Meeting, type Participant, type TenantSettings } from "../lib/api";
+import {
+  api,
+  apiErrorMessage,
+  type InvalidRecipient,
+  type Meeting,
+  type Participant,
+  type TenantSettings,
+} from "../lib/api";
 import InvitePreviewModal from "./InvitePreviewModal";
+import InvalidEmailsModal from "./InvalidEmailsModal";
 import { ArrowCircleLeft, DsButton, DsModal, SearchIcon, SendIcon } from "./klaser-ds";
 
 /** The prep-phase action row — replaces the generic "העבר לסטטוס" stepper
@@ -29,6 +37,7 @@ export default function InviteActions({
   const [confirmingOpen, setConfirmingOpen] = useState(false);
   const [alfonReminderOpen, setAlfonReminderOpen] = useState(false);
   const [alfonMajorityOpen, setAlfonMajorityOpen] = useState(false);
+  const [invalidEmails, setInvalidEmails] = useState<InvalidRecipient[] | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [settings, setSettings] = useState<TenantSettings | null>(null);
 
@@ -66,9 +75,29 @@ export default function InviteActions({
     run(() => api.updateMeeting(meeting.id, { status: "active" }));
   }
 
+  // Run a send action that reports back any invalid-email recipients, and
+  // surface them to the organiser.
+  async function runSend(action: () => Promise<{ invalid_recipients: InvalidRecipient[] }>) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await action();
+      onChanged();
+      if (res.invalid_recipients.length > 0) setInvalidEmails(res.invalid_recipients);
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function sendInternal() {
+    return runSend(() => api.sendInternalInvites(meeting.id));
+  }
+
   function distributeAlfon() {
     setAlfonMajorityOpen(false);
-    return run(() => api.distributeAlfonInvite(meeting.id));
+    return runSend(() => api.distributeAlfonInvite(meeting.id));
   }
 
   function requestDistributeAlfon() {
@@ -130,7 +159,7 @@ export default function InviteActions({
         {meeting.status === "draft" && (
           <DsButton
             size="compact"
-            onClick={() => run(() => api.sendInternalInvites(meeting.id))}
+            onClick={sendInternal}
             disabled={busy || !hasInvitees}
             title={hasInvitees ? undefined : "יש להוסיף מוזמנים תחילה"}
             icon={<SendIcon />}
@@ -142,7 +171,7 @@ export default function InviteActions({
         {(meeting.status === "invited_internal" || meeting.status === "invited_public") && (
           <DsButton
             size="compact"
-            onClick={() => run(() => api.sendInternalInvites(meeting.id))}
+            onClick={sendInternal}
             disabled={busy || !hasInvitees}
             icon={<SendIcon />}
           >
@@ -232,8 +261,8 @@ export default function InviteActions({
             <>
               <button
                 onClick={async () => {
-                  await run(() => api.distributeAlfonInvite(meeting.id));
                   setAlfonReminderOpen(false);
+                  await distributeAlfon();
                 }}
                 disabled={busy}
                 className="inline-flex h-10 items-center gap-2 rounded-md bg-turquoise px-4 font-rubik text-sm font-bold text-white transition hover:bg-turquoise-dark disabled:opacity-50"
@@ -301,6 +330,10 @@ export default function InviteActions({
             לא כל חברי הועד אישרו את {kindNoun}. האם להפיץ הזמנה לאלפון בכל זאת?
           </p>
         </DsModal>
+      )}
+
+      {invalidEmails && (
+        <InvalidEmailsModal recipients={invalidEmails} onClose={() => setInvalidEmails(null)} />
       )}
     </div>
   );

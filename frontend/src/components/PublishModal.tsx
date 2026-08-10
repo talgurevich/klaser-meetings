@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, apiErrorMessage, type PublishPreview } from "../lib/api";
+import { api, apiErrorMessage, type InvalidRecipient, type PublishPreview } from "../lib/api";
 import {
   DsButton,
   DsModal,
@@ -20,7 +20,7 @@ export default function PublishModal({
 }: {
   meetingId: string;
   onCancel: () => void;
-  onPublished: () => void;
+  onPublished: (invalid: InvalidRecipient[]) => void;
 }) {
   const [preview, setPreview] = useState<PublishPreview | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -63,8 +63,8 @@ export default function PublishModal({
     setSending(true);
     setError(null);
     try {
-      await api.publishMeeting(meetingId);
-      onPublished();
+      const res = await api.publishMeeting(meetingId);
+      onPublished(res.invalid_recipients);
     } catch (err) {
       setError(apiErrorMessage(err));
       setSending(false);

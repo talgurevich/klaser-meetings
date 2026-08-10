@@ -257,6 +257,24 @@ class MeetingOut(BaseModel):
     invites: list[MeetingInviteOut] = Field(default_factory=list)
 
 
+class InvalidRecipient(BaseModel):
+    """A contact whose email couldn't be sent to because the address is
+    malformed. `id` is the אלפון Participant id when known (for deep-linking to
+    edit it), otherwise null."""
+
+    id: UUID | None
+    name: str
+    email: str
+
+
+class SendResult(BaseModel):
+    """Returned by the send actions (committee invite, אלפון distribution,
+    publish): the updated meeting plus any recipients skipped for a bad email."""
+
+    meeting: MeetingOut
+    invalid_recipients: list[InvalidRecipient] = Field(default_factory=list)
+
+
 class PublishRecipient(BaseModel):
     name: str
     email: str

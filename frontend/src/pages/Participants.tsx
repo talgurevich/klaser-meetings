@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api, apiErrorMessage, type Participant } from "../lib/api";
 import { useIsEditor } from "../components/Layout";
 import ContactModal from "../components/ContactModal";
@@ -60,6 +61,18 @@ export default function Participants() {
   }
 
   useEffect(load, []);
+
+  // Deep-link: /participants?edit=<id> auto-opens that contact for editing
+  // (used by the "invalid emails" prompt after a send).
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || !items) return;
+    const contact = items.find((p) => p.id === editId);
+    if (contact) setModal({ contact });
+    setSearchParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, searchParams]);
 
   async function remove(id: string) {
     setBusy(true);

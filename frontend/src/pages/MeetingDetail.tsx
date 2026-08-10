@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import {
   api,
   apiErrorMessage,
+  type InvalidRecipient,
   type Meeting,
   type MeetingRecording,
   type MeetingStatus,
@@ -28,6 +29,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import InviteesPanel from "../components/InviteesPanel";
 import InviteActions from "../components/InviteActions";
 import PublishModal from "../components/PublishModal";
+import InvalidEmailsModal from "../components/InvalidEmailsModal";
 import StatusStepper from "../components/StatusStepper";
 import {
   DownloadIcon,
@@ -110,6 +112,7 @@ export default function MeetingDetail() {
   const [closingTopic, setClosingTopic] = useState<Topic | null>(null);
   const [closeInitialNotes, setCloseInitialNotes] = useState("");
   const [publishing, setPublishing] = useState(false);
+  const [invalidEmails, setInvalidEmails] = useState<InvalidRecipient[] | null>(null);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [prevMeeting, setPrevMeeting] = useState<PreviousMeeting | null>(null);
   const [prevPdfBusy, setPrevPdfBusy] = useState(false);
@@ -1099,11 +1102,16 @@ export default function MeetingDetail() {
         <PublishModal
           meetingId={meeting.id}
           onCancel={() => setPublishing(false)}
-          onPublished={() => {
+          onPublished={(invalid) => {
             setPublishing(false);
             load();
+            if (invalid.length > 0) setInvalidEmails(invalid);
           }}
         />
+      )}
+
+      {invalidEmails && (
+        <InvalidEmailsModal recipients={invalidEmails} onClose={() => setInvalidEmails(null)} />
       )}
 
       {finishEditModal && (

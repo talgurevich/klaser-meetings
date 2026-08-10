@@ -405,6 +405,17 @@ export type MeetingRecording = {
   created_at: string;
 };
 
+export type InvalidRecipient = {
+  id: string | null; // אלפון participant id, when known
+  name: string;
+  email: string;
+};
+
+export type SendResult = {
+  meeting: Meeting;
+  invalid_recipients: InvalidRecipient[];
+};
+
 export type MeetingDocument = {
   id: string;
   meeting_id: string;
@@ -639,9 +650,9 @@ export const api = {
   getPublishPreview: (id: string) =>
     request<PublishPreview>(`/api/meetings/${id}/publish-preview`),
   publishMeeting: (id: string) =>
-    request<Meeting>(`/api/meetings/${id}/publish`, { method: "POST" }),
+    request<SendResult>(`/api/meetings/${id}/publish`, { method: "POST" }),
   distributeAlfonInvite: (id: string) =>
-    request<Meeting>(`/api/meetings/${id}/distribute-alfon-invite`, { method: "POST" }),
+    request<SendResult>(`/api/meetings/${id}/distribute-alfon-invite`, { method: "POST" }),
   getAttendance: (id: string) => request<string[]>(`/api/meetings/${id}/attendance`),
   getPreviousMeeting: (id: string) =>
     request<PreviousMeeting | null>(`/api/meetings/${id}/previous`),
@@ -849,7 +860,7 @@ export const api = {
   removeInvite: (meetingId: string, inviteId: string) =>
     request<void>(`/api/meetings/${meetingId}/invites/${inviteId}`, { method: "DELETE" }),
   sendInternalInvites: (meetingId: string) =>
-    request<Meeting>(`/api/meetings/${meetingId}/invites/send-internal`, { method: "POST" }),
+    request<SendResult>(`/api/meetings/${meetingId}/invites/send-internal`, { method: "POST" }),
   sendPublicInvites: (meetingId: string) =>
     request<Meeting>(`/api/meetings/${meetingId}/invites/send-public`, { method: "POST" }),
   previewInvite: (meetingId: string, inviteeId?: string) =>
