@@ -14,7 +14,9 @@ contacts. Editing/removing an existing entry — and bulk CSV import — is
 editor-gated.
 """
 import csv
+import datetime as dt
 import io
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
@@ -120,16 +122,94 @@ def create_participant(
     return _to_out(participant, _system_user_emails(user.tenant_id))
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# CSV import — resilient header detection. Rather than requiring an exact set
+# of Hebrew headers, we match each column in the file to a canonical field by
+# a list of aliases (Hebrew + English), most-specific first, so exports from
+# different tools ("שם מלא" vs. "שם פרטי"/"שם משפחה", "טלפון" vs. "נייד",
+# "מייל" vs. "אימייל", …) all import correctly.
+# ─────────────────────────────────────────────────────────────────────────
+
+# (canonical field, aliases) — ORDER MATTERS: specific fields are matched
+# before generic ones so e.g. "שם פרטי" is claimed by first_name before the
+# bare "שם" alias of full_name can grab it.
+_FIELD_ALIASES: list[tuple[str, list[str]]] = [
+    ("email", ["אימייל", "מייל", "דוא\"ל", "דואל", "דואר אלקטרוני", "email", "e-mail", "mail"]),
+    ("phone", ["נייד", "טלפון", "טל", "פלאפון", "מספר טלפון", "phone", "mobile", "cell", "tel"]),
+    ("first_name", ["שם פרטי", "פרטי", "first name", "firstname", "first"]),
+    ("last_name", ["שם משפחה", "משפחה", "last name", "lastname", "surname", "family", "last"]),
+    ("nickname", ["כינוי", "nickname", "nick"]),
+    ("role", ["תפקיד", "תפקידים", "role", "position", "title"]),
+    ("edit_permission", ["הרשאות עריכה", "הרשאת עריכה", "חבר ועד", "ועד", "עורך", "editor", "committee"]),
+    ("public_send", ["פעיל", "חבר", "תפוצה", "שליחה", "פרסום", "active", "member", "public"]),
+    ("join_date", ["תאריך הצטרפות", "הצטרפות", "join date", "joined", "תאריך"]),
+    ("full_name", ["שם מלא", "שם ומשפחה", "שם החבר", "full name", "fullname", "name", "שם"]),
+]
+
+_TRUE_TOKENS = {"כן", "yes", "y", "true", "1", "v", "✓", "x", "+", "נכון", "כ"}
+_FALSE_TOKENS = {"לא", "no", "n", "false", "0", "-", "✗", "אין"}
+
+
+def _norm(h: str | None) -> str:
+    return re.sub(r"\s+", " ", (h or "").replace("﻿", "").strip().lower())
+
+
+def _map_headers(fieldnames: list[str]) -> dict[str, str]:
+    """canonical field -> the actual header in this file. Each header is
+    claimed by at most one field; specific fields win (see order above)."""
+    headers = [h for h in fieldnames if h]
+    norm = {h: _norm(h) for h in headers}
+    used: set[str] = set()
+    out: dict[str, str] = {}
+    for field, aliases in _FIELD_ALIASES:
+        na = [_norm(a) for a in aliases]
+        for h in headers:
+            if h in used:
+                continue
+            nh = norm[h]
+            if any(nh == a or a in nh for a in na):
+                out[field] = h
+                used.add(h)
+                break
+    return out
+
+
+def _bool_token(v: str, default: bool) -> bool:
+    s = _norm(v)
+    if s in _TRUE_TOKENS:
+        return True
+    if s in _FALSE_TOKENS:
+        return False
+    return default
+
+
+def _parse_date(v: str) -> dt.date | None:
+    s = (v or "").strip()
+    if not s:
+        return None
+    for fmt in ("%d/%m/%Y", "%d.%m.%Y", "%d-%m-%Y", "%Y-%m-%d", "%m/%d/%Y"):
+        try:
+            return dt.datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _digits(v: str | None) -> str:
+    return re.sub(r"\D", "", v or "")
+
+
 @router.post("/import", response_model=ParticipantImportResult)
 def import_participants(
     file: UploadFile,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
 ) -> ParticipantImportResult:
-    """Bulk-import contacts from a CSV with Hebrew headers (שם משפחה, שם
-    פרטי, כינוי, נייד, אימייל, תפקיד, פעיל). "הרשאות עריכה" in the file is
-    ignored — it's derived from the email. Rows whose email already exists
-    in the tenant are skipped so re-uploading doesn't duplicate."""
+    """Bulk-import contacts from a CSV. Column headers are matched fuzzily to
+    fields (full/first/last name, nickname, phone, email, role, active,
+    edit-permission, join date) — so many export formats work. Duplicate rows
+    are skipped: by email when present, otherwise by name + phone, so
+    re-uploading the same file doesn't create duplicates."""
     raw = file.file.read()
     try:
         text = raw.decode("utf-8-sig")
@@ -137,52 +217,74 @@ def import_participants(
         text = raw.decode("cp1255", errors="replace")  # legacy Hebrew fallback
 
     reader = csv.DictReader(io.StringIO(text))
+    cols = _map_headers(reader.fieldnames or [])
     tenant_id = UUID(user.tenant_id)
 
-    existing_emails = {
-        e.strip().lower()
-        for (e,) in db.execute(
-            select(Participant.email).where(
-                Participant.tenant_id == tenant_id, Participant.email.isnot(None)
-            )
-        )
-        if e and e.strip()
-    }
+    def g(row: dict, field: str) -> str:
+        header = cols.get(field)
+        return (row.get(header) or "").strip() if header else ""
 
-    def g(row: dict, key: str) -> str:
-        return (row.get(key) or "").strip()
+    # Existing keys for dedupe: emails, plus (name, phone-digits) for
+    # emailless contacts so re-uploading a phone-only list doesn't duplicate.
+    existing_emails: set[str] = set()
+    existing_np: set[tuple[str, str]] = set()
+    for name, phone, email in db.execute(
+        select(Participant.full_name, Participant.phone, Participant.email).where(
+            Participant.tenant_id == tenant_id
+        )
+    ):
+        if email and email.strip():
+            existing_emails.add(email.strip().lower())
+        else:
+            existing_np.add((_norm(name), _digits(phone)))
 
     imported = 0
     skipped = 0
-    seen_in_file: set[str] = set()
+    seen_emails: set[str] = set()
+    seen_np: set[tuple[str, str]] = set()
     for row in reader:
-        first = g(row, "שם פרטי")
-        last = g(row, "שם משפחה")
-        email = g(row, "אימייל")
-        if not first and not last and not email:
-            continue  # blank line
-        key = email.lower()
-        if email and (key in existing_emails or key in seen_in_file):
-            skipped += 1
+        first = g(row, "first_name")
+        last = g(row, "last_name")
+        full = g(row, "full_name")
+        email = g(row, "email")
+        phone = g(row, "phone")
+        role = g(row, "role")
+        name = _compose_full_name(full or None, first, last, email)
+
+        # Skip only truly blank rows (nothing identifying at all).
+        if not (full or first or last or email or phone):
             continue
+
         if email:
-            seen_in_file.add(key)
+            key = email.lower()
+            if key in existing_emails or key in seen_emails:
+                skipped += 1
+                continue
+            seen_emails.add(key)
+        else:
+            np = (_norm(name), _digits(phone))
+            if np in existing_np or np in seen_np:
+                skipped += 1
+                continue
+            seen_np.add(np)
+
         db.add(
             Participant(
                 tenant_id=tenant_id,
-                full_name=_compose_full_name(None, first, last, email),
+                full_name=name,
                 first_name=first or None,
                 last_name=last or None,
-                nickname=g(row, "כינוי") or None,
-                phone=g(row, "נייד") or None,
+                nickname=g(row, "nickname") or None,
+                phone=phone or None,
                 email=email or None,
-                role=g(row, "תפקיד") or None,
-                roles=[g(row, "תפקיד")] if g(row, "תפקיד") else None,
-                # "פעיל" == public-send flag (one and the same). Absent/כן -> on.
-                public_send=g(row, "פעיל") != "לא",
-                # CSV's "הרשאות עריכה" column = the manual override. Email-based
-                # permission still applies on top of it (derived at read time).
-                edit_permission=g(row, "הרשאות עריכה") == "כן",
+                role=role or None,
+                roles=[role] if role else None,
+                join_date=_parse_date(g(row, "join_date")),
+                # "פעיל"/"חבר" — public-send flag; absent or affirmative => on.
+                public_send=_bool_token(g(row, "public_send"), True),
+                # "הרשאות עריכה"/"חבר ועד" manual override (email match still
+                # applies on top, derived at read time).
+                edit_permission=_bool_token(g(row, "edit_permission"), False),
                 created_by_user_id=UUID(user.user_id),
             )
         )
