@@ -112,6 +112,8 @@ def _to_out(row: TenantSettings) -> TenantSettingsOut:
         assembly_recurring_topic_first_duration=row.assembly_recurring_topic_first_duration,
         assembly_recurring_topic_last_title=row.assembly_recurring_topic_last_title,
         assembly_recurring_topic_last_duration=row.assembly_recurring_topic_last_duration,
+        meeting_require_approval_before_invite=row.meeting_require_approval_before_invite,
+        assembly_require_approval_before_invite=row.assembly_require_approval_before_invite,
         role_titles=row.role_titles or [],
         signatories=[
             SignatoryOut(
