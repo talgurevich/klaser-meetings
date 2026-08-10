@@ -11,7 +11,7 @@ import html
 from urllib.parse import quote
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Response, UploadFile
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
@@ -551,14 +551,15 @@ def publish_preview(
 @router.post("/{meeting_id}/publish", response_model=MeetingOut)
 def publish_meeting(
     meeting_id: UUID,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
 ) -> Meeting:
     """Publish to public: email the summary to every invitee + attached
     participant, then transition approved -> published. Guarded exactly
     like the plain stepper transition (must be 'approved' with at least one
-    protocol approval). A mail failure never blocks publishing — _send is
-    fire-and-forget per recipient."""
+    protocol approval). The summary emails go out in a background task so the
+    request returns immediately even for a large recipient list."""
     meeting = _get_meeting_or_404(db, meeting_id, UUID(user.tenant_id))
     if meeting.status != "approved":
         raise HTTPException(status_code=409, detail="ניתן לפרסם רק ישיבה שאושרה.")
@@ -573,14 +574,21 @@ def publish_meeting(
         )
     except Exception:  # noqa: BLE001 — a PDF failure must not block publishing
         attachments = ()
-    for r in summary.recipients:
-        mail.send_prebuilt(
-            to_email=r.email,
-            subject=summary.subject,
-            html_body=summary.html,
-            text_body=summary.text,
-            attachments=attachments,
-        )
+
+    recipient_emails = [r.email for r in summary.recipients]
+    subject, html_body, text_body = summary.subject, summary.html, summary.text
+
+    def _send_all() -> None:
+        for to_email in recipient_emails:
+            mail.send_prebuilt(
+                to_email=to_email,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+                attachments=attachments,
+            )
+
+    background_tasks.add_task(_send_all)
 
     now = dt.datetime.now(dt.timezone.utc)
     meeting.status = "published"
@@ -1218,13 +1226,15 @@ def send_public_invites(
 @router.post("/{meeting_id}/distribute-alfon-invite", response_model=MeetingOut)
 def distribute_alfon_invite(
     meeting_id: UUID,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     user: IdentityUser = Depends(require_editor()),
 ) -> MeetingOut:
     """Email a simplified invitation — informational only, no RSVP and no
     receipt confirmation — to every אלפון contact with an email address.
     Available once the committee invitation has been sent (no need to wait for
-    the committee to confirm)."""
+    the committee to confirm). The emails are sent in a background task so the
+    request returns immediately even for a large אלפון."""
     tenant_id = UUID(user.tenant_id)
     meeting = _get_meeting_or_404(db, meeting_id, tenant_id)
 
@@ -1273,6 +1283,10 @@ def distribute_alfon_invite(
     def esc(s: str | None) -> str:
         return html.escape(s or "")
 
+    subject = f"הזמנה ל{kind_he}{num}"
+    # Build every message up front (no network here — this is fast), then hand
+    # the actual sending to a background task so the request returns at once.
+    messages: list[tuple[str, str, str]] = []
     for name, email in recipients:
         body_html = mail._wrap_html(
             f"<h1>הזמנה ל{esc(kind_he)}{esc(num)}</h1>"
@@ -1291,13 +1305,19 @@ def distribute_alfon_invite(
             + ("\nסדר יום:\n" + "\n".join(f"- {t.title}" for t in topics) if topics else "")
             + f"\n\n— {org}"
         )
-        mail.send_prebuilt(
-            to_email=email,
-            subject=f"הזמנה ל{kind_he}{num}",
-            html_body=body_html,
-            text_body=body_text,
-            attachments=attachments,
-        )
+        messages.append((email, body_html, body_text))
+
+    def _send_all() -> None:
+        for to_email, html_body, text_body in messages:
+            mail.send_prebuilt(
+                to_email=to_email,
+                subject=subject,
+                html_body=html_body,
+                text_body=text_body,
+                attachments=attachments,
+            )
+
+    background_tasks.add_task(_send_all)
 
     meeting.invite_sent_public_at = dt.datetime.now(dt.timezone.utc)
     db.commit()

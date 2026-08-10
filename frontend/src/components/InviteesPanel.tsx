@@ -6,7 +6,9 @@ import {
   DsButton,
   DsCard,
   DsCheckbox,
+  DsModal,
   DsTag,
+  SearchIcon,
   SectionHeader,
   StatusPill,
   type StatusVariant,
@@ -54,6 +56,8 @@ export default function InviteesPanel({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   // Invitees come only from the אלפון now — being an identity/system user is
   // unrelated to meeting invites. Committee members (flagged 'חבר ועד') are
@@ -111,6 +115,48 @@ export default function InviteesPanel({
 
   const confirmedCount = invites.filter((i) => i.status === "confirmed_attend").length;
 
+  const q = query.trim().toLowerCase();
+  const matches = (participants ? availableParticipants : []).filter(
+    (p) =>
+      !q ||
+      [p.full_name, p.email, p.phone, p.roles.join(" ")]
+        .filter(Boolean)
+        .some((f) => f!.toLowerCase().includes(q)),
+  );
+
+  function pickRow(p: Participant) {
+    const key = `participant:${p.id}`;
+    return (
+      <div
+        key={key}
+        onClick={() => toggleSelected(key)}
+        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm transition hover:bg-turquoise/5"
+      >
+        <DsCheckbox checked={selected.has(key)} onChange={() => toggleSelected(key)} ariaLabel={p.full_name} />
+        <span className="flex min-w-0 flex-wrap items-center gap-2">
+          <span>{p.full_name}</span>
+          {p.edit_permission && <DsTag>חבר ועד</DsTag>}
+          {p.email && (
+            <span className="truncate text-xs text-ink-soft" dir="ltr">
+              {p.email}
+            </span>
+          )}
+        </span>
+      </div>
+    );
+  }
+
+  const addButtons = selected.size > 0 && (
+    <div className="mt-2 flex gap-2">
+      <DsButton size="micro" onClick={addSelected} disabled={busy}>
+        הוסף ({selected.size})
+      </DsButton>
+      <DsButton variant="ghost" size="micro" onClick={() => setSelected(new Set())} disabled={busy}>
+        נקה בחירה
+      </DsButton>
+    </div>
+  );
+
   return (
     <DsCard interactive={false} className="mb-4 p-4">
       <SectionHeader>מוזמנים ({invites.length})</SectionHeader>
@@ -125,46 +171,84 @@ export default function InviteesPanel({
           ) : availableParticipants.length === 0 ? (
             <p className="text-sm text-ink-soft">כל אנשי האלפון כבר מוזמנים.</p>
           ) : (
-            <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+            <>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft">
+                    <SearchIcon />
+                  </span>
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="חיפוש שם, אימייל או טלפון…"
+                    className="w-full rounded-md border border-line bg-white py-2 pr-9 pl-3 font-rubik text-sm outline-none transition focus:border-turquoise focus:ring-2 focus:ring-turquoise/20"
+                  />
+                </div>
+                <DsButton variant="secondary" size="compact" onClick={() => setPickerOpen(true)}>
+                  עיין ברשימה
+                </DsButton>
+              </div>
 
-              {availableParticipants.map((p) => {
-                const key = `participant:${p.id}`;
-                return (
-                  <div
-                    key={key}
-                    onClick={() => toggleSelected(key)}
-                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1 text-sm transition hover:bg-turquoise/5"
-                  >
-                    <DsCheckbox
-                      checked={selected.has(key)}
-                      onChange={() => toggleSelected(key)}
-                      ariaLabel={p.full_name}
-                    />
-                    <span className="flex items-center gap-2">
-                      <span>{p.full_name}</span>
-                      {p.edit_permission && <DsTag>חבר ועד</DsTag>}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+              {q && (
+                <div className="mt-2 max-h-56 overflow-y-auto rounded-md border border-line">
+                  {matches.length === 0 ? (
+                    <p className="px-2 py-2 text-sm text-ink-soft">לא נמצאו תוצאות.</p>
+                  ) : (
+                    matches.slice(0, 50).map(pickRow)
+                  )}
+                </div>
+              )}
+
+              {addButtons}
+            </>
           )}
-          <div className="mt-2 flex gap-2">
-            <DsButton size="micro" onClick={addSelected} disabled={busy || selected.size === 0}>
-              הוסף ({selected.size})
-            </DsButton>
-            {selected.size > 0 && (
+        </div>
+      )}
+
+      {pickerOpen && participants && (
+        <DsModal
+          title="בחירה מהאלפון"
+          subtitle={`${availableParticipants.length} אנשי קשר זמינים`}
+          onClose={() => setPickerOpen(false)}
+          actions={
+            <>
               <DsButton
-                variant="ghost"
-                size="micro"
-                onClick={() => setSelected(new Set())}
-                disabled={busy}
+                size="compact"
+                disabled={busy || selected.size === 0}
+                onClick={async () => {
+                  await addSelected();
+                  setPickerOpen(false);
+                }}
               >
-                נקה בחירה
+                הוסף ({selected.size})
               </DsButton>
+              <DsButton variant="ghost" size="compact" onClick={() => setPickerOpen(false)}>
+                סגור
+              </DsButton>
+            </>
+          }
+        >
+          <div className="relative mb-3">
+            <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-soft">
+              <SearchIcon />
+            </span>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="חיפוש…"
+              className="w-full rounded-md border border-line bg-white py-2 pr-9 pl-3 font-rubik text-sm outline-none transition focus:border-turquoise focus:ring-2 focus:ring-turquoise/20"
+            />
+          </div>
+          <div className="flex max-h-[55vh] flex-col gap-0.5 overflow-y-auto">
+            {matches.length === 0 ? (
+              <p className="text-sm text-ink-soft">לא נמצאו תוצאות.</p>
+            ) : (
+              matches.map(pickRow)
             )}
           </div>
-        </div>
+        </DsModal>
       )}
 
       {invites.length === 0 ? (
