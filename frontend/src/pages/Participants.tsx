@@ -8,6 +8,7 @@ import {
   PageHeader,
   PencilIcon,
   PlusIcon,
+  SearchIcon,
   TrashIcon,
   UploadCloudIcon,
 } from "../components/klaser-ds";
@@ -27,6 +28,7 @@ export default function Participants() {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
 
   function load() {
     api
@@ -77,6 +79,17 @@ export default function Participants() {
       <span className="text-ink-soft">—</span>
     );
   const fmtDate = (d: string | null) => (d ? d.split("-").reverse().join("/") : "—");
+
+  // Client-side search over name / email / phone / roles.
+  const q = query.trim().toLowerCase();
+  const filtered =
+    items?.filter((p) =>
+      !q
+        ? true
+        : [p.full_name, p.email, p.phone, p.roles.join(" ")]
+            .filter(Boolean)
+            .some((f) => f!.toLowerCase().includes(q)),
+    ) ?? null;
 
   return (
     <div className="max-w-5xl">
@@ -132,10 +145,28 @@ export default function Participants() {
         </div>
       )}
 
+      {items && items.length > 0 && (
+        <div className="relative mb-4 max-w-sm">
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-ink-soft">
+            <SearchIcon />
+          </span>
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="חיפוש לפי שם, אימייל, טלפון או תפקיד…"
+            className="w-full rounded-md border border-line bg-white py-2.5 pr-10 pl-3 font-rubik text-sm text-ink outline-none transition focus:border-turquoise focus:ring-2 focus:ring-turquoise/20"
+          />
+        </div>
+      )}
+
       {items === null && !error && <p className="animate-pulse text-sm text-ink-soft">טוען…</p>}
       {items && items.length === 0 && <p className="text-ink-soft">האלפון ריק.</p>}
+      {items && items.length > 0 && filtered && filtered.length === 0 && (
+        <p className="text-ink-soft">לא נמצאו תוצאות עבור "{query}".</p>
+      )}
 
-      {items && items.length > 0 && (
+      {filtered && filtered.length > 0 && (
         <div className="overflow-x-auto rounded-lg border border-line bg-white shadow-[0px_1px_0_rgba(0,0,0,0.03),0px_4px_16px_-4px_rgba(0,0,0,0.06)]">
           <table className="w-full text-right text-sm">
             <thead className="bg-surface font-rubik text-xs uppercase tracking-[0.1em] text-ink-soft">
@@ -151,7 +182,7 @@ export default function Participants() {
               </tr>
             </thead>
             <tbody>
-              {items.map((p) => (
+              {filtered.map((p) => (
                 <tr key={p.id} className="border-t border-line transition hover:bg-turquoise/5">
                   <td className="px-3 py-2">{p.full_name}</td>
                   <td className="px-3 py-2" dir="ltr">{p.phone || "—"}</td>
