@@ -118,7 +118,7 @@ export default function Users() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader eyebrow="ניהול" title="משתמשים" />
+      <PageHeader title="משתמשים" />
 
       <form onSubmit={invite}>
         <DsCard interactive={false} className="mb-8 p-4">

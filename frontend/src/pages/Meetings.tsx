@@ -88,7 +88,6 @@ export default function Meetings({ section = "board" }: { section?: "board" | "a
   return (
     <div>
 <PageHeader
-        eyebrow={isAssembly ? "אסיפה" : "ישיבה"}
         title={isAssembly ? "אסיפות" : "ישיבות"}
         actions={
           editor && (

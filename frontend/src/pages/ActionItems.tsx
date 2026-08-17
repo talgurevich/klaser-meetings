@@ -168,7 +168,7 @@ export default function ActionItems() {
 
   return (
     <div className="max-w-3xl">
-      <PageHeader eyebrow="מעקב" title="משימות לביצוע" />
+      <PageHeader title="משימות לביצוע" />
 
       {error && (
         <div className="mb-4 rounded-md border border-danger/30 bg-danger-soft p-4 text-sm text-danger">

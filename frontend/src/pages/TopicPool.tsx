@@ -48,7 +48,6 @@ export default function TopicPool() {
   return (
     <div className="max-w-3xl">
       <PageHeader
-        eyebrow="מאגר"
         title="מאגר נושאים"
         actions={
           <DsButton size="compact" onClick={() => setAdding(true)} icon={<PlusIcon />}>

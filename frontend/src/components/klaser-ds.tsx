@@ -450,14 +450,12 @@ export function SectionHeader({
   );
 }
 
-/** Eyebrow (H5) + H2 pair used at the top of a page or top-level section. */
+/** H2 used at the top of a page or top-level section. */
 export function PageHeader({
-  eyebrow,
   title,
   actions,
   description,
 }: {
-  eyebrow?: ReactNode;
   title: ReactNode;
   actions?: ReactNode;
   description?: ReactNode;
@@ -465,11 +463,6 @@ export function PageHeader({
   return (
     <div className="flex flex-wrap items-end gap-4 mb-8">
       <div className="flex-1 min-w-0">
-        {eyebrow && (
-          <div className="font-rubik font-bold text-[11px] uppercase tracking-[0.25em] text-turquoise mb-2 text-right">
-            {eyebrow}
-          </div>
-        )}
         <h1 className="font-rubik font-bold text-[32px] leading-tight text-ink text-right">
           {title}
         </h1>

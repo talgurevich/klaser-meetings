@@ -129,7 +129,6 @@ export default function Participants() {
   return (
     <div className="max-w-5xl">
       <PageHeader
-        eyebrow="קהילה"
         title="אלפון"
         description={
           <>

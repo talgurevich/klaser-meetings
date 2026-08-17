@@ -133,7 +133,6 @@ export default function Home() {
   return (
     <div>
       <PageHeader
-        eyebrow="בית"
         title={`שלום ${user?.display_name || user?.email || ""}`}
         actions={
           editor && (
