@@ -68,7 +68,7 @@ from app.services.meeting_summary import (
     build_publish_summary,
     notify_action_owners,
 )
-from app.services.meeting_utils import generate_meeting_number
+from app.services.meeting_utils import generate_meeting_number, meeting_number_sort_key
 from app.services.permissions import is_editor, require_admin, require_editor
 from app.services.protocol_pdf import build_protocol_pdf
 
@@ -344,7 +344,14 @@ def list_meetings(
     if date_to:
         stmt = stmt.where(Meeting.date <= date_to)
     stmt = stmt.order_by(Meeting.date.desc())
-    return list(db.execute(stmt).scalars().all())
+    meetings = list(db.execute(stmt).scalars().all())
+    # The list's leading column is the meeting number, so order by it rather
+    # than by date. Sorted here instead of in SQL because `number` is free
+    # text of the form "N-YY" — a string ORDER BY would put "10-26" before
+    # "2-26". The stable sort keeps the date ordering above as the tiebreaker
+    # for meetings whose number is unset or doesn't parse.
+    meetings.sort(key=lambda m: meeting_number_sort_key(m.number), reverse=True)
+    return meetings
 
 
 @router.get("/{meeting_id}", response_model=MeetingOut)

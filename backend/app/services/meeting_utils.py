@@ -31,3 +31,16 @@ def generate_meeting_number(db: Session, *, tenant_id: UUID, kind: str, on: date
         )
     ).scalar_one()
     return f"{count + 1}-{d.year % 100:02d}"
+
+
+def meeting_number_sort_key(number: str | None) -> tuple[int, int, int]:
+    """Ascending sort key for the "N-YY" display number: (has_number, YY, N).
+
+    The number is editable free text, so anything that doesn't parse (and
+    anything unset) sorts alongside the empty case rather than raising.
+    """
+    n, _, yy = (number or "").partition("-")
+    n, yy = n.strip(), yy.strip()
+    if not n.isdigit() or not yy.isdigit():
+        return (0, 0, 0)
+    return (1, int(yy), int(n))
