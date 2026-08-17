@@ -25,7 +25,6 @@ export default function AddPoolTopicModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState("10");
-  const [priority, setPriority] = useState("0");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
 
@@ -67,7 +66,6 @@ export default function AddPoolTopicModal({
         description: description.trim() || null,
         duration_minutes: duration ? Number(duration) : null,
         invited_guests: selected.size ? Array.from(selected) : null,
-        priority: priority ? Number(priority) : null,
       });
       onCreated();
     } catch (err) {
@@ -160,10 +158,6 @@ export default function AddPoolTopicModal({
             )}
           </div>
         </div>
-
-        <Field label="עדיפות">
-          <DsInput type="number" value={priority} onChange={setPriority} />
-        </Field>
 
         {error && <p className="text-sm text-danger">{error}</p>}
       </div>
