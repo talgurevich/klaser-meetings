@@ -134,22 +134,22 @@ export default function ActionItems() {
             />
           </span>
           <span>
+            <Link
+              to={`/meetings/${item.meeting_id}`}
+              className="block font-rubik text-xs text-ink-soft transition hover:text-turquoise hover:underline"
+            >
+              {KIND_LABELS[item.meeting_kind]}
+              {item.meeting_number && ` · מס׳ ${item.meeting_number}`} · {item.meeting_date} ·{" "}
+              {item.topic_title}
+            </Link>
             <p
-              className={`flex flex-wrap items-center gap-2 ${
+              className={`mt-1 flex flex-wrap items-center gap-2 ${
                 item.action_item_done ? "text-ink-soft line-through" : "font-medium"
               }`}
             >
               <span>{item.action_item}</span>
               {item.action_item_owner && <DsTag>אחראי: {item.action_item_owner}</DsTag>}
             </p>
-            <Link
-              to={`/meetings/${item.meeting_id}`}
-              className="mt-1 block font-rubik text-xs text-ink-soft transition hover:text-turquoise hover:underline"
-            >
-              {KIND_LABELS[item.meeting_kind]}
-              {item.meeting_number && ` · מס׳ ${item.meeting_number}`} · {item.meeting_date} ·{" "}
-              {item.topic_title}
-            </Link>
           </span>
         </div>
         {editor && (
