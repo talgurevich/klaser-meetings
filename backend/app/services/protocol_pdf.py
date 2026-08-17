@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import Meeting, TenantSettings
 from app.services import pdf_common as pc
 from app.services.mail import _KIND_LABELS
-from app.services.meeting_summary import attendance_names
+from app.services.meeting_summary import REDACTED_TOPIC_TEXT, attendance_names
 from app.services.signatures import combined_signatory_rows
 
 # Resolved topic statuses that stand in for a decision in the protocol.
@@ -30,7 +30,12 @@ def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes
     ).scalar_one_or_none()
 
     org_name = (settings_row.org_name if settings_row and settings_row.org_name else tenant_name) or "ארגון"
-    topics = sorted((t for t in meeting.topics if not t.is_private), key=lambda t: t.order)
+    # Confidential (is_private) topics stay in the list but print redacted —
+    # see the agenda loop below. The protocol is the document of record, so
+    # it shows that an item was discussed without disclosing what it was.
+    # Every other outbound surface (invite PDF/email, RSVP page, public
+    # decisions) omits them outright — those go to non-members.
+    topics = sorted(meeting.topics, key=lambda t: t.order)
 
     present = attendance_names(db, meeting)
     present_ids = set(meeting.attendees_present or [])
@@ -89,6 +94,9 @@ def build_protocol_pdf(db: Session, meeting: Meeting, tenant_name: str) -> bytes
     pdf.rtl("נושאי הישיבה", size=12, bold=True, h=6, gap=1)
     items = []
     for idx, t in enumerate(topics, start=1):
+        if t.is_private:
+            items.append((idx, f"**{REDACTED_TOPIC_TEXT}**", ""))
+            continue
         parts = [f"**{t.title}**"]
         status_note = _STATUS_NOTE.get(t.status)
         outcome = {"approved": "אושר", "rejected": "לא אושר"}.get(t.decision_outcome or "")

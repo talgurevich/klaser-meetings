@@ -51,6 +51,7 @@ def _to_out(topic: Topic, meeting: Meeting) -> ActionItemOut:
         action_item=topic.action_item or "",
         action_item_done=topic.action_item_done,
         action_item_owner=topic.action_item_owner,
+        action_item_due_date=topic.action_item_due_date,
     )
 
 
@@ -98,10 +99,18 @@ def update_action_item(
     user: IdentityUser = Depends(require_editor()),
 ) -> ActionItemOut:
     topic, meeting = _get_task_or_404(db, topic_id, UUID(user.tenant_id))
-    topic.action_item_done = body.done
+    fields = body.model_fields_set
+    status_changed = "done" in fields and body.done is not None
+    if status_changed:
+        topic.action_item_done = body.done
+    # Explicit null clears the date; omitting the field leaves it as-is.
+    if "due_date" in fields:
+        topic.action_item_due_date = body.due_date
     db.commit()
     db.refresh(topic)
-    if body.notify:
+    # Only a status change is worth emailing about — nobody needs a mail
+    # because a date moved.
+    if body.notify and status_changed:
         event = "done" if body.done else "reopened"
         _notify_invitees(meeting, user, topic.title, topic.action_item or "", event)
     return _to_out(topic, meeting)

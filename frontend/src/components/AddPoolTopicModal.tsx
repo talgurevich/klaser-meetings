@@ -25,6 +25,7 @@ export default function AddPoolTopicModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [duration, setDuration] = useState("10");
+  const [isPrivate, setIsPrivate] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
 
@@ -66,6 +67,7 @@ export default function AddPoolTopicModal({
         description: description.trim() || null,
         duration_minutes: duration ? Number(duration) : null,
         invited_guests: selected.size ? Array.from(selected) : null,
+        is_private: isPrivate,
       });
       onCreated();
     } catch (err) {
@@ -114,6 +116,15 @@ export default function AddPoolTopicModal({
         <Field label="זמן מוקצב (דקות)">
           <DsInput type="number" min={0} value={duration} onChange={setDuration} />
         </Field>
+
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-soft">
+          <DsCheckbox
+            checked={isPrivate}
+            onChange={() => setIsPrivate((v) => !v)}
+            ariaLabel="נושא חסוי"
+          />
+          <span>חסוי — לא יופיע בפרוטוקול המופץ ובהזמנה</span>
+        </label>
 
         <div>
           <div className="mb-2 font-rubik text-xs font-medium text-turquoise">

@@ -101,7 +101,7 @@ export default function LiveTopicCard({
             <StatusPill variant={TOPIC_STATUS_VARIANTS[topic.status]}>
               {TOPIC_STATUS_LABELS[topic.status]}
             </StatusPill>
-            {topic.is_private && <DsTag>פרטי</DsTag>}
+            {topic.is_private && <DsTag>חסוי</DsTag>}
             {topic.from_committee_meeting && (
               <StatusPill variant="teal">הועבר מפגישת הועד</StatusPill>
             )}

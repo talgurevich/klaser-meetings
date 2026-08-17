@@ -281,6 +281,8 @@ export type TopicPoolItem = {
   description: string | null;
   duration_minutes: number | null;
   invited_guests: string[] | null;
+  // חסוי — carried onto the meeting topic when this item is scheduled.
+  is_private: boolean;
   source: "manual" | "public_suggestion";
   suggested_by: string | null;
   priority: number | null;
@@ -390,6 +392,8 @@ export type ActionItem = {
   action_item: string;
   action_item_done: boolean;
   action_item_owner: string | null;
+  // יעד לביצוע — "YYYY-MM-DD" or null. Informational only.
+  action_item_due_date: string | null;
 };
 
 export type MeetingRecording = {
@@ -766,8 +770,9 @@ export const api = {
     duration_minutes?: number | null;
     invited_guests?: string[] | null;
     priority?: number | null;
+    is_private?: boolean;
   }) => request<TopicPoolItem>("/api/topic-pool", { method: "POST", body: JSON.stringify(body) }),
-  updateTopicPoolItem: (id: string, body: Partial<Pick<TopicPoolItem, "title" | "description" | "duration_minutes" | "priority" | "status">>) =>
+  updateTopicPoolItem: (id: string, body: Partial<Pick<TopicPoolItem, "title" | "description" | "duration_minutes" | "priority" | "status" | "is_private">>) =>
     request<TopicPoolItem>(`/api/topic-pool/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   deleteTopicPoolItem: (id: string) =>
     request<void>(`/api/topic-pool/${id}`, { method: "DELETE" }),
@@ -847,6 +852,13 @@ export const api = {
     request<ActionItem>(`/api/action-items/${topicId}`, {
       method: "PATCH",
       body: JSON.stringify({ done, notify }),
+    }),
+  // null clears the target date. Never notifies — a date change isn't
+  // worth an email to every invitee (see backend/app/routes/action_items.py).
+  setActionItemDueDate: (topicId: string, dueDate: string | null) =>
+    request<ActionItem>(`/api/action-items/${topicId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ due_date: dueDate }),
     }),
   deleteActionItem: (topicId: string, notify = false) =>
     request<void>(`/api/action-items/${topicId}?notify=${notify}`, { method: "DELETE" }),

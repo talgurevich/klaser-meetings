@@ -302,6 +302,7 @@ class TopicPoolCreate(BaseModel):
     duration_minutes: int | None = None
     invited_guests: list[str] | None = None
     priority: int | None = None
+    is_private: bool = False
 
 
 class TopicPoolUpdate(BaseModel):
@@ -311,6 +312,7 @@ class TopicPoolUpdate(BaseModel):
     invited_guests: list[str] | None = None
     priority: int | None = None
     status: str | None = None  # pending_review | approved | in_meeting | used | rejected
+    is_private: bool | None = None
 
 
 class ScheduledMeetingRef(BaseModel):
@@ -333,6 +335,7 @@ class TopicPoolOut(BaseModel):
     description: str | None
     duration_minutes: int | None
     invited_guests: list[str] | None
+    is_private: bool
     source: str
     suggested_by: UUID | None
     priority: int | None
@@ -494,10 +497,16 @@ class ActionItemOut(BaseModel):
     action_item: str
     action_item_done: bool
     action_item_owner: str | None = None
+    action_item_due_date: dt.date | None = None
 
 
 class ActionItemUpdate(BaseModel):
-    done: bool
+    # Both fields are optional so a caller can change the status, the due
+    # date, or both. "Omitted" and "explicitly null" differ for due_date —
+    # omitting leaves it alone, sending null clears it — so the route reads
+    # model_fields_set rather than testing for None.
+    done: bool | None = None
+    due_date: dt.date | None = None
     # Opt-in, per action — the caller explicitly checks "עדכן במייל את
     # המוזמנים" before marking done; no notification fires by default.
     notify: bool = False

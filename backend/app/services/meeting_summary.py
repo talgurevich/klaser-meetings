@@ -25,6 +25,16 @@ from app.services.identity import identity_service
 from app.services.mail import _KIND_LABELS, _wrap_html
 
 
+# Stands in for a confidential (חסוי) topic wherever the protocol is
+# rendered as the document of record — the printed PDF (protocol_pdf), the
+# frozen ProtocolVersion snapshot below, and the on-screen protocol page
+# (mirrored in frontend/src/pages/ProtocolView.tsx). The item keeps its
+# agenda number; title, decision, notes and follow-up are all withheld.
+# Surfaces that go to non-members (invite PDF/email, RSVP page, public
+# decisions list) drop confidential topics outright instead.
+REDACTED_TOPIC_TEXT = "נושא חסוי — לא לפרסום"
+
+
 @dataclass(frozen=True)
 class Recipient:
     name: str
@@ -105,11 +115,14 @@ def _attendance(db: Session, meeting: Meeting) -> list[str]:
 
 def build_protocol_snapshot(db: Session, meeting: Meeting) -> dict:
     """Frozen protocol content for a ProtocolVersion — mirrors what the
-    protocol page shows (details, attendance, non-private topics with their
-    decisions/actions). Deliberately excludes the tenant's live logo/
-    signatures/stamp: those are current-render chrome, not versioned content.
-    Compared by equality to dedupe reminder re-sends, so key order is stable."""
-    topics = sorted((t for t in meeting.topics if not t.is_private), key=lambda t: t.order)
+    protocol page and the protocol PDF show (details, attendance, topics with
+    their decisions/actions). Confidential topics appear redacted rather than
+    dropped, exactly as they print, so the frozen version keeps the same
+    agenda numbering as the document that went out. Deliberately excludes the
+    tenant's live logo/signatures/stamp: those are current-render chrome, not
+    versioned content. Compared by equality to dedupe reminder re-sends, so
+    key order is stable."""
+    topics = sorted(meeting.topics, key=lambda t: t.order)
     return {
         "number": meeting.number,
         "date": meeting.date.isoformat(),
@@ -119,11 +132,11 @@ def build_protocol_snapshot(db: Session, meeting: Meeting) -> dict:
         "attendance": attendance_names(db, meeting),
         "topics": [
             {
-                "title": t.title,
-                "decision_text": t.decision_text,
-                "decision_outcome": t.decision_outcome,
-                "action_item": t.action_item,
-                "duration_minutes": t.duration_minutes,
+                "title": REDACTED_TOPIC_TEXT if t.is_private else t.title,
+                "decision_text": None if t.is_private else t.decision_text,
+                "decision_outcome": None if t.is_private else t.decision_outcome,
+                "action_item": None if t.is_private else t.action_item,
+                "duration_minutes": None if t.is_private else t.duration_minutes,
             }
             for t in topics
         ],

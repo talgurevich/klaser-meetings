@@ -38,7 +38,12 @@ def list_topic_pool(
 ) -> list[TopicPoolOut]:
     stmt = select(TopicPool).where(TopicPool.tenant_id == UUID(user.tenant_id))
     if not is_editor(user):
-        stmt = stmt.where(TopicPool.status.in_(_PUBLICLY_VISIBLE_STATUSES))
+        # Confidential (חסוי) pool topics are editor-only, same rule the
+        # meeting agenda applies to Topic.is_private (meetings._visible_topics).
+        stmt = stmt.where(
+            TopicPool.status.in_(_PUBLICLY_VISIBLE_STATUSES),
+            TopicPool.is_private.is_(False),
+        )
     elif status:
         stmt = stmt.where(TopicPool.status == status)
     stmt = stmt.order_by(TopicPool.priority.desc().nulls_last(), TopicPool.created_at.desc())
@@ -93,6 +98,10 @@ def suggest_topic(
         duration_minutes=body.duration_minutes,
         invited_guests=body.invited_guests,
         priority=body.priority,
+        # Only editors may mark a topic חסוי — this route is open to any
+        # entitled user (reviewers suggest topics here), and a suggestion
+        # that hides itself from the editors reviewing it makes no sense.
+        is_private=body.is_private and is_editor(user),
         source="manual",
         # No approval workflow — topics are available in the pool
         # immediately (was "pending_review").

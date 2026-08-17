@@ -5,13 +5,25 @@ import { KIND_LABELS } from "../lib/meetingLabels";
 import { useIsEditor } from "../components/Layout";
 import {
   DsButton,
-  DsCheckbox,
+  DsInput,
   DsModal,
+  DsSelect,
   DsTag,
   PageHeader,
   SectionHeader,
+  StatusPill,
   TrashIcon,
 } from "../components/klaser-ds";
+
+/** Local "today" as YYYY-MM-DD — matches the date the <input type="date">
+ * picker shows the user, which toISOString() (UTC) would get wrong after
+ * ~15:00 Israel time. */
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate()
+  ).padStart(2, "0")}`;
+}
 
 /** Shown right after marking a task done or deleting one — notifying the
  * meeting's invitees is opt-in per action, decided here rather than via a
@@ -105,6 +117,21 @@ export default function ActionItems() {
     }
   }
 
+  // יעד לביצוע. Saves on change; "" clears the date. No notify prompt —
+  // moving a date isn't something to email every invitee about.
+  async function setDueDate(item: ActionItem, value: string) {
+    setBusyId(item.topic_id);
+    setError(null);
+    try {
+      await api.setActionItemDueDate(item.topic_id, value || null);
+      load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function resolvePending(notify: boolean) {
     if (!pending) return;
     const { item, kind } = pending;
@@ -118,39 +145,84 @@ export default function ActionItems() {
 
   function Row({ item }: { item: ActionItem }) {
     const busy = busyId === item.topic_id;
+    // Both sides are "YYYY-MM-DD", so a string compare is a date compare.
+    const overdue =
+      !item.action_item_done &&
+      !!item.action_item_due_date &&
+      item.action_item_due_date < todayIso();
     return (
       <div
         className={`flex items-start justify-between gap-4 rounded-lg border border-line bg-white px-4 py-3 shadow-[0px_1px_0_rgba(0,0,0,0.03),0px_4px_16px_-4px_rgba(0,0,0,0.06)] transition ${
           item.action_item_done ? "opacity-60" : "hover:border-turquoise/40"
         }`}
       >
-        <div className="flex flex-1 items-start gap-3">
-          <span className="mt-0.5">
-            <DsCheckbox
-              checked={item.action_item_done}
-              disabled={!editor || busy}
-              onChange={() => onToggleDone(item, !item.action_item_done)}
-              ariaLabel={item.action_item || "משימה"}
-            />
-          </span>
-          <span>
-            <Link
-              to={`/meetings/${item.meeting_id}`}
-              className="block font-rubik text-xs text-ink-soft transition hover:text-turquoise hover:underline"
-            >
-              {KIND_LABELS[item.meeting_kind]}
-              {item.meeting_number && ` · מס׳ ${item.meeting_number}`} · {item.meeting_date} ·{" "}
-              {item.topic_title}
-            </Link>
-            <p
-              className={`mt-1 flex flex-wrap items-center gap-2 ${
-                item.action_item_done ? "text-ink-soft line-through" : "font-medium"
-              }`}
-            >
-              <span>{item.action_item}</span>
-              {item.action_item_owner && <DsTag>אחראי: {item.action_item_owner}</DsTag>}
-            </p>
-          </span>
+        <div className="min-w-0 flex-1">
+          <Link
+            to={`/meetings/${item.meeting_id}`}
+            className="block font-rubik text-xs text-ink-soft transition hover:text-turquoise hover:underline"
+          >
+            {KIND_LABELS[item.meeting_kind]}
+            {item.meeting_number && ` · מס׳ ${item.meeting_number}`} · {item.meeting_date} ·{" "}
+            {item.topic_title}
+          </Link>
+          <p
+            className={`mt-1 flex flex-wrap items-center gap-2 ${
+              item.action_item_done ? "text-ink-soft line-through" : "font-medium"
+            }`}
+          >
+            <span>{item.action_item}</span>
+            {item.action_item_owner && <DsTag>אחראי: {item.action_item_owner}</DsTag>}
+          </p>
+
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            {editor ? (
+              <>
+                <label className="block">
+                  <span className="mb-1 block font-rubik text-xs font-medium text-ink-soft">
+                    סטטוס
+                  </span>
+                  <DsSelect
+                    className="w-32"
+                    value={item.action_item_done ? "done" : "open"}
+                    disabled={busy}
+                    onChange={(v) => onToggleDone(item, v === "done")}
+                  >
+                    <option value="open">פתוחה</option>
+                    <option value="done">בוצעה</option>
+                  </DsSelect>
+                </label>
+                <label className="block">
+                  <span
+                    className={`mb-1 block font-rubik text-xs font-medium ${
+                      overdue ? "text-danger" : "text-ink-soft"
+                    }`}
+                  >
+                    יעד לביצוע{overdue ? " · באיחור" : ""}
+                  </span>
+                  <div className="w-40">
+                    <DsInput
+                      type="date"
+                      value={item.action_item_due_date || ""}
+                      disabled={busy}
+                      onChange={(v) => setDueDate(item, v)}
+                    />
+                  </div>
+                </label>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 font-rubik text-xs text-ink-soft">
+                <StatusPill variant={item.action_item_done ? "neutral" : "teal"}>
+                  {item.action_item_done ? "בוצעה" : "פתוחה"}
+                </StatusPill>
+                {item.action_item_due_date && (
+                  <span className={overdue ? "text-danger" : undefined}>
+                    יעד לביצוע: {item.action_item_due_date}
+                    {overdue ? " · באיחור" : ""}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         {editor && (
           <button

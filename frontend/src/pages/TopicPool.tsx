@@ -6,6 +6,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import {
   DsButton,
   DsCard,
+  DsTag,
   PageHeader,
   PlusIcon,
   StatusPill,
@@ -31,6 +32,18 @@ export default function TopicPool() {
   }
 
   useEffect(load, []);
+
+  async function setPrivate(id: string, isPrivate: boolean) {
+    setBusy(true);
+    try {
+      await api.updateTopicPoolItem(id, { is_private: isPrivate });
+      load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function remove(id: string) {
     setBusy(true);
@@ -73,7 +86,10 @@ export default function TopicPool() {
             className="flex items-start justify-between gap-4 px-4 py-3"
           >
             <div>
-              <p className="font-medium">{item.title}</p>
+              <p className="flex flex-wrap items-center gap-2 font-medium">
+                <span>{item.title}</span>
+                {item.is_private && <DsTag>חסוי</DsTag>}
+              </p>
               {item.description && <p className="mt-1 text-sm text-ink-soft">{item.description}</p>}
               <div className="mt-2 flex flex-wrap items-center gap-2 font-rubik text-xs text-ink-soft">
                 {item.duration_minutes ? <span>{item.duration_minutes} ד׳</span> : null}
@@ -87,14 +103,33 @@ export default function TopicPool() {
               </div>
             </div>
             {editor && (
-              <button
-                onClick={() => setConfirmItem({ id: item.id, title: item.title })}
-                disabled={busy}
-                className="shrink-0 rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
-                aria-label="מחק"
-              >
-                <TrashIcon />
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                <button
+                  onClick={() => setPrivate(item.id, !item.is_private)}
+                  disabled={busy}
+                  className={`rounded-md px-2 py-1 font-rubik text-xs transition disabled:opacity-50 ${
+                    item.is_private
+                      ? "bg-turquoise/10 text-turquoise"
+                      : "text-ink-soft hover:bg-turquoise/10 hover:text-turquoise"
+                  }`}
+                  title={
+                    item.is_private
+                      ? "נושא חסוי — לחצו כדי לבטל"
+                      : "סמנו כחסוי — הנושא לא יופיע בפרוטוקול המופץ כשישובץ לישיבה"
+                  }
+                  aria-pressed={item.is_private}
+                >
+                  חסוי
+                </button>
+                <button
+                  onClick={() => setConfirmItem({ id: item.id, title: item.title })}
+                  disabled={busy}
+                  className="rounded-md p-2 text-ink-soft transition hover:bg-danger/10 hover:text-danger disabled:opacity-50"
+                  aria-label="מחק"
+                >
+                  <TrashIcon />
+                </button>
+              </div>
             )}
           </DsCard>
         ))}

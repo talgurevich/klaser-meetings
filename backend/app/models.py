@@ -195,6 +195,10 @@ class Topic(Base):
     # follow-up is created (attendee or אלפון contact). Free-text label, not
     # an FK — action items can be owned by non-system people.
     action_item_owner: Mapped[str | None] = mapped_column(String)
+    # Target date for the follow-up task (יעד לביצוע), set from the
+    # tenant-wide משימות לביצוע list. Purely informational — nothing is
+    # scheduled off it and an overdue task is never auto-closed.
+    action_item_due_date: Mapped[date | None] = mapped_column(Date)
     # When the owner was emailed the task — so lock/distribute/publish can all
     # notify newly-assigned owners without re-emailing anyone. Reset to null
     # when the owner changes (see routes/meetings.py update_topic).
@@ -481,6 +485,12 @@ class TopicPool(Base):
     description: Mapped[str | None] = mapped_column(Text)
     duration_minutes: Mapped[int | None] = mapped_column(Integer)
     invited_guests: Mapped[list | None] = mapped_column(JSON)
+
+    # Confidential (חסוי) — carried onto the meeting Topic when this pool
+    # item is picked into an agenda, so a topic that was flagged sensitive
+    # in the pool doesn't quietly become public on scheduling. Same column
+    # name as Topic.is_private; see that field for what the flag suppresses.
+    is_private: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
     # manual | public_suggestion
     source: Mapped[str] = mapped_column(String, nullable=False, default="manual")

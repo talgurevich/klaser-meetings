@@ -34,6 +34,7 @@ import StatusStepper from "../components/StatusStepper";
 import {
   DownloadIcon,
   DsButton,
+  DsCheckbox,
   ExternalLinkIcon,
   DsCard,
   DsInput,
@@ -101,6 +102,7 @@ export default function MeetingDetail() {
   const [error, setError] = useState<string | null>(null);
   const [newTopicTitle, setNewTopicTitle] = useState("");
   const [newTopicDuration, setNewTopicDuration] = useState("");
+  const [newTopicPrivate, setNewTopicPrivate] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // Live-meeting timer: only one topic can be "running" at a time. The
@@ -308,9 +310,11 @@ export default function MeetingDetail() {
       await api.addTopic(id, {
         title: newTopicTitle.trim(),
         duration_minutes: newTopicDuration && minutes > 0 ? minutes : null,
+        is_private: newTopicPrivate,
       });
       setNewTopicTitle("");
       setNewTopicDuration("");
+      setNewTopicPrivate(false);
       load();
     } catch (err) {
       setError(apiErrorMessage(err));
@@ -336,6 +340,23 @@ export default function MeetingDetail() {
     }
   }
 
+  // חסוי is flippable after the fact — whether an item is sensitive often
+  // only becomes clear once the agenda is assembled, and re-adding the
+  // topic just to change it would lose its duration/guests.
+  async function setTopicPrivate(topicId: string, isPrivate: boolean) {
+    if (!id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.updateTopic(id, topicId, { is_private: isPrivate });
+      load();
+    } catch (err) {
+      setError(apiErrorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function addTopicFromPool(poolId: string) {
     if (!id) return;
     const item = poolItems.find((p) => p.id === poolId);
@@ -348,6 +369,9 @@ export default function MeetingDetail() {
         description: item.description,
         duration_minutes: item.duration_minutes,
         invited_guests: item.invited_guests,
+        // A topic flagged חסוי in the pool stays חסוי on the agenda —
+        // scheduling it shouldn't quietly make it public.
+        is_private: item.is_private,
         source_pool_id: item.id,
       });
       load();
@@ -771,7 +795,7 @@ export default function MeetingDetail() {
               <div>
                 <p className="flex flex-wrap items-center gap-2 font-medium">
                   <span>{t.title}</span>
-                  {t.is_private && <DsTag>פרטי</DsTag>}
+                  {t.is_private && <DsTag>חסוי</DsTag>}
                   {t.source_pool_id && <DsTag>ממאגר</DsTag>}
                   {t.from_committee_meeting && (
                     <StatusPill variant="teal">הועבר מפגישת הועד</StatusPill>
@@ -791,6 +815,23 @@ export default function MeetingDetail() {
               </div>
               {editor && (
                 <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    onClick={() => setTopicPrivate(t.id, !t.is_private)}
+                    disabled={busy}
+                    className={`rounded-md px-2 py-1 font-rubik text-xs transition disabled:opacity-30 ${
+                      t.is_private
+                        ? "bg-turquoise/10 text-turquoise"
+                        : "text-ink-soft hover:bg-turquoise/10 hover:text-turquoise"
+                    }`}
+                    title={
+                      t.is_private
+                        ? "נושא חסוי — מוסתר מהפרוטוקול המופץ. לחצו כדי לבטל"
+                        : "סמנו כחסוי — הנושא לא יופיע בפרוטוקול המופץ"
+                    }
+                    aria-pressed={t.is_private}
+                  >
+                    חסוי
+                  </button>
                   <button
                     onClick={() => move(t.id, -1)}
                     disabled={busy || i === 0}
@@ -904,6 +945,14 @@ export default function MeetingDetail() {
               הוסף
             </DsButton>
           </div>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-soft">
+            <DsCheckbox
+              checked={newTopicPrivate}
+              onChange={() => setNewTopicPrivate((v) => !v)}
+              ariaLabel="נושא חסוי"
+            />
+            <span>חסוי — לא יופיע בפרוטוקול המופץ ובהזמנה</span>
+          </label>
           {availablePoolItems.length > 0 && (
             <div className="w-64">
               <DsSelect

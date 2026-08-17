@@ -10,6 +10,12 @@ import {
 } from "../lib/api";
 import { KIND_LABELS } from "../lib/meetingLabels";
 
+/** Stands in for a confidential (חסוי) topic — the item keeps its agenda
+ * number, but title, decision, notes, duration and follow-up are withheld.
+ * Must match REDACTED_TOPIC_TEXT in backend/app/services/meeting_summary.py,
+ * which is what the printed PDF and the frozen version snapshots use. */
+const REDACTED_TOPIC_TEXT = "נושא חסוי — לא לפרסום";
+
 const PRINT_CSS = `
 @media print {
   header { display: none !important; }
@@ -193,9 +199,10 @@ export default function ProtocolView() {
     year: "numeric",
   }).format(new Date(`${meeting.date}T00:00:00`));
   const timeRange = [hm(meeting.time_start), hm(meeting.time_end)].filter(Boolean).join(" – ");
-  const agenda = (meeting.topics || [])
-    .filter((t) => !t.is_private)
-    .sort((a, b) => a.order - b.order);
+  // Confidential (חסוי) topics keep their agenda number here and print
+  // redacted — see REDACTED_TOPIC_TEXT below — so this page matches the
+  // protocol PDF the backend builds (app/services/protocol_pdf.py).
+  const agenda = (meeting.topics || []).sort((a, b) => a.order - b.order);
   const printDate = new Intl.DateTimeFormat("he-IL", {
     day: "numeric",
     month: "long",
@@ -311,8 +318,10 @@ export default function ProtocolView() {
               <tr key={t.id}>
                 <td>{i + 1}</td>
                 <td>
-                  <div className="topic-title">{t.title}</div>
-                  {(t.decision_outcome || t.decision_text) && (
+                  <div className="topic-title">
+                    {t.is_private ? REDACTED_TOPIC_TEXT : t.title}
+                  </div>
+                  {!t.is_private && (t.decision_outcome || t.decision_text) && (
                   <div className="decision">
                     החלטה:{" "}
                     {t.decision_outcome
@@ -324,9 +333,11 @@ export default function ProtocolView() {
                     {t.decision_text}
                   </div>
                 )}
-                  {t.action_item && <div className="decision">משימה: {t.action_item}</div>}
+                  {!t.is_private && t.action_item && (
+                    <div className="decision">משימה: {t.action_item}</div>
+                  )}
                 </td>
-                <td>{t.duration_minutes ? `${t.duration_minutes} ד׳` : ""}</td>
+                <td>{!t.is_private && t.duration_minutes ? `${t.duration_minutes} ד׳` : ""}</td>
               </tr>
             ))}
           </tbody>
