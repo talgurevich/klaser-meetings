@@ -9,7 +9,6 @@ import {
   DsSelect,
   Field,
   PageHeader,
-  PlusIcon,
   StatusPill,
   TrashIcon,
 } from "../components/klaser-ds";
@@ -93,12 +92,7 @@ export default function Meetings({ section = "board" }: { section?: "board" | "a
         title={isAssembly ? "אסיפות" : "ישיבות"}
         actions={
           editor && (
-            <DsButton
-              onClick={createAndGo}
-              disabled={creating}
-              size="compact"
-              icon={<PlusIcon />}
-            >
+            <DsButton onClick={createAndGo} disabled={creating} size="compact">
               {isAssembly ? "אסיפה חדשה" : "ישיבה חדשה"}
             </DsButton>
           )

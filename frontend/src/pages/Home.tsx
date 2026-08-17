@@ -138,12 +138,7 @@ export default function Home() {
         actions={
           editor && (
             <>
-              <DsButton
-                onClick={() => createAndGo("meeting")}
-                disabled={busy}
-                size="compact"
-                icon={<PlusIcon />}
-              >
+              <DsButton onClick={() => createAndGo("meeting")} disabled={busy} size="compact">
                 ישיבה חדשה
               </DsButton>
               <DsButton
